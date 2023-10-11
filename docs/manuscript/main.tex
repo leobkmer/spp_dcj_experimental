@@ -30,6 +30,8 @@
 \begin{constraints}
 
 \begin{tabular}{lcl}
+    \cns & $n = \frac{1}{2} \sum_{e \in E_{ext}} x_{e}$\\
+    \cns & $c = \sum_{uv\in E_{adj}} r^c_{uv}$\\
     \cns & $x_{e} = 1 $ & $\forall e\in \adjacencyedges$\\
      \cns & $\sum_{uv\in E_{ext} \cup E_{id} } x_{uv}= 1$ & $\forall u\in V\setminus V_{\varnothing}$  \\
      \cns & $x_e=x_d$ & for all sibling edges $e,d$\\
@@ -56,8 +58,6 @@
     \cns & $(u+v)(1-r_{uv}^{P}) \geq y_u +y_v$&$R\in  \{A\trans b , B\trans a , a\trans b, A\cis a , B\cis b\}$\\
     \cns & $ r_{uv}^{c\cis}\leq a_v + a_u $\\
 
-    \cns & $n = 0.5 \sum_{e \in E_{ext}} x_{e}$\\
-    \cns & $c = \sum_{uv\in E_{adj}} r^c_{uv}$\\
     \cns & $2q \geq p^{a\trans b}+ p^{ABa} + p^{ABb} - p^{A\trans B} $\\
     \cns & $p^{a\trans b} = \sum_{uv \in E_{adj}}r^{a\trans b}_{uv}$\\
     \cns & $p^{A\trans b} = \sum_{uv \in E_{adj}} r^{A\trans b}$\\
@@ -73,6 +73,11 @@
     \cns & $r^{c}_{uv} \leq x_{uv}$& only for spp-DCJ\\
 \end{tabular}
 \end{constraints}
+
+\begin{itemize}
+    \item gene on/off flagging: intermediate model
+    \item indel event model: user's choice of exemplar/intermediate/maximum matching
+\end{itemize}
 
 \end{algorithm}
 \end{document}
