@@ -1,0 +1,25 @@
+%Misc includes
+\usepackage{xcolor}
+
+
+%ILP stuff
+\usepackage{fmtcount}
+\newcounter{constraintcounter}
+\newcounter{domaincounter}
+\newenvironment{constraints}{\setcounter{constraintcounter}{0}}{}
+\newenvironment{domains}{\setcounter{domaincounter}{0}}{}
+\renewcommand{\theconstraintcounter}{\texttt{C.\padzeroes[2]{\decimal{constraintcounter}}}}
+\renewcommand{\thedomaincounter}{\texttt{D.\padzeroes[2]{\decimal{domaincounter}}}}
+\newcommand{\cns}{\refstepcounter{constraintcounter}(\theconstraintcounter) }
+\newcommand{\dmn}{\refstepcounter{domaincounter}(\thedomaincounter) }
+%End ILP stuff
+
+%Comments etc
+\newcommand{\comment}[1]{{\color{gray} #1 }}
+\newcommand{\todoLeo}[1]{\textbf{\color{magenta}\large TODO LEONARD:} \comment{#1}}
+\newcommand{\todoDany}[1]{\textbf{\color{orange}\large TODO DANY:} \comment{#1}}
+
+%Use this to hide comments upon publishing.
+%\renewcommand{\comment}[1]{}
+%\renewcommand{\todoLeo}[1]{}
+%\renewcommand{\todoDany}[1]{}

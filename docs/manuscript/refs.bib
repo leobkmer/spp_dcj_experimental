@@ -1,0 +1,72 @@
+
+
+
+
+
+
+@article{DOE-CHA-2021,
+author = {Doerr, Daniel and Chauve, Cedric},
+title = {Small parsimony for natural genomes in the DCJ-indel model},
+journal = {Journal of Bioinformatics and Computational Biology},
+volume = {19},
+number = {06},
+pages = {2140009},
+year = {2021},
+doi = {10.1142/S0219720021400096},
+    note ={PMID: 34806948},
+
+URL = { 
+    
+        https://doi.org/10.1142/S0219720021400096
+    
+    
+
+},
+eprint = { 
+    
+        https://doi.org/10.1142/S0219720021400096
+    
+    
+
+}
+,
+    abstract = { The Small Parsimony Problem (SPP) aims at finding the gene orders at internal nodes of a given phylogenetic tree such that the overall genome rearrangement distance along the tree branches is minimized. This problem is intractable in most genome rearrangement models, especially when gene duplication and loss are considered. In this work, we describe an Integer Linear Program algorithm to solve the SPP for natural genomes, i.e. genomes that contain conserved, unique, and duplicated markers. The evolutionary model that we consider is the DCJ-indel model that includes the Double-Cut and Join rearrangement operation and the insertion and deletion of genome segments. We evaluate our algorithm on simulated data and show that it is able to reconstruct very efficiently and accurately ancestral gene orders in a very comprehensive evolutionary model. }
+}
+
+
+
+
+
+
+
+
+@article{BOH-BRA-DOE-STO-2021,
+author = {Bohnenk\"{a}mper, Leonard and Braga, Mar\'{\i}lia D.V. and Doerr, Daniel and Stoye, Jens},
+title = {Computing the Rearrangement Distance of Natural Genomes},
+journal = {Journal of Computational Biology},
+volume = {28},
+number = {4},
+pages = {410-431},
+year = {2021},
+doi = {10.1089/cmb.2020.0434},
+    note ={PMID: 33393848},
+
+URL = { 
+    
+        https://doi.org/10.1089/cmb.2020.0434
+    
+    
+
+},
+eprint = { 
+    
+        https://doi.org/10.1089/cmb.2020.0434
+    
+    
+
+}
+,
+    abstract = { The computation of genomic distances has been a very active field of computational comparative genomics over the past 25 years. Substantial results include the polynomial-time computability of the inversion distance by Hannenhalli and Pevzner in 1995 and the introduction of the double cut and join distance by Yancopoulos et al. in 2005. Both results, however, rely on the assumption that the genomes under comparison contain the same set of unique markers (syntenic genomic regions, sometimes also referred to as genes). In 2015, Shao et al. relax this condition by allowing for duplicate markers in the analysis. This generalized version of the genomic distance problem is NP-hard, and they give an integer linear programming (ILP) solution that is efficient enough to be applied to real-world datasets. A restriction of their approach is that it can be applied only to balanced genomes that have equal numbers of duplicates of any marker. Therefore, it still needs a delicate preprocessing of the input data in which excessive copies of unbalanced markers have to be removed. In this article, we present an algorithm solving the genomic distance problem for natural genomes, in which any marker may occur an arbitrary number of times. Our method is based on a new graph data structure, the multi-relational diagram, that allows an elegant extension of the ILP by Shao et al. to count runs of markers that are under- or over-represented in one genome with respect to the other and need to be inserted or deleted, respectively. With this extension, previous restrictions on the genome configurations are lifted, for the first time enabling an uncompromising rearrangement analysis. Any marker sequence can directly be used for the distance calculation. The evaluation of our approach shows that it can be used to analyze genomes with up to a few 10,000 markers, which we demonstrate on simulated and real data. }
+}
+
+
