@@ -1,12 +1,15 @@
 %Misc includes
 \usepackage{xcolor}
-
+\usepackage{algorithm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{glossaries}
 
 %ILP stuff
 \usepackage{fmtcount}
 \newcounter{constraintcounter}
 \newcounter{domaincounter}
-\newenvironment{constraints}{\setcounter{constraintcounter}{0}}{}
+\newenvironment{constraints}{}{}%\setcounter{constraintcounter}{0}}{}
 \newenvironment{domains}{\setcounter{domaincounter}{0}}{}
 \renewcommand{\theconstraintcounter}{\texttt{C.\padzeroes[2]{\decimal{constraintcounter}}}}
 \renewcommand{\thedomaincounter}{\texttt{D.\padzeroes[2]{\decimal{domaincounter}}}}
@@ -16,10 +19,41 @@
 
 %Comments etc
 \newcommand{\comment}[1]{{\color{gray} #1 }}
+\newcommand{\todo}[1]{\textbf{\color{red}\large TODO:} \comment{#1}}
+
 \newcommand{\todoLeo}[1]{\textbf{\color{magenta}\large TODO LEONARD:} \comment{#1}}
 \newcommand{\todoDany}[1]{\textbf{\color{orange}\large TODO DANY:} \comment{#1}}
 
 %Use this to hide comments upon publishing.
-%\renewcommand{\comment}[1]{}
-%\renewcommand{\todoLeo}[1]{}
-%\renewcommand{\todoDany}[1]{}
+\renewcommand{\comment}[1]{}
+\renewcommand{\todoLeo}[1]{}
+\renewcommand{\todoDany}[1]{}
+\renewcommand{\todo}[1]{}
+
+%Definitions
+
+\newcommand{\tree}{\mathbb{T}}
+\newcommand{\treeedge}{E}
+\newcommand{\edt}{\treeedge}
+%needed because I sometimes have this in old constraints
+\newcommand{\trans}{}
+\newcommand{\cis}{}
+\newcommand{\genome}[1]{\mathbb{#1}}
+\newcommand{\A}{\genome{A}}
+\newcommand{\B}{\genome{B}}
+\newcommand{\vertices}{V}
+\newcommand{\pseudocaps}{\mathcal{T}}
+\newcommand{\adjacencyedges}{E_\text{adj}}
+\newcommand{\extremityedges}{E_{\text{ext}}}
+\newcommand{\selfedges}{E_\text{self}}
+\newcommand{\ades}{\adjacencyedges}
+\newcommand{\exes}{\extremityedges}
+\newcommand{\sees}{\selfedges}
+\newcommand{\mrd}{\mathcal{MRD}}
+\newcommand{\pcmrd}{\mrd^*}
+\newcommand{\parityvar}{l}
+
+
+%Glossary defs
+\newglossaryentry{pcaps}{name=pseudo-caps, description={}}
+\newacronym{mrd}{MRD}{Multi-relational Diagram}
