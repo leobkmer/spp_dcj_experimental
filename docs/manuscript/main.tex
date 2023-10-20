@@ -84,9 +84,8 @@ Institute for Medical Biometry and Bioinformatics, Medical Faculty, and Center f
 \begin{tabular}{lcl}
     \cns & $\minfam{F} \leq \sum_{v \in F} g_v \leq \maxfam{F}$ & $\forall F \in \families$\\
     \cns & $g_v = g_u$ & for each pair of nodes $(u, v)$ corresponding to head/tail extremity of the same gene\todoDany{improve}\\
-    \cns & $g_{v} = x^{\X\A}_{v} = x^{\X\B}_{v} = x^{\X\C}_{v}$& $\forall v \in V$ and genomes $\A$, $\B$, $\C$ adjacent to $\X$ in $\Gamma$\\
+%    \cns & $g_{v} = x^{\X\A}_{v} = x^{\X\B}_{v} = x^{\X\C}_{v}$& $\forall v \in V$ and genomes $\A$, $\B$, $\C$ adjacent to $\X$ in $\Gamma$\\
     \cns & $\sum_{uv \in \adjacencyedges} a_{uv} = g_u$ & $\forall u \in \vertices$\\
-    \cns & $a_{uv} = x^{\X\A}_{uv} = x^{\X\B}_{uv} = x^{\X\C}_{uv}$& $\forall uv \in \adjacencyedges$ and genomes $\A$, $\B$, $\C$ adjacent to $\X$ in $\Gamma$\\
 \end{tabular}
 \end{constraints}
 
@@ -96,6 +95,7 @@ Institute for Medical Biometry and Bioinformatics, Medical Faculty, and Center f
 
 \begin{constraints}
 \begin{tabular}{lcl}
+
 	\cns & $f_\edt = n_\edt - c_\edt + q_\edt + s_\edt$\\
 	\cns & $n_\edt = 0.5 \sum_{e \in \extremityedges} x_{e}$\\
     \cns & $c_\edt = \sum_{v\in \vertices} r^c_{v}$\\
@@ -111,7 +111,9 @@ Institute for Medical Biometry and Bioinformatics, Medical Faculty, and Center f
     \cns & $p^{ABb} \geq p^{A\trans b}$\\
     \cns & $p^{A\trans B} = \sum_{v\in \pseudocaps^A} r^{A\trans B}_v$\\
     \cns & $s_\edt = \sum_{v\in\vertices} r^{s}_{v}$ \\
-     \cns & $\sum_{uv\in E_{ext} \cup E_{id} } x_{uv}= x_u$ & $\forall u\in \vertices$  \\
+    \cns & $\sum_{uv\in E_{ext} \cup E_{id} } x_{uv}= g_{\map(u)}$ & $\forall u\in \vertices$  \\
+    \cns & $a_{\map(u)\map(v)} = x_{uv}$ & $\forall uv \in \adjacencyedges$ \\
+
     (\ref{ilp:slmstart}) to (\ref{ilp:slmend})& Shao-Lin-Moret~\cite{SHA-LIN-MOR-2015} constraints& -- see Table~\ref{tab:slmcons}\\
     (\ref{ilp:regvstart}) to (\ref{ilp:regvend})& Reporting for regular vertices& -- see Table~\ref{tab:regv}\\
     (\ref{ilp:pcstart}) to (\ref{ilp:pcend})& Reporting for \gls{pcaps}& -- see Table~\ref{tab:pcaps}\\
