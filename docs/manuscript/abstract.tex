@@ -1,4 +1,9 @@
-    We study the classic problem of inferring ancestral genomes on a given phylogeny and a given set of extant genomes, also known as \emph{small parsimony problem} (SPP). 
-    More specifically, we address a scenario where genomes represent sets of linear or circular successions of oriented genomic markers orders, also known as \emph{gene orders} that evolve along the branches of the phylogeny and are altered by a general evolutionary model that supports a genome rearrangements emulated through the double-cut-and-join (DCJ) operation and by segmental insertions and deletions.
-
-    Even under simple evolutionary models, this problem is computationally intractable, 
+    We study the classic problem of inferring ancestral genomes on a given phylogeny and a given set of extant genomes, also known as the \emph{small parsimony problem} (SPP).
+    More specifically, we address a scenario that considers the evolving structure of a genome via large scale rearrangements.
+    To abstract from local mutations, such as SNPs, genomes are represented by their \emph{gene orders} on multiple linear or circular chromosomes.
+    Hereby, we do not limit ourselves to genomes with a particular gene set, nor do we restrict the multiplicity of each gene per genome.
+    Since gene orders and multiplicities may differ among extant genomes, the aim of the SPP in this context is to find marker orders and multiplicities for ancestral genomes which are most parsimonious under a given model.
+    The model we consider is a general evolutionary model that supports genome rearrangements emulated through the double-cut-and-join~(DCJ) operation and by segmental insertions and deletions.
+    
+Even under simple evolutionary models, such as the classic character-state model, the SPP is computationally intractable.
+However, we give a highly optimized ILP that is able to compute the SPP under our model for sufficiently small phylogenies.
