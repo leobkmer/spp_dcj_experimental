@@ -258,7 +258,23 @@ def c13(caps, out):
                 cap_set)), j), file = out)
 
 
-# implement constraints C.04 to C.36
+
+
+DEFAULT_SEP = '_'
+ENUMERATE_CONSTRAINTS = False
+
+#give a canonical string for a given edge between u,v with index k
+def disp_edge(u,v,k,sep=DEFAULT_SEP):
+    p = sep.join(sorted([u,v]))
+    return '{p}{s}{k}'.format(p=p,s=sep,k=k)
+
+
+
+'''
+I presume here that pseudo-caps in the graph are declared as du.VTYPE_CAP
+'''
+
+# implement constraints C.04 to C.37
 def mrd_constraints(graphs, siblings, circ_singletons, pseudocaps, out):
 
     out.write('subject to\n')
@@ -269,8 +285,78 @@ def mrd_constraints(graphs, siblings, circ_singletons, pseudocaps, out):
                 '{}').format(child, parent))
         
         
+        
 
     out.write('\n')
+
+
+def cfc04(i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    print("{enm}f{s}{e} - n{s}{e} + c{s}{e} - q{s}{e} - s{s}{e} = 0".format(s=sep,e=i,enm="c04: " if enm else ""),file=out)
+
+def cfc05(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    sumstr = ' + '.join(['0.5 x{s}{i}{s}{e}'.format(s=sep,e=disp_edge(u,v,k),i=i) for u,v,k,tp in G.edges(keys=True,data=type) if tp==du.ETYPE_EXTR])
+    print("{enm}{sumstr} - n{s}{e} = 0".format(sumstr=sumstr,e=i,s=sep,enm="c05: " if enm else ""),file=out)
+
+def cfc06(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    sumstr = ' + '.join(['rc{s}{i}{s}{v}'.format(i=i,v=v,s=sep) for v,vt in G.nodes(data='type') if vt != du.VTYPE_CAP])
+    print("{enm}{sumstr} - c{s}{i} = 0".format(sumstr=sumstr,i=i,s=sep,enm= "c.06: " if enm else ""),file=out)
+
+def cfc07(i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    print("{enm}piiab{s}{i} + pABa{s}{i} + pABb{s}{i} - pttAB{s}{i} - 2 q{s}{i} <= 0".format(i=i,s=sep,enm="c.07: " if enm else ""),file=out)
+
+def cfc08(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    sumstr = ' + '.join(['riiab{s}{i}{s}{v}'.format(i=i,v=v,s=sep) for v,data in G.nodes(data=True) if data['type'] != du.VTYPE_CAP and data['genome'] == du.VGENOME_FIRST])
+    print("{enm}{sumstr} - piiab{s}{i} = 0".format(sumstr=sumstr,i=i,s=sep,enm="c.08: " if enm else ""),file=out)
+
+def cfc09(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    sumstr = ' + '.join(['rtiAb{s}{i}{s}{v}'.format(i=i,v=v,s=sep) for v,data in G.nodes(data=True) if data['type'] == du.VTYPE_CAP and data['genome'] == du.VGENOME_FIRST])
+    print("{enm}{sumstr} - ptiAb{s}{i} = 0".format(sumstr=sumstr,i=i,s=sep,enm="c.09: " if enm else ""),file=out)
+
+def cfc10(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    sumstr = ' + '.join(['rtiBa{s}{i}{s}{v}'.format(i=i,v=v,s=sep) for v,data in G.nodes(data=True) if data['type'] == du.VTYPE_CAP and data['genome'] == du.VGENOME_SECOND])
+    print("{enm}{sumstr} - ptiBa{s}{i} = 0".format(sumstr=sumstr,i=i,s=sep,enm="c.09: " if enm else ""),file=out)
+
+
+def cfc11(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    sumstr = ' + '.join(['rtiAa{s}{i}{s}{v}'.format(i=i,v=v,s=sep) for v,data in G.nodes(data=True) if data['type'] == du.VTYPE_CAP and data['genome'] == du.VGENOME_FIRST])
+    print("{enm}{sumstr} - ptiAa{s}{i} = 0".format(sumstr=sumstr,i=i,s=sep,enm="c.09: " if enm else ""),file=out)
+
+def cfc12(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    sumstr = ' + '.join(['rtiBb{s}{i}{s}{v}'.format(i=i,v=v,s=sep) for v,data in G.nodes(data=True) if data['type'] == du.VTYPE_CAP and data['genome'] == du.VGENOME_SECOND])
+    print("{enm}{sumstr} - ptiBb{s}{i} = 0".format(sumstr=sumstr,i=i,s=sep,enm="c.09: " if enm else ""),file=out)
+
+
+def cfc13to16(i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    count = 13
+    for x in 'ab':
+        for y in 'BA':
+            print("{enm}pAB{x}{s}{i} - pti{y}{x} >= 0".format(x=x,y=y,s=sep,i=i,enm="c.%02d: "%count if enm else ""),file=out)
+            count+=1
+
+def cfc17(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    sumstr = ' + '.join(['rttAB{s}{i}{s}{v}'.format(i=i,v=v,s=sep) for v,data in G.nodes(data=True) if data['type'] == du.VTYPE_CAP and data['genome'] == du.VGENOME_FIRST])
+    print("{enm}{sumstr} - pttAB{s}{i} = 0".format(sumstr=sumstr,i=i,s=sep,enm="c.09: " if enm else ""),file=out)
+
+
+def cfc18(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    sumstr = ' + '.join(['rs{s}{i}{s}{v}'.format(i=i,v=v,s=sep) for v,data in G.nodes(data=True) if data['type'] != du.VTYPE_CAP])
+    print("{enm}{sumstr} - s{s}{i} = 0".format(sumstr=sumstr,i=i,s=sep,enm="c.08: " if enm else ""),file=out)
+
+def cfc19(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    for cc, v in enumerate(G.nodes(),start=1):
+        sumstr = ' + '.join(['x{s}{i}{s}{e}'.format(i=i,s=sep,e=disp_edge(u,v,k)) for u in G[v] for k in G[v][u] if G[v][u][k] in [du.ETYPE_ADJ,du.ETYPE_EXTR]])
+        print("{enm}{sumstr} - g{s}{v} = 0".format(sumstr,v=v,s=sep,enm="c.19.%d: "%cc if enm else ""),file=out)
+
+
+def cfc20(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    for cc, e in enumerate([disp_edge(u,v,k) for u,v,k,tp in G.edges(keys=True,data='type') if tp==du.ETYPE_ADJ],start=1):
+        print("{enm}a{s}{e} - x{s}{i}{s}{e}".format(e=e,i=i,s=sep,enm="c.20.%d: "%cc if enm else ""),file=out)
+
+
+def cfc21(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    for cc, v in enumerate(G.nodes(),start=1):
+        print("z{s}{i}{s}{v} - g{s}{v} <= 0".format(i=i,v=v,s=sep,enm="c.21.%d: "%cc if enm else ""),file=out)
+
 
 
 def getAllCaps(graphs):
