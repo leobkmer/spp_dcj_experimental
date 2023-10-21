@@ -97,6 +97,9 @@ def constraints(graphs, siblings, circ_singletons, caps, out):
     out.write('\n')
 
 
+
+
+
 def c01(G, out):
     for v, vdata in G.nodes(data = True):
         line = ''
@@ -253,6 +256,21 @@ def c13(caps, out):
         if cap_set:
             print('{} - 2 a{} = 0'.format(' + '.join(map(lambda x: f'o{x}',
                 cap_set)), j), file = out)
+
+
+# implement constraints C.04 to C.36
+def mrd_constraints(graphs, siblings, circ_singletons, pseudocaps, out):
+
+    out.write('subject to\n')
+
+    for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
+
+        LOG.info(('writing constraints for relational diagram of {} and ' + \
+                '{}').format(child, parent))
+        
+        
+
+    out.write('\n')
 
 
 def getAllCaps(graphs):
