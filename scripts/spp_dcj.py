@@ -355,7 +355,29 @@ def cfc20(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
 
 def cfc21(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
     for cc, v in enumerate(G.nodes(),start=1):
-        print("z{s}{i}{s}{v} - g{s}{v} <= 0".format(i=i,v=v,s=sep,enm="c.21.%d: "%cc if enm else ""),file=out)
+        print("{enm}z{s}{i}{s}{v} - g{s}{v} <= 0".format(i=i,v=v,s=sep,enm="c.21.%d: "%cc if enm else ""),file=out)
+
+
+def cfc22(sibs,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    for cc,es in enumerate(sibs):
+        e1 = disp_edge(*es[0])
+        e2 = disp_edge(*es[1])
+        print("{enm}x{s}{i}{s}{e1} - x{s}{i}{s}{e2} = 0".format(i=i,e1=e1,e2=e2,s=sep,enm="c22.%d: "%cc if enm else ""),file=out)
+
+'''TODO: implement this after checking w/ dany
+def cfc23(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    for cc,pacde in enumerate(G.edges(keys=True,data=True)):
+        u_,v_,k,data = pacde
+        e = disp_edge(u_,v_,k)
+        for u,v in [(u_,v_),(v_,u_)]:
+            if data['type'] != du.ETYPE_ID:
+                print("{enm}y{s}{i}{s}{u} - y{s}{i}{s}{v} + {ixu} x{s}{i}{s}{e}  <= {ixu}".format(
+                    i=i,u=u,v=v,e=e,ixu=G.nodes[u]['id']
+                ))
+def cfc24(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    pass
+'''
+
 
 
 

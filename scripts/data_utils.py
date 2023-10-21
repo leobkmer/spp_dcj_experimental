@@ -786,7 +786,7 @@ def rotateToMin(path):
 
 
 def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
-        fam2genes2, extremityIdManager):
+        fam2genes2, extremityIdManager,triple_sibs_format=False):
 
     genes1 = genes[gName1]
     genes2 = genes[gName2]
@@ -814,11 +814,14 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
             edge_idh = '{}_{}'.format(*sorted((id1h, id2h)))
             edge_idt = '{}_{}'.format(*sorted((id1t, id2t)))
 
-            G.add_edge(id1h, id2h, type=ETYPE_EXTR, id=edge_idh)
-            G.add_edge(id1t, id2t, type=ETYPE_EXTR, id=edge_idt)
+            k1 = G.add_edge(id1h, id2h, type=ETYPE_EXTR, id=edge_idh)
+            k2 = G.add_edge(id1t, id2t, type=ETYPE_EXTR, id=edge_idt)
 
             # ensure sorted order of sibling edges
-            siblings.append((edge_idh, edge_idt))
+            if not triple_sibs_format:
+                siblings.append((edge_idh, edge_idt))
+            else:
+                siblings.append(((id1h, id2h,k1),(id1t, id2t,k2)))
 
         # create indel edges between genes of smaller family
         for i, gName in enumerate((gName1, gName2)):
@@ -870,7 +873,7 @@ def getIncidentAdjacencyEdges(G, v):
 
 
 def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
-        candidateWeights, candidatePenalities, genes, extremityIdManager):
+        candidateWeights, candidatePenalities, genes, extremityIdManager,triple_sibs_format=False):
     ''' constructs for each edge of the tree a relational diagram of the
     adjacent genomes'''
 
@@ -889,7 +892,7 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
         fam2genes1 = mapFamiliesToGenes(genes[child])
         fam2genes2 = mapFamiliesToGenes(genes[parent])
         siblings   = _constructRDExtremityEdges(G, child, parent, genes,
-                fam2genes1, fam2genes2, extremityIdManager)
+                fam2genes1, fam2genes2, extremityIdManager,triple_sibs_format=triple_sibs_format)
 
         res['graphs'][(child, parent)] = G
         res['siblings'][(child, parent)] = siblings
@@ -909,6 +912,8 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
 #                G.remove_node(v)
 
     return res
+
+
 
 
 def writeAdjacencies(adjacenciesList, weightsDict, out):
