@@ -113,7 +113,7 @@ Institute for Medical Biometry and Bioinformatics, Medical Faculty, and Center f
     \cns & $s_\edt = \sum_{v\in\vertices} r^{s}_{v}$ \\
     \cns & $\sum_{uv\in E_{ext} \cup E_{id} } x_{uv}= g_{\map(u)}$ & $\forall u\in \vertices$  \\
     \cns & $a_{\map(u)\map(v)} = x_{uv}$ & $\forall uv \in \adjacencyedges$ \\
-
+    \cns & $z_{v} \leq g_{\map (v)}$ & $\forall v \in \vertices$ \\
     (\ref{ilp:slmstart}) to (\ref{ilp:slmend})& Shao-Lin-Moret~\cite{SHA-LIN-MOR-2015} constraints& -- see Table~\ref{tab:slmcons}\\
     (\ref{ilp:regvstart}) to (\ref{ilp:regvend})& Reporting for regular vertices& -- see Table~\ref{tab:regv}\\
     (\ref{ilp:pcstart}) to (\ref{ilp:pcend})& Reporting for \gls{pcaps}& -- see Table~\ref{tab:pcaps}\\
