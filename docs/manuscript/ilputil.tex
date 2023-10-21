@@ -1,0 +1,10 @@
+\usepackage{fmtcount}
+\newcounter{constraintcounter}
+\newcounter{domaincounter}
+\newenvironment{constraints}{\setcounter{constraintcounter}{0}}{}
+\newenvironment{domains}{\setcounter{domaincounter}{0}}{}
+\renewcommand{\theconstraintcounter}{\texttt{C.\padzeroes[2]{\decimal{constraintcounter}}}}
+\renewcommand{\thedomaincounter}{\texttt{D.\padzeroes[2]{\decimal{domaincounter}}}}
+\newcommand{\cns}{\refstepcounter{constraintcounter}(\theconstraintcounter) }
+\newcommand{\dmn}{\refstepcounter{domaincounter}(\thedomaincounter) }
+
