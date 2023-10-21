@@ -870,7 +870,7 @@ def getIncidentAdjacencyEdges(G, v):
 
 def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
         candidateWeights, candidatePenalities, genes, extremityIdManager,
-        sep=DEFAULT_GENE_FAM_SEP,capping=True):
+        sep=DEFAULT_GENE_FAM_SEP):
     ''' constructs for each edge of the tree a relational diagram of the
     adjacent genomes'''
 
@@ -896,18 +896,17 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
 
 
     # create caps at last, assigning them the highest IDs
-    if capping:
-        for child, parent in tree:
-            G = res['graphs'][(child, parent)]
-            _constructRDCapping(G, child, parent, extremityIdManager)
-    #        _constructNaiveRDCapping(G, child, parent, extremityIdManager)
-            # remove caps from the graph that are not saturated by two edges
-    #        for v, d in tuple(G.degree()):
-    #            if d == 1:
-    #                if G.nodes[v]['type'] != VTYPE_CAP:
-    #                    raise Exception('assumption that all vertices with ' + \
-    #                            'degree one are caps failed')
-    #                G.remove_node(v)
+    for child, parent in tree:
+        G = res['graphs'][(child, parent)]
+        _constructRDCapping(G, child, parent, extremityIdManager)
+#        _constructNaiveRDCapping(G, child, parent, extremityIdManager)
+        # remove caps from the graph that are not saturated by two edges
+#        for v, d in tuple(G.degree()):
+#            if d == 1:
+#                if G.nodes[v]['type'] != VTYPE_CAP:
+#                    raise Exception('assumption that all vertices with ' + \
+#                            'degree one are caps failed')
+#                G.remove_node(v)
 
     return res
 
