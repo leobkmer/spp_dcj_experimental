@@ -1,9 +1,8 @@
-    We study the classic problem of inferring ancestral genomes on a given phylogeny and a given set of extant genomes, also known as the \emph{small parsimony problem} (SPP).
-    More specifically, we address a scenario that considers the evolving structure of a genome via large scale rearrangements.
-    To abstract from local mutations, such as SNPs, genomes are represented by their \emph{gene orders} on multiple linear or circular chromosomes.
-    Hereby, we do not limit ourselves to genomes with a particular gene set, nor do we restrict the multiplicity of each gene per genome.
-    Since gene orders and multiplicities may differ among extant genomes, the aim of the SPP in this context is to find marker orders and multiplicities for ancestral genomes which are most parsimonious under a given model.
-    The model we consider is a general evolutionary model that supports genome rearrangements emulated through the double-cut-and-join~(DCJ) operation and by segmental insertions and deletions.
+    We study the classic problem of inferring ancestral genomes under a given phylogeny and from a given set of extant genomes, also known as the \emph{small parsimony problem} (SPP).
+    The evolutionary model considered at hand encompasses large scale rearrangements acting on so-called \emph{gene order} sequences and includes segmental gain and loss. Each genome may encompass one or more linear or circular chromosomes, and genes may appear in several copies, without restriction on their genomic location or orientation within the sequence.
+    Therefore, our method presumes ancestral copy number estimates, specified either as fixed count, or as range. 
+    In case of the latter, our method chooses the copy number within the range that minimizes the total number of large scale rarrangements over the entire phylogeny. 
     
 Even under simple evolutionary models, such as the classic character-state model, the SPP is computationally intractable.
-However, we give a highly optimized ILP that is able to compute the SPP under our model for sufficiently small phylogenies.
+However, we give a highly optimized ILP that is able to compute the SPP under our model for sufficiently small phylogenies and gene families. We benchmark our method on simulated phylogenies and discuss its performance in reconstructing gene oders under our broad evolutionary model. 
+
