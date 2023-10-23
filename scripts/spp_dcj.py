@@ -364,22 +364,151 @@ def cfc22(sibs,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
         e2 = disp_edge(*es[1])
         print("{enm}x{s}{i}{s}{e1} - x{s}{i}{s}{e2} = 0".format(i=i,e1=e1,e2=e2,s=sep,enm="c22.%d: "%cc if enm else ""),file=out)
 
-'''TODO: implement this after checking w/ dany
+#TODO: implement this after checking w/ dany
 def cfc23(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
-    for cc,pacde in enumerate(G.edges(keys=True,data=True)):
+    cc = 1
+    for pacde in G.edges(keys=True,data=True):
         u_,v_,k,data = pacde
         e = disp_edge(u_,v_,k)
         for u,v in [(u_,v_),(v_,u_)]:
             if data['type'] != du.ETYPE_ID:
                 print("{enm}y{s}{i}{s}{u} - y{s}{i}{s}{v} + {ixu} x{s}{i}{s}{e}  <= {ixu}".format(
-                    i=i,u=u,v=v,e=e,ixu=G.nodes[u]['id']
-                ))
+                    i=i,u=u,v=v,e=e,ixu=G.nodes[u]['localid'],s=sep,enm='c23.%d '%cc if enm else ""
+                ),file=out)
+                cc+=1
+            else:
+                print("{enm}y{s}{i}{s}{u} + {ixu} x{s}{i}{s}{e}  <= {ixu}".format(
+                    i=i,u=u,e=e,ixu=G.nodes[u]['localid'],s=sep,enm='c23.%d '%cc if enm else ""
+                ),file=out)
+                cc+=1
+
 def cfc24(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
-    pass
-'''
+    for cc,pacdv in enumerate(G.nodes(data='localid')):
+        v,lid = pacdv
+        print("{enm}{lid} z{s}{i}{s}{v} - y{s}{i}{s}{v} <= 0".format(i=i,v=v,lid=lid,s=sep,enm="c24.%d: "%cc if enm else ''),file=out)
 
+def cfc25(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    cc = 1
+    for pacde in [(u,v,k) for u,v,k,et in G.edges(keys=True,data='type') if et==du.ETYPE_ID]:
+        u_,v_,k = pacde
+        e = disp_edge(u_,v_,k)
+        for v in [u_,v_]:
+            if G.nodes[v]['genome'] == du.VGENOME_FIRST:
+                print("{enm}l{s}{i}{s}{v} + x{s}{i}{s}{e} <= 1".format(i=i,s=sep,v=v,e=e,enm="c25.%d: "%cc if enm else ""),file=out)
+            else:
+                print("{enm}x{s}{i}{s}{e} - l{s}{i}{s}{v} <= 0".format(i=i,s=sep,v=v,e=e,enm="c25.%d: "%cc if enm else ""),file=out)
+            cc+=1
 
+def cfc26(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    cc = 1
+    for u_,v_,k,et in G.edges(keys=True,data='type'):
+        if et not in [du.ETYPE_ADJ,du.ETYPE_EXTR]: #and du.VTYPE_CAP not in [G.nodes[u_]['type'],G.nodes[v_]['type']]:
+            continue
+        e = disp_edge(u_,v_,k)
+        for u,v in[u_,v_]:
+            if et == du.ETYPE_EXTR:
+                print("{enm}l{s}{i}{s}{v} - l{s}{i}{s}{u} + x{s}{i}{s}{e} <= 1".format(i=i,v=v,u=u,e=e,s=sep,enm="c25.%d: "%cc if enm else ""),
+                    file=out)
+                cc+=1
+            elif et == du.ETYPE_ADJ:
+                if du.VTYPE_CAP in [G.nodes[u_]['type'],G.nodes[v_]['type']]:
+                    continue
+                if G.nodes[v]['genome']==du.VGENOME_FIRST:
+                    print("{enm}l{s}{i}{s}{v} - l{s}{i}{s}{u} + x{s}{i}{s}{e} - riiab{s}{i}{s}{v} - riiab{s}{i}{s}{u} <= 1".format(i=i,v=v,u=u,e=e,s=sep,enm="c25.%d: "%cc if enm else ""),
+                    file=out)
+                else:
+                    print("{enm}l{s}{i}{s}{v} - l{s}{i}{s}{u} + x{s}{i}{s}{e} <= 1".format(i=i,v=v,u=u,e=e,s=sep,enm="c26.%d: "%cc if enm else ""),
+                    file=out)
+                cc+=1
 
+def cfc27(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    for cc,v in enumerate([v for v,tp in G.nodes(data='type') if tp != du.VTYPE_CAP]):
+        print("{enm}rc{s}{i}{s}{v} - z{s}{i}{s}{v} <= 0".format(i=i,v=v,s=sep,enm="c27.%d: "%cc if enm else ""),file=out)
+
+def cfc28(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    cc = 1
+    for u_,v_,k,tp in G.nodes(keys=True,data='type'):
+        if tp != du.ETYPE_ID:
+            continue
+        e = disp_edge(u_,v_,k)
+        for v in[u_,v_]:
+            print("{enm}riiab{s}{i}{s}{v} - x{s}{i}{s}{e} <= 0".format(i=i,v=v,e=e,s=sep,enm="c28.%d: "%cc if enm else ""),file=out)
+        cc+=1
+
+def cfc29(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    cc = 1
+    for v,data in G.nodes(data=True):
+        if data['type']!= du.VTYPE_CAP:
+            continue
+        g = 0 if data['genome'] == du.VGENOME_FIRST else 1
+        print("{enm}l{s}{i}{s}{v} = {g}".format(i=i,v=v,s=sep,enm="c29.%d: "%cc if enm else ""),file=out)
+
+def cfc30(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    cc = 1
+    for v_,data in G.nodes(data=True):
+        if data['type']!= du.VTYPE_CAP:
+            continue
+        adje = [(v_,u,k) for u in G[v_] for k in G[v_][u] if G[v_][u][k]['type'] == du.ETYPE_ADJ]
+        if len(adje) != 1:
+            raise AssertionError("Pseudo-cap connected to %d vertices."%len(adje))
+        if data['genome']==du.VGENOME_FIRST:
+            v,u,k = adje[0]
+            e = disp_edge(v,u,k)
+            print("{enm}l{s}{i}{s}{u} - l{s}{i}{s}{v} - rttAB{s}{i}{s}{v} - rtiAb{s}{i}{s}{v} + x{s}{i}{s}{e} <= 1".format(
+                i=i,v=v,u=u,e=e,s=sep,enm="c30.%d: "%cc if enm else ""),file=out)
+            cc+=1
+        else:
+            u,v,k = adje[0]
+            e = disp_edge(v,u,k)
+            print("{enm}l{s}{i}{s}{u} - l{s}{i}{s}{v} - rtiBa{s}{i}{s}{v} + x{s}{i}{s}{e} <= 1".format(
+                i=i,v=v,u=u,e=e,s=sep,enm="c30.%d: "%cc if enm else ""),file=out)
+            cc+=1
+        
+
+def cfc31(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    cc=1
+    for v,data in G.nodes(data=True):
+        if data['type']!= du.VTYPE_CAP or data['genome']!= du.VGENOME_FIRST:
+            continue
+        print("{enm}rttAB{s}{i}{s}{v} - z{s}{i}{s}{v} <= 0".format(i=i,v=v,s=sep,enm="c31.%d: "%cc if enm else ""),file=out)
+        cc+=1
+
+def cfc32(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    cc=1
+    for v,data in G.nodes(data=True):
+        if data['type']!= du.VTYPE_CAP:
+            continue
+        rvars = ['rtiAb','rtiAa'] if data['genome']==du.VGENOME_FIRST else ['rtiBa','rtiBb']
+        print("{enm}{ra}{s}{i}{s}{v} + {rb}{s}{i}{s}{v} + y{s}{i}{s}{v} >= 1".format(
+            ra=rvars[0],rb=rvars[1],v=v,i=i,s=sep,enm="c32.%d: "%cc if enm else ""),file=out)
+        cc+=1
+
+def cfc33(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    for v,data in G.nodes(data=True):
+        if data['type']!= du.VTYPE_CAP:
+            continue
+        rvars = ['rtiAb','rtiAa'] if data['genome']==du.VGENOME_FIRST else ['rtiBa','rtiBb']
+        for r in rvars:
+            print("{enm}y{s}{i}{s}{v} + {ixv} {r}{s}{i}{s}{v} <= {ixv}".format(i=i,v=v,s=sep,ixv=data['localid'],enm="c33.%d: "%cc if enm else ""),file=out)
+            cc+=1
+
+def cfc34(G,i,out,sep=DEFAULT_SEP,enm=ENUMERATE_CONSTRAINTS):
+    cc=1
+    for v_,data in G.nodes(data=True):
+        if data['type']!= du.VTYPE_CAP:
+            continue
+        adje = [(v_,u,k) for u in G[v_] for k in G[v_][u] if G[v_][u][k]['type'] == du.ETYPE_ADJ]
+        if len(adje) != 1:
+            raise AssertionError("Pseudo-cap connected to %d vertices."%len(adje))
+        v,u,k = adje[0]
+        if data['genome']==du.VGENOME_FIRST:
+            print("{enm}rttAB{s}{i}{s}{v} - l{s}{i}{s}{u} <= 0".format(i=i,v=v,u=u,s=sep,enm="c34.%d: "%cc if enm else ""))
+            cc+=1
+            print("{enm}rtiAb{s}{i}{s}{v} - l{s}{i}{s}{u} <= 0".format(i=i,v=v,u=u,s=sep,enm="c34.%d: "%cc if enm else ""))
+            cc+=1
+        else:
+            print("{enm}rtiBa{s}{i}{s}{v} + l{s}{i}{s}{u} <= 1".format(i=i,v=v,u=u,s=sep,enm="c34.%d: "%cc if enm else ""))
+            cc+=1
 
 def getAllCaps(graphs):
     res = dict((k, set()) for k in set(chain(*graphs.keys())))

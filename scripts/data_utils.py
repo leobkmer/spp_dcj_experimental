@@ -840,17 +840,21 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
     return siblings
 
 
-def _constructRDNodes(G, gName, genes, extremityIdManager,genome=VGENOME_FIRST):
+def _constructRDNodes(G, gName, genes, extremityIdManager,genome=VGENOME_FIRST,localIdManager=None):
     ''' create gene extremity nodes for the genome named <gName> '''
+    if localIdManager is None:
+        localIdManager = extremityIdManager
     for extr in (EXTR_HEAD, EXTR_TAIL):
         G.add_nodes_from(((extremityIdManager.getId((gName, (g, extr))),
-            dict(id=((gName, (g, extr))), type=VTYPE_EXTR,genome=genome)) for g in genes))
+            dict(id=((gName, (g, extr))), type=VTYPE_EXTR,genome=genome,localid=localIdManager.getId((gName, (g, extr))))) for g in genes))
 
 
-def _constructRDTelomeres(G, gName, telomeres, extremityIdManager,genome=VGENOME_FIRST):
+def _constructRDTelomeres(G, gName, telomeres, extremityIdManager,genome=VGENOME_FIRST,localIdManager=None):
     ''' create telomereic extremity nodes for the genome named <gName> '''
+    if localIdManager is None:
+        localIdManager = extremityIdManager
     G.add_nodes_from(((extremityIdManager.getId((gName, (t, 'o'))),
-        dict(id=((gName, (t, 'o'))), type=VTYPE_CAP,genome=genome)) for t in telomeres))
+        dict(id=((gName, (t, 'o'))), type=VTYPE_CAP,genome=genome,localid=localIdManager.getId((gName, (t,'o'))))) for t in telomeres))
 
 
 def hasIncidentAdjacencyEdges(G, v):
