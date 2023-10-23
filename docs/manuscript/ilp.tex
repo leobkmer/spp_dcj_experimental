@@ -107,9 +107,9 @@
         & $1 -y_v \leq r^{B\trans a}_{v} + r^{B\cis b}_v$ & $v \in \pseudocaps^\B$\\
     \cns & $y_{v_i} \leq i(1-r_{v}^{R})$&$v\in \pseudocaps^\A,R\in  \{A\trans b, A\cis a\}$\\
      & $y_{v_i} \leq i(1-r_{v}^{R})$&$v\in \pseudocaps^\B,R\in  \{B\trans a, B\cis b\}$\\
-    \cns\label{ilp:pcend} & $r_{v}^{A\trans B} \leq b_u$&$\forall uv\in \adjacencyedges, v \in \pseudocaps^A$ \\
-    & $r_{v}^{A\trans b} \leq b_u$&$\forall uv\in \adjacencyedges, v \in \pseudocaps^A$ \\
-    & $r_{v}^{B\trans a} \leq 1-b_u$&$\forall uv\in \adjacencyedges, v \in \pseudocaps^\B$\\
+    \cns\label{ilp:pcend} & $r_{v}^{A\trans B} \leq \parityvar_u$&$\forall uv\in \adjacencyedges, v \in \pseudocaps^A$ \\
+    & $r_{v}^{A\trans b} \leq \parityvar_u$&$\forall uv\in \adjacencyedges, v \in \pseudocaps^A$ \\
+    & $r_{v}^{B\trans a} \leq 1-\parityvar_u$&$\forall uv\in \adjacencyedges, v \in \pseudocaps^\B$\\
 \end{tabular}
 \end{constraints}
 
