@@ -1,0 +1,128 @@
+\todoLeo{ILP goes here}
+\todoLeo{Remove idx stuff and bring back $v_i$ notation}
+
+\begin{algorithm}
+\caption{Capping-free Small Parsimony}
+\textbf{Objective}
+
+\newcommand{\idx}{\texttt{ix}}
+\hspace{0.5cm}\texttt{Maximize}
+\begin{equation*}
+    \alpha \sum_{\edt\in\tree} f_\edt + .... \text{\todoDany{Optimization of other factors goes here.}}
+\end{equation*}
+
+\textbf{For each ancestral genome $\X \in \tree$ with $\ggraph(\X) = (\vertices, \adjacencyedges)$}
+
+\begin{constraints}
+\begin{tabular}{lcl}
+    \cns & $\minfam{F} \leq \sum_{v \in F} g_v \leq \maxfam{F}$ & $\forall F \in \families$\\
+    \cns & $g_v = g_u$ & for each pair of nodes $(u, v)$ corresponding to head/tail extremity of the same gene\todoDany{improve}\\
+%    \cns & $g_{v} = x^{\X\A}_{v} = x^{\X\B}_{v} = x^{\X\C}_{v}$& $\forall v \in V$ and genomes $\A$, $\B$, $\C$ adjacent to $\X$ in $\Gamma$\\
+    \cns & $\sum_{uv \in \adjacencyedges} a_{uv} = g_u$ & $\forall u \in \vertices$\\
+\end{tabular}
+\end{constraints}
+
+
+\medskip
+\textbf{For each tree edge $(\A,\B):=\edt\in \tree$ with $\pcmrd(\A,\B) = (\vertices\cup\pseudocaps, \adjacencyedges \cup \extremityedges \cup \selfedges)$:}
+
+\begin{constraints}
+\begin{tabular}{lcl}
+
+	\cns & $f_\edt = n_\edt - c_\edt + q_\edt + s_\edt$\\
+	\cns & $n_\edt = 0.5 \sum_{e \in \extremityedges} x_{e}$\\
+    \cns & $c_\edt = \sum_{v\in \vertices} r^c_{v}$\\
+    \cns & $2q_\edt \geq p^{a\trans b}+ p^{ABa} + p^{ABb} - p^{A\trans B} $\\
+    \cns & $p^{a\trans b} = \sum_{v \in \vertices}r^{a\trans b}_{v}$\\
+    \cns & $p^{A\trans b} = \sum_{v \in \pseudocaps^A} r^{A\trans b}_e$\\
+    \cns & $p^{B\trans a} = \sum_{v\in \pseudocaps^B} r^{B\trans a}_e$\\
+    \cns & $p^{A\cis a} = \sum_{v \in \pseudocaps^A} r^{A\cis a}_e$\\
+    \cns & $p^{B\cis b} = \sum_{e \in \pseudocaps^B} r^{B\cis b}_e$\\
+    \cns & $p^{ABa} \geq p^{B\trans a}$\\
+    \cns & $p^{ABa} \geq p^{A\cis a}$\\
+    \cns & $p^{ABb} \geq p^{B\cis b}$\\
+    \cns & $p^{ABb} \geq p^{A\trans b}$\\
+    \cns & $p^{A\trans B} = \sum_{v\in \pseudocaps^A} r^{A\trans B}_v$\\
+    \cns & $s_\edt = \sum_{v\in\vertices} r^{s}_{v}$ \\
+    \cns & $\sum_{uv\in E_{ext} \cup E_{id} } x_{uv}= g_{\map(u)}$ & $\forall u\in \vertices$  \\
+    \cns & $a_{\map(u)\map(v)} = x_{uv}$ & $\forall uv \in \adjacencyedges$ \\
+    \cns & $z_{v} \leq g_{\map (v)}$ & $\forall v \in \vertices$ \\
+    (\ref{ilp:slmstart}) to (\ref{ilp:slmend})& Shao-Lin-Moret~\cite{SHA-LIN-MOR-2015} constraints& -- see Table~\ref{tab:slmcons}\\
+    (\ref{ilp:regvstart}) to (\ref{ilp:regvend})& Reporting for regular vertices& -- see Table~\ref{tab:regv}\\
+    (\ref{ilp:pcstart}) to (\ref{ilp:pcend})& Reporting for \gls{pcaps}& -- see Table~\ref{tab:pcaps}\\
+    (\ref{ilp:csstart}) to (\ref{ilp:csend})& Reporting circular singletons& --  see Table~\ref{tab:csreport}\\    
+\end{tabular}
+
+\end{constraints}
+\todoLeo{Put domains here?}
+\todoLeo{Fix formatting}
+\end{algorithm}
+
+\newcommand{\idx}{}
+\begin{table}
+
+\begin{constraints}
+\caption{Shao-Lin-Moret constraints.} \label{tab:slmcons}
+\begin{tabular}{lcl}
+% \cns\label{ilp:slmstart} & $\sum_{uv\in \ades} x_{e} = 1 $ & $\forall u\in \vertices$\\
+    \cns\label{ilp:slmstart} & $x_e=x_d$ & for all sibling edges $e,d$\\
+    \cns & $y_v + \idx{u}(1-x_{uv}) \geq y_u$ &$\forall uv \in \adjacencyedges\cup \extremityedges$\\
+         & $\idx{u}(1-x_{uv})\geq y_u$& $\forall uv \in \selfedges$\\
+    \cns\label{ilp:slmend} & $\idx{v}z_v \leq y_v$ & $\forall v\in \vertices\cup\pseudocaps $\\
+\end{tabular}
+\end{constraints}
+
+\end{table}
+
+
+\begin{table}
+
+\begin{constraints}
+\caption{Reporting for regular vertices.\comment{This is basically exactly the same as in ding, just swap out $r^{ab}$ for $t$ and $\parityvar$ for $r$ and root reports on vertices instead of edges.}} \label{tab:regv}
+\begin{tabular}{lcl}
+\cns\label{ilp:regvstart} & $\parityvar^\edt_v \leq 1 - x_{uv}$ & $\forall uv \in \selfedges^\A$\\
+     & $\parityvar^\edt_v \geq  x_{uv}$ & $\forall uv \in \selfedges^\B$\\
+\cns & $\parityvar_v \leq \parityvar_u +  (1-x_{uv})$& $\forall uv \in \extremityedges$\\
+& $\parityvar_u \leq \parityvar_v + r_{uv}^{a\trans b} + (1-x_{uv})$& $\forall uv\in E_{adj}^\A,u,v\notin \pseudocaps$\\
+& $\parityvar_u \leq \parityvar_v + (1-x_{uv})$& $\forall uv\in E_{adj}^\B,u,v\notin \pseudocaps$\\
+
+\cns & $r_{v}^c \leq z_v$&$\forall v \in \vertices^\A$\\
+\cns\label{ilp:regvend} & $r_{u}^{a\trans b} \leq x_{uv}$&$\forall uv\in\selfedges^\A$\\
+\end{tabular}
+\end{constraints}
+
+\end{table}
+
+\begin{table}
+
+\begin{constraints}
+\caption{Reporting for \gls{pcaps}.} \label{tab:pcaps}
+\begin{tabular}{lcl}
+\cns\label{ilp:pcstart} & $\parityvar_v = 0$ & $\forall v \in \pseudocaps^\A$\\
+ & $\parityvar_v = 1$ & $\forall v \in \pseudocaps^\B$\\
+\cns & $\parityvar_u \leq \parityvar_v + r_{v}^{A\trans B} + r_{v}^{A\trans b} + (1-x_{uv})$& $\forall uv\in \ades, v \in \pseudocaps^\A$\\
+    & $\parityvar_u \leq \parityvar_v + r_{u}^{B\trans a} + (1-x_{uv})$& $\forall uv\in \ades, u\in \pseudocaps^\B$\\
+    \cns & $r_{v}^{A\trans B} \leq z_v$&$\forall v \in \pseudocaps^\A$\\
+    \cns & $1 -y_v \leq r^{A\trans b}_{v} + r^{A\cis a}_v$ & $v \in \pseudocaps^\A$\\
+        & $1 -y_v \leq r^{B\trans a}_{v} + r^{B\cis b}_v$ & $v \in \pseudocaps^\B$\\
+    \cns & $y_{v_i} \leq i(1-r_{v}^{R})$&$v\in \pseudocaps^\A,R\in  \{A\trans b, A\cis a\}$\\
+     & $y_{v_i} \leq i(1-r_{v}^{R})$&$v\in \pseudocaps^\B,R\in  \{B\trans a, B\cis b\}$\\
+    \cns\label{ilp:pcend} & $r_{v}^{A\trans B} \leq b_u$&$\forall uv\in \adjacencyedges, v \in \pseudocaps^A$ \\
+    & $r_{v}^{A\trans b} \leq b_u$&$\forall uv\in \adjacencyedges, v \in \pseudocaps^A$ \\
+    & $r_{v}^{B\trans a} \leq 1-b_u$&$\forall uv\in \adjacencyedges, v \in \pseudocaps^\B$\\
+\end{tabular}
+\end{constraints}
+
+\end{table}
+
+\begin{table} \caption{Reporting circular singletons.\comment{(This is what we developed last week.)}}\label{tab:csreport}
+\begin{tabular}{lcl}
+     \cns\label{ilp:csstart} & $d_u+d_v + x_{uv}\leq 2$ & $\forall uv \in \adjacencyedges\cup \selfedges$  \\
+     & $d_u + d_v - x_{uv} \geq 0$ & $\forall uv \in \adjacencyedges\cup \selfedges$  \\
+    \cns & $w_u = w_v$ & $\forall uv \in \selfedges$\\
+    \cns\label{ilp:csend} &$K (1- x_{uv} + r^{s}_{u} + r^{s}_{v}) + w_v \geq w_u + d_v - d_u $ & $\forall uv\in \adjacencyedges$\\
+     %& $K (1- x_{uv} + r^{s}_{v} + r^{s}_{u}) + w_u \geq w_v + d_u - d_v $ & $\forall uv\in \adjacencyedges$\\
+\end{tabular}
+\end{table}
+
+\todoLeo{Fix inconsistencies with comparison in $\parityvar$ and $z$.}
