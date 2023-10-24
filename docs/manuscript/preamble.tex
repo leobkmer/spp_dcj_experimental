@@ -4,6 +4,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{glossaries}
+\usepackage{placeins}
 
 %ILP stuff
 \usepackage{fmtcount}
@@ -38,28 +39,37 @@
 %needed because I sometimes have this in old constraints
 \newcommand{\trans}{}
 \newcommand{\cis}{}
+\newcommand{\et}{\textnormal{t}}
+\newcommand{\eh}{\textnormal{h}}
 \newcommand{\genome}[1]{\mathbb{#1}}
 \newcommand{\A}{\genome{A}}
 \newcommand{\B}{\genome{B}}
 \newcommand{\C}{\genome{C}}
 \newcommand{\X}{\genome{X}}
+\newcommand{\extremities}{\mathcal{E}}
 \newcommand{\map}{\alpha}
 \newcommand{\vertices}{V}
+\newcommand{\edges}{E}
+\newcommand{\family}{\mathbf{f}}
+\newcommand{\minmulti}{\underline{\mathbf{m}}}
+\newcommand{\maxmulti}{\overline{\mathbf{m}}}
 \newcommand{\families}{\mathcal F}
 \newcommand{\minfam}[1]{\ensuremath{#1_{\text{min}}}}
 \newcommand{\maxfam}[1]{\ensuremath{#1_{\text{max}}}}
 \newcommand{\pseudocaps}{\mathcal{T}}
-\newcommand{\adjacencyedges}{E_\text{adj}}
-\newcommand{\extremityedges}{E_{\text{ext}}}
-\newcommand{\selfedges}{E_\text{self}}
+\newcommand{\adjacencyedges}{{\edges}_\text{adj}}
+\newcommand{\extremityedges}{{\edges}_{\text{ext}}}
+\newcommand{\selfedges}{{\edges}_\text{self}}
 \newcommand{\ades}{\adjacencyedges}
 \newcommand{\exes}{\extremityedges}
 \newcommand{\sees}{\selfedges}
 \newcommand{\mrd}{\mathcal{MRD}}
 \newcommand{\pcmrd}{\mrd^*}
-\newcommand{\ggraph}{\mathcal{G}}
+\newcommand{\ggraph}{\mathcal{GAG}}
 \newcommand{\parityvar}{l}
 \newcommand{\w}{\mathbf{w}}
+\newcommand{\levelsep}[1]{{\color{gray}\emph{#1}\smallskip\hrule\medskip}}
+
 
 
 %Glossary defs

@@ -1,7 +1,7 @@
 \todoLeo{ILP goes here}
 \todoLeo{Remove idx stuff and bring back $v_i$ notation}
 
-\begin{algorithm}
+\begin{algorithm}[tbh]
 \caption{Capping-free Small Parsimony}
 \textbf{Objective}
 
@@ -11,27 +11,30 @@
     \sum_{\edt \in\tree} (1-\alpha) w_\edt + \alpha f_\edt 
 \end{equation*}
 
-\textbf{For each ancestral genome $\X \in \tree$ with $\ggraph(\X) = (\vertices, \adjacencyedges)$}
+\levelsep{Local level}
+
+\textbf{For each ancestral genome $\X$ of phylogeny $\tree$ with $\ggraph(\X) = (\vertices, \edges)$}
 
 \begin{constraints}
 \begin{tabular}{lcl}
-    \cns & $\minfam{F} \leq \sum_{v \in F} g_v \leq \maxfam{F}$ & $\forall F \in \families$\\
-    \cns & $g_v = g_u$ & for each pair of nodes $(u, v)$ corresponding to head/tail extremity of the same gene\todoDany{improve}\\
+    \cns \label{c:cn} & $\minfam{F} \leq \sum_{v \in F} g_v \leq \maxfam{F}$ & $\forall F \in \families$\\
+    \cns \label{c:cn_consistent}& $g_v = g_u$ & for each pair of nodes $(u, v)$ corresponding to head/tail extremity of the same gene\todoDany{improve}\\
 %    \cns & $g_{v} = x^{\X\A}_{v} = x^{\X\B}_{v} = x^{\X\C}_{v}$& $\forall v \in V$ and genomes $\A$, $\B$, $\C$ adjacent to $\X$ in $\Gamma$\\
-    \cns & $\sum_{uv \in \adjacencyedges} a_{uv} = g_u$ & $\forall u \in \vertices$\\
+    \cns \label{c:genome}& $\sum_{uv \in \edges} a_{uv} = g_u$ & $\forall u \in \vertices$\\
 \end{tabular}
 \end{constraints}
 
-
 \medskip
-\textbf{For each tree edge $(\A,\B):=\edt\in \tree$ with $\pcmrd(\A,\B) = (\vertices\cup\pseudocaps, \adjacencyedges \cup \extremityedges \cup \selfedges)$:}
+\levelsep{Global level}
+
+\textbf{For each branch $(\A,\B):=\edt\in \tree$ with $\pcmrd(\A,\B) = (\vertices\cup\pseudocaps, \adjacencyedges \cup \extremityedges \cup \selfedges)$:}
 
 \begin{constraints}
 \begin{tabular}{lcl}
 
     \cns & $w_\edt = \sum_e \w(e) x_e$\\
 	\cns & $f_\edt = n_\edt - c_\edt + q_\edt + s_\edt$\\
-	\cns & $n_\edt = 0.5 \sum_{e \in \extremityedges} x_{e}$\\
+    \cns & $n_\edt = \frac{1}{2} \sum_{e \in \extremityedges} x_{e}$\\
     \cns & $c_\edt = \sum_{v\in \vertices} r^c_{v}$\\
     \cns & $2q_\edt \geq p^{a\trans b}+ p^{ABa} + p^{ABb} - p^{A\trans B} $\\
     \cns & $p^{a\trans b} = \sum_{v \in \vertices}r^{a\trans b}_{v}$\\
@@ -58,6 +61,8 @@
 \todoLeo{Put domains here?}
 \todoLeo{Fix formatting}
 \end{algorithm}
+
+\FloatBarrier
 
 \newcommand{\idx}{}
 \begin{table}
