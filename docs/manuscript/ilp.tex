@@ -6,9 +6,9 @@
 \textbf{Objective}
 
 \newcommand{\idx}{\texttt{ix}}
-\hspace{0.5cm}\texttt{Maximize}
+\hspace{0.5cm}\texttt{Maximize} 
 \begin{equation*}
-    \alpha \sum_{\edt\in\tree} f_\edt + .... \text{\todoDany{Optimization of other factors goes here.}}
+    \sum_{\edt \in\tree} (1-\alpha) w_\edt + \alpha f_\edt 
 \end{equation*}
 
 \textbf{For each ancestral genome $\X \in \tree$ with $\ggraph(\X) = (\vertices, \adjacencyedges)$}
@@ -29,6 +29,7 @@
 \begin{constraints}
 \begin{tabular}{lcl}
 
+    \cns & $w_\edt = \sum_e \w(e) x_e$\\
 	\cns & $f_\edt = n_\edt - c_\edt + q_\edt + s_\edt$\\
 	\cns & $n_\edt = 0.5 \sum_{e \in \extremityedges} x_{e}$\\
     \cns & $c_\edt = \sum_{v\in \vertices} r^c_{v}$\\
