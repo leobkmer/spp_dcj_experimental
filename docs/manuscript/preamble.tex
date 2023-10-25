@@ -6,6 +6,8 @@
 \usepackage{glossaries}
 \usepackage{placeins}
 
+\usepackage[colorinlistoftodos]{todonotes}
+
 %ILP stuff
 \usepackage{fmtcount}
 \newcounter{constraintcounter}
@@ -20,10 +22,12 @@
 
 %Comments etc
 \newcommand{\comment}[1]{{\color{gray} #1 }}
-\newcommand{\todo}[1]{\textbf{\color{red}\large TODO:} \comment{#1}}
+%\newcommand{\todo}[1]{\textbf{\color{red}\large TODO:} \comment{#1}}
 
-\newcommand{\todoLeo}[1]{\textbf{\color{magenta}\large TODO LEONARD:} \comment{#1}}
-\newcommand{\todoDany}[1]{\textbf{\color{orange}\large TODO DANY:} \comment{#1}}
+\newcommand{\todoL}[1]{\todo[color=magenta!70,bordercolor=magenta!70]{{\large LEONARD:} #1}}
+\newcommand{\todoD}[1]{\todo[color=orange!70,bordercolor=orange!70]{{\large DANY:} #1}}
+\newcommand{\todoLIn}[1]{\todo[color=magenta!70,bordercolor=magenta!70,inline]{{\large LEONARD:} #1}}
+\newcommand{\todoDIn}[1]{\todo[color=orange!70,bordercolor=orange!70,inline]{{\large DANY:} #1}}
 
 %Use this to hide comments upon publishing.
 %\renewcommand{\comment}[1]{}
@@ -51,6 +55,7 @@
 \newcommand{\vertices}{V}
 \newcommand{\edges}{E}
 \newcommand{\family}{\mathbf{f}}
+\newcommand{\extf}{\mathbf{e}}
 \newcommand{\minmulti}{\underline{\mathbf{m}}}
 \newcommand{\maxmulti}{\overline{\mathbf{m}}}
 \newcommand{\families}{\mathcal F}
@@ -65,7 +70,7 @@
 \newcommand{\sees}{\selfedges}
 \newcommand{\mrd}{\mathcal{MRD}}
 \newcommand{\pcmrd}{\mrd^*}
-\newcommand{\ggraph}{\mathcal{GAG}}
+\newcommand{\ggraph}{\mathcal{G}}
 \newcommand{\parityvar}{\ilpvar{l}}
 \newcommand{\w}{\mathbf{w}}
 \newcommand{\levelsep}[1]{{\color{gray}\emph{#1}\smallskip\hrule\medskip}}

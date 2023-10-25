@@ -77,7 +77,7 @@ Paper-specific notation:
     \item Genomic marker 
     \item Furthermore, we use a function $\extf : \extremities \to \{\et, \eh, \circ\}$ to map extremities to their corresponding kind (tail, head or telomere). 
     \item Genome $\X$
-    \item Genome adjacency graph $\ggraph(\X) = (V, \adjacencyedges)$ \todoDany{find better name?}
+    \item Genome adjacency graph $\ggraph(\X) = (\vertices, \edges, \family)$ \todoD{find better name?}
     \item 
 We model family assignments of marker extremities as a function $\family: \extremities \to \mathbb N$ for which holds true that for any marker $g = \{g^\et, g^\eh\}$, $\family(g^\et) = \family(g^\eh)$.  
 Function 
@@ -85,21 +85,25 @@ $\minmulti_\X : \mathbb N \to \mathbb N$ reports the minimum multiplicity of a g
     \item Multirelational diagram $\mrd$ and \emph{capping-free multi-relational diagram} (CFMRD) $\pcmrd$
 \end{itemize}
 \subsection{Pre-selecting Adjacencies}
-\todoDany{Describe Process}
+\todoD{Describe Process}
 \subsection{A New ILP Formulation}
 The algorithm described in the following operates on two levels: 
-on the local level, a genome is derived from each genome adjacency graph, constituting a set of linear or circular chromosomes. 
+on the local level, a genome is derived from each GAG, constituting a set of linear or circular chromosomes. 
 On the global level, genomes are connected to each other along the branches of the phylogeny. Each branch gives rise to a pairwise comparison by means of the CFMRD. 
 In doing so, the selection of adjacencies of a derived genome is propagated from across CFMRDs, thus ensuring global consistency. 
 
 \paragraph{Local level.} 
 Constraint \ref{c:cn} implements the user-provided copy number requirement. 
-In doing so, we define the set of tail extremities of genes from family $i$ in the GAG of genome $\X$ as $F_i = \{ v \mid v \in V: \family(v) = i \text{ and } \extf(v) = \et\}$ and iterate over the associated $\ilpvar{g}$ variables of its members to bound the number of active genes within the given range. The choice of counting tail extremities is arbitrary, however, the subsequent constraint (\ref{c:cn_consistent}) ensures that the assignment of $\ilpvar{g}$ variables for both extremities of a gene is consistent. At last, Constraint \ref{c:genome} makes sure that a valid genome is derived from the GAG when solving the ILP. 
+In doing so, we define the set of tail extremities of markers from family $i$ in GAG $\ggraph(\X)$ as $F_i = \{ v \mid v \in V: \family(v) = i \text{ and } \extf(v) = \et\}$ and iterate over the associated $\ilpvar{g}$ variables of its members to bound the number of active markers within the given range. 
+The choice of counting tail extremities is arbitrary, however, the subsequent constraint (\ref{c:cn_consistent}) ensures that the assignment of $\ilpvar{g}$ variables for both extremities of a markers is consistent. 
+At last, Constraint \ref{c:genome} makes sure that a valid genome is derived from the GAG when solving the ILP, by enforcing that each extremity node of $\ggraph(\X)$ is incident to at most one adjacency edge. 
 
 \paragraph{Global level.}
+
 When comparing pairs of genomes within a CFMRD, we make use of a capping-free formulation for the computation of the pairwise DCJ indel distance~\cite{BOH-2023}.
 
-\todoLeo{Insert a description of the formulation here}
+
+\todoL{Insert a description of the formulation here}
 
 \include{ilp}
 
