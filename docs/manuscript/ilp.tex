@@ -1,5 +1,4 @@
-\todoLeo{ILP goes here}
-\todoLeo{Remove idx stuff and bring back $v_i$ notation}
+\todoLIn{Remove idx stuff and bring back $v_i$ notation}
 
 \begin{algorithm}[tbh]
 \caption{Capping-free Small Parsimony}
@@ -13,13 +12,12 @@
 
 \levelsep{Local level}
 
-\textbf{For each ancestral genome $\X$ of phylogeny $\tree$ with $\ggraph(\X) = (\vertices, \edges)$}
+\textbf{For each ancestral genome $\X$ of phylogeny $\tree$ with $\ggraph(\X) = (\vertices, \edges, \family)$}
 
 \begin{constraints}
 \begin{tabular}{lcl}
-    \cns \label{c:cn} & $\minmulti_\A(i) \leq \sum_{v \in F^A_i} \ilpvar{g}_v \leq \maxmulti_\A(i)$ & $\forall i \in \{f(u) \mid u \in V\}$\\
-    & $\minmulti_\B(i) \leq \sum_{v \in F^B_i} \ilpvar{g}_v \leq \maxmulti_\B(i)$ & \\
-    \cns \label{c:cn_consistent}& $\ilpvar{g}_v = \ilpvar{g}_u$ & for each pair of nodes $(u, v)$ corresponding to head/tail extremity of the same gene\todoDany{improve}\\
+    \cns \label{c:cn} & $\minmulti_\X(i) \leq \sum_{v \in F_i} \ilpvar{g}_v \leq \maxmulti_\X(i)$ & $\forall i \in \{\family(u) \mid u \in V\}$\\
+    \cns \label{c:cn_consistent}& $\ilpvar{g}_v = \ilpvar{g}_u$ & for each pair of nodes $(u, v)$ corresponding to head/tail extremity of the same gene\todoDIn{improve}\\
 %    \cns & $g_{v} = x^{\X\A}_{v} = x^{\X\B}_{v} = x^{\X\C}_{v}$& $\forall v \in V$ and genomes $\A$, $\B$, $\C$ adjacent to $\X$ in $\Gamma$\\
     \cns \label{c:genome}& $\sum_{uv \in \edges} \ilpvar{a}_{uv} = \ilpvar{g}_u$ & $\forall u \in \vertices$\\
 \end{tabular}
@@ -59,8 +57,8 @@
 \end{tabular}
 
 \end{constraints}
-\todoLeo{Put domains here?}
-\todoLeo{Fix formatting}
+\todoLIn{Put domains here?}
+\todoLIn{Fix formatting}
 \end{algorithm}
 
 \FloatBarrier
@@ -132,4 +130,4 @@
 \end{tabular}
 \end{table}
 
-\todoLeo{Fix inconsistencies with comparison in $\parityvar$ and $z$.}
+\todoL{Fix inconsistencies with comparison in $\parityvar$ and $z$.}
