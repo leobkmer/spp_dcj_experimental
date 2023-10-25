@@ -80,11 +80,7 @@ Paper-specific notation:
     \item 
 We model family assignments of marker extremities as a function $\family: \extremities \to \mathbb N$ for which holds true that for any marker $g = \{g^\et, g^\eh\}$, $\family(g^\et) = \family(g^\eh)$.  
 Function 
-$\minmulti_\X\varepsilon)$ reports the minimum multiplicity of the marker corresponding to extremity $\varepsilon$ in a given genome $\X$, while $\maxmulti_\X(\varepsilon)$ reports its maximum multiplicity. 
-A family assignment $\family'$ is \emph{$\family$-derived} if there exists no two extremities $\varepsilon, \varepsilon'$ with $\family'(\varepsilon) = \family'(\varepsilon')$ and $\family(\varepsilon) \neq \family(\varepsilon')$.  
-A family assignment $\family$ is termed \emph{$\mathcal \A$-resolved} (or simply \emph{resolved} if the context is clear) if for each member $\X$ of a set of genomes $\mathcal A$, each extremity $\varepsilon \in \extremities $ has a multiplicity not higher than $1$, \emph{i.e.}, $\maxmulti_\X(\varepsilon)\leq 1$.  
-
-
+$\minmulti_\X : \mathbb N \to \mathbb N$ reports the minimum multiplicity of a gene family in a given genome $\X$, while $\maxmulti_\X: \mathbb N \to \mathbb N$ reports its maximum multiplicity. 
     \item Multirelational diagram $\mrd$ and \emph{capping-free multi-relational diagram} (CFMRD) $\pcmrd$
 \end{itemize}
 \subsection{Pre-selecting Adjacencies}
@@ -95,7 +91,7 @@ on the local level, a genome is derived from each genome adjacency graph, consti
 On the global level, genomes are connected to each other along the branches of the phylogeny. Each branch gives rise to a pairwise comparison by means of the CFMRD. 
 In doing so, the selection of adjacencies of a derived genome is propagated from across CFMRDs, thus ensuring global consistency. 
 
-\paragraph{Local level.} Constraint \ref{c:cn} 
+\paragraph{Local level.} Constraint \ref{c:cn} implements the user-provided copy number constraints for each gene family $i$, where $F^A_i = \{ v \mid v \in V: v \text{ belongs to }\A\text{ and } \family(v) = i\}$ and $F^B_i$ defined analogously. 
 
 \paragraph{Global level.}
 When comparing pairs of genomes within a CFMRD, we make use of a capping-free formulation for the computation of the pairwise DCJ indel distance~\cite{BOH-2023}.
