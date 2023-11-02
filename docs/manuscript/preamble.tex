@@ -6,7 +6,8 @@
 \usepackage{glossaries}
 \usepackage{placeins}
 
-\usepackage[colorinlistoftodos]{todonotes}
+\usepackage{soul}
+\usepackage{todonotes}
 
 %ILP stuff
 \usepackage{fmtcount}
@@ -19,13 +20,12 @@
 \newcommand{\cns}{\refstepcounter{constraintcounter}(\theconstraintcounter) }
 \newcommand{\dmn}{\refstepcounter{domaincounter}(\thedomaincounter) }
 %End ILP stuff
-
 %Comments etc
 \newcommand{\comment}[1]{{\color{gray} #1 }}
 %\newcommand{\todo}[1]{\textbf{\color{red}\large TODO:} \comment{#1}}
 
-\newcommand{\todoL}[1]{\todo[color=magenta!70,bordercolor=magenta!70]{{\large LEONARD:} #1}}
-\newcommand{\todoD}[1]{\todo[color=orange!70,bordercolor=orange!70]{{\large DANY:} #1}}
+\newcommand{\todoL}[1]{\todo[shadow,color=magenta!70,bordercolor=magenta!70]{{\large LEONARD:} #1}}
+\newcommand{\todoD}[1]{\todo[shadow,color=orange!70,bordercolor=orange!70]{{\large DANY:} #1}}
 \newcommand{\todoLIn}[1]{\todo[color=magenta!70,bordercolor=magenta!70,inline]{{\large LEONARD:} #1}}
 \newcommand{\todoDIn}[1]{\todo[color=orange!70,bordercolor=orange!70,inline]{{\large DANY:} #1}}
 
@@ -37,6 +37,8 @@
 
 %Definitions
 
+\newcommand{\dist}{\mathbf{d}}
+\newcommand{\DCJid}{\mathrm{DCJ-ID}}
 \newcommand{\tree}{\Gamma}
 \newcommand{\treeedge}{E}
 \newcommand{\edt}{\treeedge}
@@ -56,8 +58,9 @@
 \newcommand{\edges}{E}
 \newcommand{\family}{\mathbf{f}}
 \newcommand{\extf}{\mathbf{e}}
-\newcommand{\minmulti}{\underline{\mathbf{m}}}
-\newcommand{\maxmulti}{\overline{\mathbf{m}}}
+\newcommand{\multi}{\mathbf{m}}
+\newcommand{\minmulti}{\underline{\multi}}
+\newcommand{\maxmulti}{\overline{\multi}}
 \newcommand{\families}{\mathcal F}
 \newcommand{\minfam}[1]{\ensuremath{#1_{\text{min}}}}
 \newcommand{\maxfam}[1]{\ensuremath{#1_{\text{max}}}}

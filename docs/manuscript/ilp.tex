@@ -31,7 +31,7 @@
 \begin{constraints}
 \begin{tabular}{lcl}
 
-    \cns & $\ilpvar{w}_\edt = \sum_e \w(e) x_e$\\
+    \cns & $\ilpvar{w}_\edt = \sum_{e \in \adjacencyedges} \w(e) x_e$\\
 	\cns & $\ilpvar{f}_\edt = \ilpvar{n}_\edt - \ilpvar{c}_\edt + \ilpvar{q}_\edt + \ilpvar{s}_\edt$\\
     \cns & $\ilpvar{n}_\edt = \frac{1}{2} \sum_{e \in \extremityedges} \ilpvar{x}_{e}$\\
     \cns & $\ilpvar{c}_\edt = \sum_{v\in \vertices} \ilpvar{r}^c_v$\\

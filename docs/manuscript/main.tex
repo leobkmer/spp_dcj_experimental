@@ -57,18 +57,39 @@ Institute for Medical Biometry and Bioinformatics, Medical Faculty, and Center f
 
 
 
-%\section{Introduction}
+\section{Introduction}
 \section{Background}
 
-\begin{itemize}
-    \item SPP algoirthms such as 
-\end{itemize}
-\section{A new Method}
 \subsection{Preliminaries}
+A \emph{phylogeny} $\tree$ is a connected graph with nodes representing \emph{operational taxonomic units} (OTUs). 
+Nodes with degree 1 are termed \emph{tips} of the phylogeny.
+A \emph{genome scaffold} of an OTU $\A$ is a quintuple $(M \cup \pseudocaps, A, \family, \multi, \w)$ with 
+\begin{itemize}
+    \item $M$ being the marker set of $\A$ and $\pseudocaps$ its set of telomeres,
+    \item $A$ its set of unique adjacencies satisfying 
+        \emph{(i)} $\forall g^\et \in \bigcup A$, there exists also extremity $g^\eh \in \bigcup A$ and vice versa, and 
+        \emph{(ii)} each telomeric extremity is used only once: $\forall \{X, X'\} \subseteq A$, $X \cap X' \cap \pseudocaps = \emptyset$. 
+    \item $\family: M \to \mathbb N$ a function indicating the gene family of each marker of $\A$,
+    \item a function $\multi(i) = [a, b]$ that reports for each family $i$ the permitted range $0 \leq a \leq b$ of its copy number, such that each family $F_i = \{m \in M \mid f(m) = i\}$ satisfies $|F_i| = b$, 
+    \item and adjacency weight function $\w: A \to \mathbb R$.
+\end{itemize}
+% \begin{enumerate}
+% \end{enumerate}
+A genome is a triple $(M \cup \pseudocaps, A, \family)$ for which the following holds true:
+\begin{itemize}
+    \item The extremities of each marker $m = (m^\et, m^\eh) \in M$ occur in exactly one adjacency, i.e., $|\{ a \in A \mid m^\et \in a\}| = |\{ a \in A \mid m^\eh \in a\}| = 1$,
+    \item 
+\end{itemize}
+Note that a genome is also a scaffold, but the reverse does not hold true in general. 
+
+A genome $A'$ is \emph{$A$-derived} from degenerate genome $A$ (or simply ``derived from $A$'') if $A' \subseteq A$ and $\bigcup A' \setminus \pseudocaps = \bigcup A \setminus \pseudocaps$. 
+Conversely, a degenerate genome $A$ is \emph{linearizable} if there exists an $A$-derived genome. 
+In fact, many degenerate genomes are not linearizable. 
+
 General notation
 \begin{itemize}
+    \item 
     \item Weighted multigraph $G = (\vertices, \edges, \w)$ with edge weight function $\w: \edges \to \mathbb R$
-    \item A \emph{phylogeny} $\tree$ is a connected graph. Nodes of $\tree$ with degree 1 are termed \emph{leaves}.
 \end{itemize}
 
 Paper-specific notation:
@@ -77,16 +98,35 @@ Paper-specific notation:
     \item Genomic marker 
     \item Furthermore, we use a function $\extf : \extremities \to \{\et, \eh, \circ\}$ to map extremities to their corresponding kind (tail, head or telomere). 
     \item Genome $\X$
-    \item Genome adjacency graph $\ggraph(\X) = (\vertices, \edges, \family)$ \todoD{find better name?}
+    \item \hl{Genome adjacency graph}\todoD{replace with degenerate genome} $\ggraph(\X) = (\vertices, \edges, \family)$ 
     \item 
 We model family assignments of marker extremities as a function $\family: \extremities \to \mathbb N$ for which holds true that for any marker $g = \{g^\et, g^\eh\}$, $\family(g^\et) = \family(g^\eh)$.  
 Function 
 $\minmulti_\X : \mathbb N \to \mathbb N$ reports the minimum multiplicity of a gene family in a given genome $\X$, while $\maxmulti_\X: \mathbb N \to \mathbb N$ reports its maximum multiplicity. 
     \item Multirelational diagram $\mrd$ and \emph{capping-free multi-relational diagram} (CFMRD) $\pcmrd$
 \end{itemize}
+
+\begin{itemize}
+    \item SPP algoirthms such as 
+\end{itemize}
+
+\begin{problem}[Weighted CN-constrained degenerate DCJ indel distance]\label{prb:wdeg_dcj}
+    Given a weighting scheme $\w : \extremities \times \extremities \to \mathbb R$, some $\alpha \in [0, 1]$, two linearizable degenerate genomes $\A, \B$ with copy number constraints \hl{XX}\todoD{add data structure} and family assignment $\family$, find $\A$-derived genome $\A'$, $\B$-derived genome $\B'$, and $\family$-derived $\{\A',\B'\}$-resolved family assignment $\family'$ that minimize the linear combination
+    $$
+    (1-\alpha) \cdot \sum_{X \in \A' \cup \B'} -\w(X) + \alpha \cdot \dist_\DCJid(A', B')\,.
+    $$
+\end{problem}
+
+\begin{problem}[SPP-DCJ]\label{prb:spp_dcj}
+    Given a phylogeny $\tree$ and a set of linearizable degenerate genomes $\A_1, \ldots, \A_k$ corresponding to the node set $V(\tree) = \{\A_1, \ldots, \A_k\}$, find genomes $\A'_1 \subseteq \A_1, \ldots, \A'_k \allowbreak \subseteq \A_k$ that minimize the sum of weighted degenerate DCJ indel distances along the edges of $\tree$. 
+\end{problem}
+
+\section{A new Method}
 \subsection{Pre-selecting Adjacencies}
-\todoD{Describe Process}
-\subsection{A New ILP Formulation}
+\todoD{Describe Process}\subsection{A New ILP Formulation}
+
+
+
 The algorithm described in the following operates on two levels: 
 on the local level, a genome is derived from each GAG, constituting a set of linear or circular chromosomes. 
 On the global level, genomes are connected to each other along the branches of the phylogeny. Each branch gives rise to a pairwise comparison by means of the CFMRD. 
