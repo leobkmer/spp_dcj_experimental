@@ -61,31 +61,30 @@ Institute for Medical Biometry and Bioinformatics, Medical Faculty, and Center f
 \section{Background}
 
 \subsection{Preliminaries}
-A \emph{(genomic) marker} $g := (g^\et, g^\eh)$ is a universally unique entity consisting of \emph{marker extremities} tail of $g$, denoted by $g^\et$, and head of $g$, denoted by $g^\eh$. 
-A \emph{telomere} $t^\circ$ is a universally unique entity encompassing a single telomeric extremity denoted by ``$\circ$''. 
-A genome is a triple $(M \cup \pseudocaps, A, \family)$, with $M$ being its marker set and $\pseudocaps$ its set of telomeres, $A \subset (M \cup \pseudocaps)^2$ the set of telomeres, and $\family: M \to \mathbb N$ a function indicating the family of each marker. 
-The set of adjacencies $A$ has the properties that \emph{(i)} for each extremity $\varepsilon \in \bigcup M \cup \pseudocaps$, there exists exactly one adjacency $a \in A$ that contains $\varepsilon$. 
-The adjacency set decomposes the set of markers and telomeres into linear or circular components, that we further call \emph{chromosomes}. 
-Moreover, \emph{(ii)} each linear chromosome, formed by ordering markers and telomeres based on their adjacencies in $A$, starts and ends with a telomere. 
-
-A \emph{(genome) scaffold} is a quintuple $(M \cup \pseudocaps, A, \family, \multi, \w)$ with 
-\begin{itemize}
-    \item $M$, $\pseudocaps$, and $\family$ as defined in a genome, 
-    \item the set of adjacencies $A$ satisfying that for each $g^\et \in \bigcup A$, there exists also extremity $g^\eh \in \bigcup A$ and vice versa, and each telomeric extremity is used only once, i.e., $\forall \{X, X'\} \subseteq A$, $X \cap X' \cap \pseudocaps = \emptyset$,
-    \item copy number function $\multi(i) = [a, b]$ reporting for each family $i$ the permitted range $0 \leq a \leq b$ of its copy number, such that each family, defined as $F_i := \{g \in M \mid f(g) = i\}$, satisfies $|F_i| = b$, and
-    \item adjacency weight function $\w: A \to \mathbb R$. % [-1, 1]$.
-\end{itemize}
-
-Observe that a genome can give rise to a scaffold, with copy number $\multi$ and weight $\w$ functions arbitrarily defined, but the reverse does not hold true in general.
-% not sure we need this:
-% However, in the following, we regard genomes as scaffolds with tight copy numbers, that is, the copy number range of each family $i$ corresponds to a point that coincides with the number of its associated markers.
-A genome $S' = (M', A', \family')$ is \emph{derived} from a scaffold $S = (M, A, \family, \multi, \w)$, or simply ``$S$-derived'', if \emph{(i)} $M' \subseteq M$, \emph{(ii)} $A' \subseteq A$, \emph{(iii)} 
-there exist no two markers $g, g' \in M'$ with $\family'(g) = \family'(g')$ and $\family(g) \neq \family(g')$, and \emph{(iv)} the original copy number constraints are satisfied, i.e., for each family $i$ and the set of markers associated with $i$ in scaffold $S$, i.e., $F_i = \{ g \in M' \mid \family(g) = i\}$, holds true that $|F_i| \in \multi(i)$.
-We call a scaffold $S$ \emph{linearizable} if there exists an $S$-derived genome. 
-In fact, many scaffolds are not linearizable. 
-
 A \emph{phylogeny} $\tree$ is a connected graph with nodes representing \emph{operational taxonomic units} (OTUs). 
 Nodes with degree 1 are termed \emph{tips} of the phylogeny.
+A \emph{genome scaffold} of an OTU $\A$ is a quintuple $(M \cup \pseudocaps, A, \family, \multi, \w)$ with 
+\begin{itemize}
+    \item $M$ being the marker set of $\A$ and $\pseudocaps$ its set of telomeres,
+    \item $A$ its set of unique adjacencies satisfying 
+        \emph{(i)} $\forall g^\et \in \bigcup A$, there exists also extremity $g^\eh \in \bigcup A$ and vice versa, and 
+        \emph{(ii)} each telomeric extremity is used only once: $\forall \{X, X'\} \subseteq A$, $X \cap X' \cap \pseudocaps = \emptyset$. 
+    \item $\family: M \to \mathbb N$ a function indicating the gene family of each marker of $\A$,
+    \item a function $\multi(i) = [a, b]$ that reports for each family $i$ the permitted range $0 \leq a \leq b$ of its copy number, such that each family $F_i = \{m \in M \mid f(m) = i\}$ satisfies $|F_i| = b$, 
+    \item and adjacency weight function $\w: A \to \mathbb R$.
+\end{itemize}
+% \begin{enumerate}
+% \end{enumerate}
+A genome is a triple $(M \cup \pseudocaps, A, \family)$ for which the following holds true:
+\begin{itemize}
+    \item The extremities of each marker $m = (m^\et, m^\eh) \in M$ occur in exactly one adjacency, i.e., $|\{ a \in A \mid m^\et \in a\}| = |\{ a \in A \mid m^\eh \in a\}| = 1$,
+    \item 
+\end{itemize}
+Note that a genome is also a scaffold, but the reverse does not hold true in general. 
+
+A genome $A'$ is \emph{$A$-derived} from degenerate genome $A$ (or simply ``derived from $A$'') if $A' \subseteq A$ and $\bigcup A' \setminus \pseudocaps = \bigcup A \setminus \pseudocaps$. 
+Conversely, a degenerate genome $A$ is \emph{linearizable} if there exists an $A$-derived genome. 
+In fact, many degenerate genomes are not linearizable. 
 
 General notation
 \begin{itemize}
@@ -98,6 +97,8 @@ Paper-specific notation:
 \begin{itemize}
     \item Genomic marker 
     \item Furthermore, we use a function $\extf : \extremities \to \{\et, \eh, \circ\}$ to map extremities to their corresponding kind (tail, head or telomere). 
+    \item Genome $\X$
+    \item \hl{Genome adjacency graph}\todoD{replace with degenerate genome} $\ggraph(\X) = (\vertices, \edges, \family)$ 
     \item 
 We model family assignments of marker extremities as a function $\family: \extremities \to \mathbb N$ for which holds true that for any marker $g = \{g^\et, g^\eh\}$, $\family(g^\et) = \family(g^\eh)$.  
 Function 
