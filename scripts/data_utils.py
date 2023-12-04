@@ -119,7 +119,7 @@ def parseAdjacencies(data):
     delimiter = '\t'
     resAdjacencies = defaultdict(list)
     resGenes       = defaultdict(list)
-    resWeights     = {}
+    resWeights     = defaultdict(dict)
     resPenalities  = {}
     for line in csv.reader(data, delimiter = delimiter):
         if line[0][0] != headerMark:
@@ -134,7 +134,7 @@ def parseAdjacencies(data):
                         f'feasible, skipping {line[1]}:{line[2]}-{line[4]}:{line[5]}',
                         file=stderr)
             else:
-                addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights,resGenes[species])
+                addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights[species],resGenes[species])
 
             # optional penality
             if len(line) > 7 and line[7]:
@@ -162,7 +162,7 @@ def parseCandidateAdjacencies(data):
     delimiter = ' '
     resAdjacencies = defaultdict(list)
     resGenes       = defaultdict(list)
-    resWeights     = {}
+    resWeights     = defaultdict(dict)
     for line in csv.reader(data, delimiter = delimiter):
         if line[0][0] != headerMark:
             species = line[0]
@@ -182,7 +182,7 @@ def parseCandidateAdjacencies(data):
             weight  = float(line[5])
             ext1 = (gene1,SIGN2EXT_1[sign1])
             ext2 = (gene2,SIGN2EXT_2[sign2])
-            addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights,resGenes[species])
+            addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights[species],resGenes[species])
     speciesList = list(resAdjacencies.keys())
     for species in speciesList:
         resGenes[species] = list(set(resGenes[species]))
@@ -207,7 +207,7 @@ def parseTrueGeneOrders(data, close_linear=False):
     delimiter = '\t'
     resAdjacencies = defaultdict(list)
     resGenes       = defaultdict(list)
-    resWeights     = {}
+    resWeights     = defaultdict(dict)
     prevGene       = ''
     prevSign       = ''
     prevSpecies    = ''
@@ -228,7 +228,7 @@ def parseTrueGeneOrders(data, close_linear=False):
                 if ext1>ext2:
                     ext1,ext2=ext2,ext1
                 resAdjacencies[currentSpecies].append([ext1,ext2])
-                resWeights[ext1,ext2] = TRUE_ADJ_WEIGHT
+                resWeights[currentSpecies][ext1,ext2] = TRUE_ADJ_WEIGHT
             else:
                 # we start a new chromosome
                 if close_linear:
@@ -242,7 +242,7 @@ def parseTrueGeneOrders(data, close_linear=False):
                             ext1,ext2=ext2,ext1
                         if [ext1,ext2] not in resAdjacencies[prevSpecies]:
                             resAdjacencies[prevSpecies].append([ext1,ext2])
-                            resWeights[ext1,ext2] = TRUE_ADJ_WEIGHT
+                            resWeights[prevSpecies][ext1,ext2] = TRUE_ADJ_WEIGHT
                     # We record the current gene as the first gene of the previous chromosome
                     firstGene = currentGene
                     firstSign = currentSign
@@ -261,7 +261,7 @@ def parseTrueGeneOrders(data, close_linear=False):
             ext1,ext2=ext2,ext1
         if [ext1,ext2] not in resAdjacencies[prevSpecies]:
             resAdjacencies[prevSpecies].append([ext1,ext2])
-            resWeights[ext1,ext2] = TRUE_ADJ_WEIGHT
+            resWeights[prevSpecies][ext1,ext2] = TRUE_ADJ_WEIGHT
 
     speciesList = list(resAdjacencies.keys())
     resFamilies = getFamiliesFromGenes(resGenes,speciesList)
@@ -410,7 +410,6 @@ def parseSOL(data, idMap):
     matchingList = set()
     matchingDict = dict()
     indelList = dict()
-    weightsDict = dict()
     isEmpty = True
 
     vars_ = dict()
@@ -437,7 +436,6 @@ def parseSOL(data, idMap):
                         adjacenciesList[ext1[0]] = list()
                     adj = (ext1[1:], ext2[1:])
                     adjacenciesList[ext1[0]].append(adj)
-                    weightsDict[adj] = 0.0
                 else:
                     # edge is an extremity edge (matching edge) 
 #                    for ext in (ext1, ext2):
@@ -473,7 +471,7 @@ def parseSOL(data, idMap):
 #            if (gName, g) not in matchingDict:
 #                    print(f'Fatal: missing matching for gene {ext2}', file = stderr)
 #                    exit(1)
-    return adjacenciesList, indelList, weightsDict, sorted(matchingList), \
+    return adjacenciesList, indelList, sorted(matchingList), \
             obj_value, vars_
 
 #
@@ -524,8 +522,8 @@ def _constructRDAdjacencyEdges(G, gName, adjacencies, candidateWeights,
 
         # ensure that each edge has a unique identifier
         edge_id = '{}_{}'.format(*sorted((id1, id2)))
-        weight = candidateWeights.get((ext1, ext2), 0)
-        penality = candidatePenalities.get((ext1, ext2), None)
+        weight = candidateWeights[gName].get((ext1, ext2), 0)
+        penality = candidatePenalities[gName].get((ext1, ext2), None)
         if penality is None:
             G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight)
         else:
@@ -933,7 +931,7 @@ def writeAdjacencies(adjacenciesList, weightsDict, out):
                 species,
                 gene2,
                 ext2,
-                str(weightsDict[(gene1,ext1), (gene2,ext2)])])+'\n')
+                str(weightsDict[species][(gene1,ext1), (gene2,ext2)])])+'\n')
 
 
 #
