@@ -91,7 +91,7 @@ def readEventCounts(events_folder, rev_tree_dict):
 
     branch_dict['Overall'] = total
     for branch in branch_dict:
-        event_counts = event_counts.append({ \
+        event_counts = pd.concat([event_counts, pd.DataFrame(data={ \
                 'Branch':           branch, \
                 'Dup_events':       branch_dict[branch][0], \
                 'Dup_genes':        branch_dict[branch][1], \
@@ -99,7 +99,7 @@ def readEventCounts(events_folder, rev_tree_dict):
                 'Lost_genes':       branch_dict[branch][3], \
                 'Inversions':       branch_dict[branch][4], \
                 'Transpositions':   branch_dict[branch][5] \
-                },ignore_index=True)
+                }, index=isinstance(branch, tuple) and range(len(branch)) or [0])],ignore_index=True)
 
     return event_counts
 
