@@ -294,7 +294,7 @@ rule prune_genetrees:
         'while read LINE; do'
         '   A=$(dirname {input.param});'
         '   NEW=${{LINE%.xml}}_pruned.xml;' +
-        f'   /prj/tools/python3/bin/python3 {SCRIPT_DIR}/prune_reconciled_genetrees.py $A/$LINE > $A/$NEW;' +
+        f'   {SCRIPT_DIR}/prune_reconciled_genetrees.py $A/$LINE > $A/$NEW;' +
         '   echo $NEW >> {output.treelist};'
         'done < {input.treelist};'
         'sed "s/$(basename {input.treelist})/$(basename {output.treelist})/" '
