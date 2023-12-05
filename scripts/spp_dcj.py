@@ -59,11 +59,11 @@ def objective(graphs, circ_singletons, alpha, beta, out):
         # subtract circular singleton penality
         out.write(' - '.join(('{} s{}_{}'.format(alpha, j, i) for j in range(len(cs)))))
 
-    for adj, weight in set(reduce(lambda x, y: x + y, (tuple(map(lambda z: (z[2]['id'], \
-            z[2]['penality']), filter(lambda x: 'penality' in x[2] and \
-            x[2]['type'] == du.ETYPE_ADJ, G.edges(data = True)))) for i, (_, G) in \
-            enumerate(sorted(graphs.items()))))):
-        out.write(f' - {weight * beta} x{adj}')
+#    for adj, weight in set(reduce(lambda x, y: x + y, (tuple(map(lambda z: (z[2]['id'], \
+#            z[2]['penality']), filter(lambda x: 'penality' in x[2] and \
+#            x[2]['type'] == du.ETYPE_ADJ, G.edges(data = True)))) for i, (_, G) in \
+#            enumerate(sorted(graphs.items()))))):
+#        out.write(f' - {weight * beta} x{adj}')
 
     out.write('\n\n')
 
@@ -480,13 +480,12 @@ if __name__ == '__main__':
     genes = candidateAdjacencies['genes']
     adjacencies = candidateAdjacencies['adjacencies']
     weights = candidateAdjacencies['weights']
-    penalities = candidateAdjacencies['penalities']
 
     ext2id = du.IdManager()
     LOG.info(('constructing relational diagrams for all {} branches of ' + \
             'the tree').format(len(speciesTree)))
     relationalDiagrams = du.constructRelationalDiagrams(speciesTree,
-            adjacencies, telomeres, weights, penalities, genes, ext2id,
+            adjacencies, telomeres, weights, genes, ext2id,
             sep=args.separator)
 
     graphs = relationalDiagrams['graphs']
