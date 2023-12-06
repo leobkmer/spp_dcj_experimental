@@ -83,8 +83,9 @@ def getAdjacenciesFromDeCo(data, deco2zombi):
             ext1, ext2 = ext2, ext1
         if species not in adjacencies:
             adjacencies[species] = set()
+            weights[species] = dict()
+        weights[species][(ext1, ext2)] = float(line[-1])
         adjacencies[species].add((ext1, ext2))
-        weights[(ext1, ext2)] = float(line[-1])
 
     return adjacencies, weights
 

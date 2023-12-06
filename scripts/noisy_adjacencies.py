@@ -89,7 +89,7 @@ def addAdversarialNoise(dataSet, speciesTree, nbNovelAdjacencies, probaOfRepeat,
     for i in range(nbNovelAdjacencies):
         [ext1,ext2] = createRandomAdjacency('Root',genesList,adjacenciesList)
         adjacenciesList['Root'].append([ext1,ext2])
-        weightsDict[ext1,ext2] = NOISY_ADJ_WEIGHT
+        weightsDict['Root'][ext1,ext2] = NOISY_ADJ_WEIGHT
         addNoiseFamily(noiseFamilies['Root'],ext1,ext2)
 
     # Other species
@@ -103,7 +103,7 @@ def addAdversarialNoise(dataSet, speciesTree, nbNovelAdjacencies, probaOfRepeat,
                     adj = createRandomAdversarialAdjacency(species,parent,familiesDict,adjacenciesList,noiseFamilies)
                     if adj != None:
                         ext1, ext2 = adj
-                        weightsDict[ext1, ext2] = ADVERSARIAL_ADJ_WEIGHT
+                        weightsDict[species][ext1, ext2] = ADVERSARIAL_ADJ_WEIGHT
                     else:
                         print('WARNING: no suitable adjacency for ' + \
                               'adversarial noise for species '+species +\
@@ -111,10 +111,10 @@ def addAdversarialNoise(dataSet, speciesTree, nbNovelAdjacencies, probaOfRepeat,
                               ' having '+str(len(noiseFamilies[parent])) +\
                               ' available noisy adjacencies', file = stderr)
                         [ext1,ext2] = createRandomAdjacency(species,genesList,adjacenciesList)
-                        weightsDict[ext1,ext2] = NOISY_ADJ_WEIGHT
+                        weightsDict[species][ext1,ext2] = NOISY_ADJ_WEIGHT
                 else:
                     [ext1,ext2] = createRandomAdjacency(species,genesList,adjacenciesList)
-                    weightsDict[ext1,ext2] = NOISY_ADJ_WEIGHT
+                    weightsDict[species][ext1,ext2] = NOISY_ADJ_WEIGHT
                 adjacenciesList[species].append([ext1,ext2])
                 addNoiseFamily(noiseFamilies[species],ext1,ext2)
 
@@ -145,7 +145,7 @@ if __name__ == '__main__':
     speciesTree     = du.parseTree(args.tree)
     leavesDict      = du.getLeaves(speciesTree)
     trueAdjacencies = du.parseAdjacencies(args.trueAdjacencies)
-
+    
     # construct noisy adjacency set
     noisyDataSet = addAdversarialNoise(trueAdjacencies, speciesTree, args.noiseLevel,
                                        args.adversarialNoiseLevel, noiseInLeaves=args.noiseInLeaves,

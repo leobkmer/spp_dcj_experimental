@@ -119,7 +119,6 @@ def parseAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
     resAdjacencies = defaultdict(list)
     resGenes       = defaultdict(list)
     resWeights     = defaultdict(dict)
-    resPenalities  = {}
     for line in csv.reader(data, delimiter = delimiter):
         if line[0][0] != headerMark:
             species  = line[0]
@@ -135,10 +134,6 @@ def parseAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
             else:
                 addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights[species],resGenes[species])
 
-            # optional penality
-            if len(line) > 7 and line[7]:
-                resPenalities[ext1 > ext2 and (ext2, ext1) or (ext1, ext2)] = float(line[7])
-
     speciesList = list(resAdjacencies.keys())
     for species in speciesList:
         resGenes[species]    = list(set(resGenes[species]))
@@ -146,7 +141,7 @@ def parseAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
 
     return {'species':speciesList, 'genes':resGenes,
             'adjacencies':resAdjacencies, 'weights':resWeights,
-            'families': resFamilies, 'penalities': resPenalities}
+            'families': resFamilies}
 
 
 def parseCandidateAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
@@ -513,7 +508,7 @@ def mapFamiliesToGenes(genes, sep=DEFAULT_GENE_FAM_SEP):
 
 
 def _constructRDAdjacencyEdges(G, gName, adjacencies, candidateWeights,
-        candidatePenalities, extremityIdManager):
+        extremityIdManager):
     ''' create adjacencies of the genome named <gName>'''
     for ext1, ext2 in adjacencies:
         id1 = extremityIdManager.getId((gName, ext1))
@@ -522,12 +517,7 @@ def _constructRDAdjacencyEdges(G, gName, adjacencies, candidateWeights,
         # ensure that each edge has a unique identifier
         edge_id = '{}_{}'.format(*sorted((id1, id2)))
         weight = candidateWeights[gName].get((ext1, ext2), 0)
-        penality = candidatePenalities[gName].get((ext1, ext2), None)
-        if penality is None:
-            G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight)
-        else:
-            G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight,
-                    penality=penality)
+        G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight)
 
 
 def _constructNaiveRDCapping(G, gName1, gName2, extremityIdManager):
@@ -867,7 +857,7 @@ def getIncidentAdjacencyEdges(G, v):
 
 
 def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
-        candidateWeights, candidatePenalities, genes, extremityIdManager,
+        candidateWeights, genes, extremityIdManager,
         sep=DEFAULT_GENE_FAM_SEP):
     ''' constructs for each edge of the tree a relational diagram of the
     adjacent genomes'''
@@ -882,7 +872,7 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
             _constructRDTelomeres(G, gName, candidateTelomeres[gName],
                                   extremityIdManager)
             _constructRDAdjacencyEdges(G, gName, candidateAdjacencies[gName],
-                    candidateWeights, candidatePenalities, extremityIdManager)
+                    candidateWeights, extremityIdManager)
 
         fam2genes1 = mapFamiliesToGenes(genes[child], sep=sep)
         fam2genes2 = mapFamiliesToGenes(genes[parent], sep=sep)
