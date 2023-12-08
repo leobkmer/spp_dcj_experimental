@@ -311,8 +311,8 @@ rule run_deco:
     log:
         f'{LOG_DIR}/{basename(DECO_BIN)}_{{experiment}}.log'
     shell:
-        'module load gcc/8.1.0 > /dev/null;'
-        'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:../../tools/bpp/lib64;'
+        'module load gcc/8.1.0 2> {log};'
+        'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/../../tools/bpp/lib64;'
         'CUR_DIR=$(pwd); cd $(dirname {input.param_file});' +
         f'{DECO_BIN} params=$(basename {{input.param_file}})' +
         ' &> $CUR_DIR/{log}; cd $CUR_DIR'
