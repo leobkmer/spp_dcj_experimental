@@ -874,6 +874,7 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
 def _constructRDNodes(G, gName, genes, counts, extremityIdManager):
     ''' create gene extremity nodes for the genome named <gName> '''
     for extr, other_extr in ((EXTR_HEAD, EXTR_TAIL), (EXTR_TAIL, EXTR_HEAD)):
+
         G.add_nodes_from(((extremityIdManager.getId((gName, (g, extr))),
                             dict(id=((gName, (g, extr))), 
                                  type=VTYPE_EXTR,

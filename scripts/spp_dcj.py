@@ -517,27 +517,29 @@ if __name__ == '__main__':
             f = gene.split(args.separator)[0]
             actualCounts[sp][f] += 1
 
-    targetCounts = None
+    targetCounts = dict()
     if args.count_table:
-        targetCounts = parseFamilyCount(args.count_table)
-        for sp, sp_counts in targetCounts.items():
+        familyCounts = du.parseFamilyCount(args.count_table)
+        for sp, sp_counts in familyCounts.items():
+            targetCounts[sp] = defaultdict(lambda: (0, 0, du.COUNT_SATURATED))
             for g, (c_min, c_max) in sp_counts.items():
-                if c_min > actualCounts:
+                if g == 't':
+                    continue
+                if c_min > actualCounts[sp][g]:
                     LOG.fatal(f'minimum count constraint for family {g}' + \
                             f' than genes provided in the adjacencies file,' + \
                             f' exiting')
                     exit(1)
-                if c_max > actualCounts:
+                if c_max > actualCounts[sp][g]:
                     LOG.fatal(f'maximum count constraint for family {g}' + \
                             f' than genes provided in the adjacencies file')
-                    c_max = actualCounts[g]
+                    c_max = actualCounts[sp][g]
 
                 if c_min == actualCounts[sp][g]:
-                    targetCounts[sp][g] = (c, c, du.COUNT_SATURATED)
+                    targetCounts[sp][g] = (c_min, c_max, du.COUNT_SATURATED)
                 else:
-                    targetCounts[sp][g] = (c, c, du.COUNT_DYNAMIC)
+                    targetCounts[sp][g] = (c_min, c_max, du.COUNT_DYNAMIC)
     else:
-        targetCounts = dict()
         for sp, sp_counts in actualCounts.items():
             targetCounts[sp] = defaultdict(lambda: (0, 0, du.COUNT_SATURATED))
             targetCounts[sp].update(((g, (c, c, du.COUNT_SATURATED)) for (g, c) in
