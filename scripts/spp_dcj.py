@@ -31,7 +31,7 @@ LOG.setLevel(logging.DEBUG)
 # ILP OBJECTIVE
 #
 
-def objective(graphs, circ_singletons, alpha, beta, out):
+def objective(graphs, circ_singletons, alpha, beta, out, reward_absence=False):
     out.write('maximize ')
 
     # sum of adjacency weights over all genomes
@@ -40,8 +40,16 @@ def objective(graphs, circ_singletons, alpha, beta, out):
             G.edges(data = True)))) for i, (_, G) in \
             enumerate(sorted(graphs.items())))))
 
-    out.write(' + '.join(map(lambda x: '{} x{}'.format(x[1] * (1-alpha), \
-            x[0]), adjs)))
+    if adjs:
+        if reward_absence:
+            for a, w in adjs:
+                if w < 0.5:
+                    out.write(' - {} x{}'.format((-2*w + 1) * (1-alpha), a))
+                else:
+                    out.write(' + {} x{}'.format((2*w - 1) * (1-alpha), a))
+        else:
+            out.write(' + '.join(map(lambda x: '{} x{}'.format(x[1] * (1-alpha), \
+                    x[0]), adjs)))
 
     for i, (_, G) in enumerate(sorted(graphs.items())):
         if G.number_of_edges():
@@ -460,6 +468,8 @@ if __name__ == '__main__':
             help='candidate adjacencies of the genomes in the phylogeny')
     parser.add_argument('-t', '--no_telomeres', action='store_true',
             help='don\'t add any additional telomeres')
+    parser.add_argument('-r', '--reward_absence', action='store_true', \
+            help='reward absence of adjacencies with weight=(1-alpha)*(1-presence)')
     parser.add_argument('-m', '--output_id_mapping', type=FileType('w'),
             help='writs a table with ID-to-gene extremity mapping')
     parser.add_argument('-a', '--alpha', default = 0.5, type=float,
@@ -527,8 +537,8 @@ if __name__ == '__main__':
                     continue
                 if c_min > actualCounts[sp][g]:
                     LOG.fatal(f'minimum count constraint for family {g}' + \
-                            f' than genes provided in the adjacencies file,' + \
-                            f' exiting')
+                            f' is higher than than genes provided in the ' + \
+                            f'adjacencies file, exiting')
                     exit(1)
                 if c_max > actualCounts[sp][g]:
                     LOG.fatal(f'maximum count constraint for family {g}' + \
@@ -603,7 +613,8 @@ if __name__ == '__main__':
     out = stdout
 
     LOG.info('writing objective over all graphs')
-    objective(graphs, circ_singletons, args.alpha, beta, out)
+    objective(graphs, circ_singletons, args.alpha, beta, out,
+              args.reward_absence)
 
     LOG.info('writing constraints...')
     constraints(graphs, siblings, circ_singletons, caps, targetCounts,

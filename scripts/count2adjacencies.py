@@ -160,7 +160,7 @@ def constructExtantAdjacenciesTableAll(tree, df_go):
     return df
 
 
-def recruitAncestralAdjacencies(tree, df_extant, name2node):
+def recruitAncestralAdjacencies(tree, df_extant):
     """
     Assumes that genes in df_go are already ordered by their genomic position.
 
@@ -173,22 +173,28 @@ def recruitAncestralAdjacencies(tree, df_extant, name2node):
     # ignore gene associations of extant genes for bottom-up traversal and ignore duplicate adjacencies
     df = df_extant[['species', 'family1', 'ext1', 'family2', 'ext2', 'weight']].drop_duplicates()
 
-    # introduce temporary columns "up_count" and "down_count"
-    df['up_count'] = df['weight']
-    df['down_count'] = 0
-
     #
     # initialize table for all ancestral genomes 
     #
     df_template = df[['family1', 'ext1', 'family2', 'ext2']].drop_duplicates().set_index(['family1', 'ext1', 'family2', 'ext2'])
     df_template['weight'] = 0
-    df_template['up_count'] = 0
-    df_template['down_count'] = 0
     df.set_index(['species', 'family1', 'ext1', 'family2', 'ext2'], inplace=True)
     for v in tree.traverse():
         df = pd.concat([df, pd.concat({v.name: df_template}, names=['species'])])
     # we created some duplicates for leaves, so we have to drop those
     df = df[~df.index.duplicated(keep='first')]
+    df.sort_index(inplace=True)
+
+    return df.loc[ids[[x.name for x in tree.traverse() if not x.is_leaf()], :, :, :]].reset_index()
+
+
+def weighAdjacenciesByPathConservation(df_anc, df_extant, tree):
+
+    # introduce temporary columns "up_count" and "down_count"
+    df = pd.concat([df_extant[['species', 'family1', 'ext1', 'family2', 'ext2', 'weight']].drop_duplicates(), df_anc], ignore_index=True)
+    df['up_count'] = df['weight']
+    df['down_count'] = 0
+    df.set_index(['species', 'family1', 'ext1', 'family2', 'ext2'], inplace=True)
     df.sort_index(inplace=True)
 
     #
@@ -218,7 +224,9 @@ def recruitAncestralAdjacencies(tree, df_extant, name2node):
             df.loc[ids[u.name, :, :, :], 'down_count'] = s - df.loc[ids[u.name, :, :, :], 'up_count']
 
     # we report *only* the weights of ancestral adjacencies
-    return df.loc[ids[[x.name for x in tree.traverse() if not x.is_leaf()], :, :, :], ['weight']].reset_index()
+    df_paths = countPaths(speciesTree)
+    return normalizeWeights(df_paths, df.loc[ids[[x.name for x in tree.traverse() if not x.is_leaf()], :, :, :]].reset_index())
+
 
 
 def countPaths(tree):
@@ -254,6 +262,23 @@ def normalizeWeights(df_paths, df_adjs):
         df_adjs.loc[df_adjs.species == s, 'weight'] /= df_paths.loc[s, 'paths']
 
     return df_adjs
+
+def weighAdjacenciesByWeightScheme(df_extant, df_anc, df_ws):
+
+    ids = pd.IndexSlice
+    adjs = set(df_anc[['family1', 'ext1', 'family2', 'ext2']].itertuples(index=False))
+    df_anc.set_index(['species', 'family1', 'ext1', 'family2', 'ext2'], inplace=True)
+    df_extant = df_extant.set_index(['family1', 'ext1', 'family2', 'ext2'])
+    df_extant.sort_index(inplace=True)
+
+    for family1, ext1, family2, ext2 in adjs:
+        sp = set(df_extant.loc[(family1, ext1, family2, ext2), 'species'])
+        df_w = df_ws.loc[tuple((x[1] in sp and 1 or 0 for x in df_ws.index.names))]
+        df_w.index = df_w.index.droplevel(0)
+        df_anc.loc[ids[df_w.index, family1, ext1, family2, ext2], 'weight'] = df_w.array
+
+    df_anc.reset_index(inplace=True)
+    return df_anc
 
 
 def instantiateGenes(df_adjs, df_counts):
@@ -307,6 +332,8 @@ if __name__ == '__main__':
             help='gene-to-family assignment table')
     parser.add_argument('gene_orders', type=open,
             help='file pointing to gene order tables of extant species')
+    parser.add_argument('-p', '--use_weight_scheme', type=open,
+            help='use weight specified as a function of leaf absence/presence in given file')
     parser.add_argument('-m', '--min_weight', type=float, default=0.0,
             help='minimum weight of ancestral adjacencies')
     args = parser.parse_args()
@@ -331,11 +358,16 @@ if __name__ == '__main__':
     df_go = readGO(args.gene_orders, dirname(args.gene_orders.name)).join(df_gf)
 
     # let's do it!
-    name2node = dict(map(lambda x: (x.name, x), speciesTree.traverse()))
 
     df_extant = constructExtantAdjacenciesTableAll(speciesTree, df_go)
-    df_paths = countPaths(speciesTree)
-    df_anc = normalizeWeights(df_paths, recruitAncestralAdjacencies(speciesTree, df_extant, name2node))
+    df_anc = recruitAncestralAdjacencies(speciesTree, df_extant)
+
+    if args.use_weight_scheme:
+        df_ws = pd.read_csv(args.use_weight_scheme, sep='\t', header=[0, 1])
+        df_ws.set_index([x for x in df_ws.columns if x[0] == 'configuration'], inplace=True)
+        df_anc = weighAdjacenciesByWeightScheme(df_extant, df_anc, df_ws)
+    else:
+        df_anc = weighAdjacenciesByPathConservation(df_anc, df_extant, speciesTree)
 
     # join extant and ancestral adjacency sets
     df = pd.concat([cleanupAncestralAdjacencies(instantiateGenes(df_anc, df_counts[df_anc.species.unique()]), df_counts), df_extant],
