@@ -28,11 +28,12 @@ def constructGenomeGraph(adjacencies, genes):
 
     G = nx.MultiGraph()
 
-    for ext1, ext2 in adjacencies:
-        G.add_edge(ext1, ext2, type=du.ETYPE_ADJ)
+    for (g1, ext1), (g2, ext2) in adjacencies:
+        if ext1 != du.EXTR_CAP or ext2 != du.EXTR_CAP:
+            G.add_edge((g1, ext1), (g2, ext2), type=du.ETYPE_ADJ)
 
     extremities = list(chain(*zip(*adjacencies)))
-    for gene in set(genes).difference(map(lambda x: x[0], filter(lambda x: x[1] == 'o', extremities))):
+    for gene in set(genes).difference(map(lambda x: x[0], filter(lambda x: x[1] == du.EXTR_CAP, extremities))):
         G.add_edge((gene, du.EXTR_HEAD), (gene, du.EXTR_TAIL),
                 type=du.ETYPE_ID)
     return G
