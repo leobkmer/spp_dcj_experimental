@@ -954,7 +954,7 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
 
 def writeAdjacencies(adjacenciesList, weightsDict, out):
     ''' Write an adjacency file '''
-    out.write('#Species Gene_1 Ext_1 Gene_2 Ext_2 Weight\n')
+    out.write('#Species\tGene_1\tExt_1\tGene_2\tExt_2\tWeight\n')
     speciesList = adjacenciesList.keys()
     for species in speciesList:
         for [(gene1,ext1),(gene2,ext2)] in adjacenciesList[species]:
