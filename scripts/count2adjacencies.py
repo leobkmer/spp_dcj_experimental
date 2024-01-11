@@ -101,12 +101,12 @@ def constructExtantAdjacenciesTable(df_go):
     map_orient2 = {0: EXTR_HEAD, 1: EXTR_TAIL, 2: EXTR_CAP}
 
     df = pd.DataFrame({
-        'family1': pd.Series(dtype=str),
-        'gene1': pd.Series(dtype=str),
-        'ext1': pd.Series(dtype=str),
-        'family2': pd.Series(dtype=str),
-        'gene2': pd.Series(dtype=str),
-        'ext2': pd.Series(dtype=str),
+        'family_1': pd.Series(dtype=str),
+        'gene_1': pd.Series(dtype=str),
+        'ext_1': pd.Series(dtype=str),
+        'family_2': pd.Series(dtype=str),
+        'gene_2': pd.Series(dtype=str),
+        'ext_2': pd.Series(dtype=str),
         })
     # at this point, we assume that each extant chromosome is linear
     for chrom in df_go.chromosome.unique():
@@ -115,12 +115,12 @@ def constructExtantAdjacenciesTable(df_go):
         df_c = df_go.loc[df_go.chromosome == chrom]
         df_c1 = df_c.shift(1) 
         df_c1.loc[0, ['gene', 'orientation', 'family']] = ['0', 2, 't']
-        df_c12 = df_c1.join(df_c, lsuffix='1', rsuffix='2')
-        df_c12['ext1'] = df_c12.orientation1.map(map_orient1.get)
-        df_c12['ext2'] = df_c12.orientation2.map(map_orient2.get)
+        df_c12 = df_c1.join(df_c, lsuffix='_1', rsuffix='_2')
+        df_c12['ext_1'] = df_c12.orientation_1.map(map_orient1.get)
+        df_c12['ext_2'] = df_c12.orientation_2.map(map_orient2.get)
         last = df_c12.tail(1)
-        cols = ['gene1', 'family1', 'ext1', 'gene2', 'family2', 'ext2']
-        df_c12.loc[last.index.item() + 1, cols] = [last.gene2.item(), last.family2.item(), map_orient1[last.orientation2.item()],
+        cols = ['gene_1', 'family_1', 'ext_1', 'gene_2', 'family_2', 'ext_2']
+        df_c12.loc[last.index.item() + 1, cols] = [last.gene_2.item(), last.family_2.item(), map_orient1[last.orientation_2.item()],
                                                    str(last.index.item()+1), 't', EXTR_CAP]
         canonizeAdjacencies(df_c12)
         df = pd.concat([df , df_c12], join='inner', ignore_index=True)
@@ -130,25 +130,25 @@ def constructExtantAdjacenciesTable(df_go):
 
 def canonizeAdjacencies(df):
     """ makes sure adjacencies are represented in canonical form """
-    sel_unsrtd = df.apply(lambda x: (x.family1, x.ext1, x.gene1) > (x.family2, x.ext2, x.gene2), axis=1)
-    df_tmp1 = df.loc[sel_unsrtd, ['family1', 'ext1', 'gene1']]
-    df_tmp1.columns = ['family2', 'ext2', 'gene2']
-    df_tmp2 = df.loc[sel_unsrtd, ['family2', 'ext2', 'gene2']]
-    df_tmp2.columns = ['family1', 'ext1', 'gene1']
-    df.loc[sel_unsrtd, ['family1', 'ext1', 'gene1']] = df_tmp2
-    df.loc[sel_unsrtd, ['family2', 'ext2', 'gene2']] = df_tmp1
+    sel_unsrtd = df.apply(lambda x: (x.family_1, x.ext_1, x.gene_1) > (x.family_2, x.ext_2, x.gene_2), axis=1)
+    df_tmp1 = df.loc[sel_unsrtd, ['family_1', 'ext_1', 'gene_1']]
+    df_tmp1.columns = ['family_2', 'ext_2', 'gene_2']
+    df_tmp2 = df.loc[sel_unsrtd, ['family_2', 'ext_2', 'gene_2']]
+    df_tmp2.columns = ['family_1', 'ext_1', 'gene_1']
+    df.loc[sel_unsrtd, ['family_1', 'ext_1', 'gene_1']] = df_tmp2
+    df.loc[sel_unsrtd, ['family_2', 'ext_2', 'gene_2']] = df_tmp1
 
 
 def constructExtantAdjacenciesTableAll(tree, df_go):
     tc = 0
     df = pd.DataFrame({
         'species': pd.Series(dtype=str),
-        'family1': pd.Series(dtype=str),
-        'gene1': pd.Series(dtype=str),
-        'ext1': pd.Series(dtype=str),
-        'family2': pd.Series(dtype=str),
-        'gene2': pd.Series(dtype=str),
-        'ext2': pd.Series(dtype=str),
+        'family_1': pd.Series(dtype=str),
+        'gene_1': pd.Series(dtype=str),
+        'ext_1': pd.Series(dtype=str),
+        'family_2': pd.Series(dtype=str),
+        'gene_2': pd.Series(dtype=str),
+        'ext_2': pd.Series(dtype=str),
         })
     # construct table of all observed adjacencies in extant genomes
     for v in tree.get_leaves():
@@ -160,7 +160,7 @@ def constructExtantAdjacenciesTableAll(tree, df_go):
     return df
 
 
-def recruitAncestralAdjacencies(tree, df_extant, name2node):
+def recruitAncestralAdjacencies(tree, df_extant):
     """
     Assumes that genes in df_go are already ordered by their genomic position.
 
@@ -171,24 +171,30 @@ def recruitAncestralAdjacencies(tree, df_extant, name2node):
     Note that the code may sometimes look weird, because it works on general trees, but typically we expect the tree to be binary.
     """
     # ignore gene associations of extant genes for bottom-up traversal and ignore duplicate adjacencies
-    df = df_extant[['species', 'family1', 'ext1', 'family2', 'ext2', 'weight']].drop_duplicates()
-
-    # introduce temporary columns "up_count" and "down_count"
-    df['up_count'] = df['weight']
-    df['down_count'] = 0
+    df = df_extant[['species', 'family_1', 'ext_1', 'family_2', 'ext_2', 'weight']].drop_duplicates()
 
     #
     # initialize table for all ancestral genomes 
     #
-    df_template = df[['family1', 'ext1', 'family2', 'ext2']].drop_duplicates().set_index(['family1', 'ext1', 'family2', 'ext2'])
+    df_template = df[['family_1', 'ext_1', 'family_2', 'ext_2']].drop_duplicates().set_index(['family_1', 'ext_1', 'family_2', 'ext_2'])
     df_template['weight'] = 0
-    df_template['up_count'] = 0
-    df_template['down_count'] = 0
-    df.set_index(['species', 'family1', 'ext1', 'family2', 'ext2'], inplace=True)
+    df.set_index(['species', 'family_1', 'ext_1', 'family_2', 'ext_2'], inplace=True)
     for v in tree.traverse():
         df = pd.concat([df, pd.concat({v.name: df_template}, names=['species'])])
     # we created some duplicates for leaves, so we have to drop those
     df = df[~df.index.duplicated(keep='first')]
+    df.sort_index(inplace=True)
+
+    return df.loc[ids[[x.name for x in tree.traverse() if not x.is_leaf()], :, :, :]].reset_index()
+
+
+def weighAdjacenciesByPathConservation(df_anc, df_extant, tree):
+
+    # introduce temporary columns "up_count" and "down_count"
+    df = pd.concat([df_extant[['species', 'family_1', 'ext_1', 'family_2', 'ext_2', 'weight']].drop_duplicates(), df_anc], ignore_index=True)
+    df['up_count'] = df['weight']
+    df['down_count'] = 0
+    df.set_index(['species', 'family_1', 'ext_1', 'family_2', 'ext_2'], inplace=True)
     df.sort_index(inplace=True)
 
     #
@@ -212,13 +218,15 @@ def recruitAncestralAdjacencies(tree, df_extant, name2node):
     for v in tree.traverse('preorder'):
         df.loc[ids[v.name, :, :, :], 'weight'] += df.loc[ids[v.name, :, :, :], 'up_count'] * df.loc[ids[v.name, :, :, :], 'down_count']
         # update count for siblings
-        df_children = df.loc[ids[[u.name for u in v.get_children()], :, :, :]].groupby(['family1', 'ext1', 'family2', 'ext2']).sum()
+        df_children = df.loc[ids[[u.name for u in v.get_children()], :, :, :]].groupby(['family_1', 'ext_1', 'family_2', 'ext_2']).sum()
         for u in v.get_children():
             s = pd.concat({u.name: df_children.down_count + df.loc[v.name, 'up_count']}, names=['species'])
             df.loc[ids[u.name, :, :, :], 'down_count'] = s - df.loc[ids[u.name, :, :, :], 'up_count']
 
     # we report *only* the weights of ancestral adjacencies
-    return df.loc[ids[[x.name for x in tree.traverse() if not x.is_leaf()], :, :, :], ['weight']].reset_index()
+    df_paths = countPaths(speciesTree)
+    return normalizeWeights(df_paths, df.loc[ids[[x.name for x in tree.traverse() if not x.is_leaf()], :, :, :]].reset_index())
+
 
 
 def countPaths(tree):
@@ -255,17 +263,34 @@ def normalizeWeights(df_paths, df_adjs):
 
     return df_adjs
 
+def weighAdjacenciesByWeightScheme(df_extant, df_anc, df_ws):
+
+    ids = pd.IndexSlice
+    adjs = set(df_anc[['family_1', 'ext_1', 'family_2', 'ext_2']].itertuples(index=False))
+    df_anc.set_index(['species', 'family_1', 'ext_1', 'family_2', 'ext_2'], inplace=True)
+    df_extant = df_extant.set_index(['family_1', 'ext_1', 'family_2', 'ext_2'])
+    df_extant.sort_index(inplace=True)
+
+    for family_1, ext_1, family_2, ext_2 in adjs:
+        sp = set(df_extant.loc[(family_1, ext_1, family_2, ext_2), 'species'])
+        df_w = df_ws.loc[tuple((x[1] in sp and 1 or 0 for x in df_ws.index.names))]
+        df_w.index = df_w.index.droplevel(0)
+        df_anc.loc[ids[df_w.index, family_1, ext_1, family_2, ext_2], 'weight'] = df_w.array
+
+    df_anc.reset_index(inplace=True)
+    return df_anc
+
 
 def instantiateGenes(df_adjs, df_counts):
 
     df = pd.DataFrame({
         'species': pd.Series(dtype=str),
-        'family1': pd.Series(dtype=str),
-        'gene1': pd.Series(dtype=str),
-        'ext1': pd.Series(dtype=str),
-        'family2': pd.Series(dtype=str),
-        'gene2': pd.Series(dtype=str),
-        'ext2': pd.Series(dtype=str),
+        'family_1': pd.Series(dtype=str),
+        'gene_1': pd.Series(dtype=str),
+        'ext_1': pd.Series(dtype=str),
+        'family_2': pd.Series(dtype=str),
+        'gene_2': pd.Series(dtype=str),
+        'ext_2': pd.Series(dtype=str),
         'weight': pd.Series(dtype=int)
         })
 
@@ -275,8 +300,8 @@ def instantiateGenes(df_adjs, df_counts):
         df_genes.reset_index(inplace=True)
         df_genes.gene = df_genes.gene.astype(str)
 
-        df_anc = df_adjs.loc[df_adjs.species==anc].set_index('family1').join(df_genes.set_index('family'), how='inner').reset_index()
-        df_anc = df_anc.set_index('family2').join(df_genes.set_index('family'), how='inner', lsuffix='1', rsuffix='2').reset_index()
+        df_anc = df_adjs.loc[df_adjs.species==anc].set_index('family_1').join(df_genes.set_index('family'), how='inner').reset_index()
+        df_anc = df_anc.set_index('family_2').join(df_genes.set_index('family'), how='inner', lsuffix='_1', rsuffix='_2').reset_index()
         canonizeAdjacencies(df_anc)
         df_anc.drop_duplicates(inplace=True)
         df = pd.concat([df, df_anc], ignore_index=True)
@@ -287,11 +312,11 @@ def instantiateGenes(df_adjs, df_counts):
 def cleanupAncestralAdjacencies(df_adjs, df_counts):
 
     # remove adjacencies between same extremities
-    sel_rm_same_ext = (df_adjs.gene1 != df_adjs.gene2) | (df_adjs.ext1 != df_adjs.ext2)
+    sel_rm_same_ext = (df_adjs.gene_1 != df_adjs.gene_2) | (df_adjs.ext_1 != df_adjs.ext_2)
 
     # prohibit singleton genes by removing selfloops from duplicates
-    sel_is_dup = df_adjs.apply(lambda x: df_counts.loc[x.family1, x.species] > 1, axis=1)
-    sel_rm_selfloop = ~sel_is_dup | (df_adjs.gene1 != df_adjs.gene2)
+    sel_is_dup = df_adjs.apply(lambda x: df_counts.loc[x.family_1, x.species] > 1, axis=1)
+    sel_rm_selfloop = ~sel_is_dup | (df_adjs.gene_1 != df_adjs.gene_2)
 
     return df_adjs.loc[sel_rm_same_ext & sel_rm_selfloop]
 
@@ -307,6 +332,8 @@ if __name__ == '__main__':
             help='gene-to-family assignment table')
     parser.add_argument('gene_orders', type=open,
             help='file pointing to gene order tables of extant species')
+    parser.add_argument('-p', '--use_weight_scheme', type=open,
+            help='use weight specified as a function of leaf absence/presence in given file')
     parser.add_argument('-m', '--min_weight', type=float, default=0.0,
             help='minimum weight of ancestral adjacencies')
     args = parser.parse_args()
@@ -331,25 +358,30 @@ if __name__ == '__main__':
     df_go = readGO(args.gene_orders, dirname(args.gene_orders.name)).join(df_gf)
 
     # let's do it!
-    name2node = dict(map(lambda x: (x.name, x), speciesTree.traverse()))
 
     df_extant = constructExtantAdjacenciesTableAll(speciesTree, df_go)
-    df_paths = countPaths(speciesTree)
-    df_anc = normalizeWeights(df_paths, recruitAncestralAdjacencies(speciesTree, df_extant, name2node))
+    df_anc = recruitAncestralAdjacencies(speciesTree, df_extant)
+
+    if args.use_weight_scheme:
+        df_ws = pd.read_csv(args.use_weight_scheme, sep='\t', header=[0, 1])
+        df_ws.set_index([x for x in df_ws.columns if x[0] == 'configuration'], inplace=True)
+        df_anc = weighAdjacenciesByWeightScheme(df_extant, df_anc, df_ws)
+    else:
+        df_anc = weighAdjacenciesByPathConservation(df_anc, df_extant, speciesTree)
 
     # join extant and ancestral adjacency sets
     df = pd.concat([cleanupAncestralAdjacencies(instantiateGenes(df_anc, df_counts[df_anc.species.unique()]), df_counts), df_extant],
                    ignore_index=True)
 
-    df.gene1 = df.apply(lambda x: '_'.join((x.family1, x.gene1)), axis=1)
-    df.gene2 = df.apply(lambda x: '_'.join((x.family2, x.gene2)), axis=1)
+    df.gene_1 = df.apply(lambda x: '_'.join((x.family_1, x.gene_1)), axis=1)
+    df.gene_2 = df.apply(lambda x: '_'.join((x.family_2, x.gene_2)), axis=1)
 
     # enforce minimum weight
     df = df.loc[df.weight >= args.min_weight]
 
     # output final adjacency set
     df.rename(columns={'species': '#species'}, inplace=True)
-    df[['#species', 'gene1', 'ext1', 'gene2', 'ext2', 'weight']].to_csv(stdout, sep='\t', index=False)
+    df[['#species', 'gene_1', 'ext_1', 'gene_2', 'ext_2', 'weight']].to_csv(stdout, sep='\t', index=False)
 
     LOG.info('DONE')
 
