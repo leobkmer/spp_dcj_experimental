@@ -342,8 +342,9 @@ def parseUniMoG(data, genomesOnly=None):
                     line[:-1].split()))))
     return res
 
-def unimog2adjacencies(genome):
+def unimog2adjacencies(genome, append_occurrence=True):
 
+    ao = append_occurrence
     occ = dict()
     res = list()
 
@@ -361,22 +362,22 @@ def unimog2adjacencies(genome):
             (o1, g1), (o2, g2) = chr_[1][i:i+2]
             if g2 not in occ:
                 occ[g2] = 0
-            res.append(((f'{g1}_{occ[g1]}', SIGN2EXT_1[o1]),
-                (f'{g2}_{occ[g2]+1}', SIGN2EXT_2[o2])))
+            res.append(((f'{g1}' + (ao and f'_{occ[g1]}' or ''), SIGN2EXT_1[o1]),
+                (f'{g2}' + (ao and f'_{occ[g2]+1}' or ''), SIGN2EXT_2[o2])))
             # increase counter only after-the-fact, in case g1==g2
             occ[g2] += 1
 
         (o1, g1), (o2, g2) = chr_[1][-1], chr_[1][0]
         if chr_[0] == CHR_CIRCULAR:
-            res.append(((f'{g1}_{occ[g1]}', SIGN2EXT_1[o1]),
-                (f'{g2}_{fst_occ}', SIGN2EXT_2[o2])))
+            res.append(((f'{g1}' + (ao and f'_{occ[g1]}' or ''), SIGN2EXT_1[o1]),
+                (f'{g2}' + (ao and f'_{fst_occ}' or ''), SIGN2EXT_2[o2])))
         elif chr_[0] == CHR_LINEAR:
-            res.append(((f'{g1}_{occ[g1]}', SIGN2EXT_1[o1]), ('t', EXTR_HEAD)))
-            res.append((('t', EXTR_HEAD), (f'{g2}_{fst_occ}', SIGN2EXT_2[o2])))
+            res.append(((f'{g1}' + (ao and f'_{occ[g1]}' or ''), SIGN2EXT_1[o1]), ('t', EXTR_CAP)))
+            res.append((('t', EXTR_CAP), (f'{g2}' + (ao and f'_{fst_occ}' or ''), SIGN2EXT_2[o2])))
 
     return res
 
-def adjacencies2unimog(adjacenciesList, matchingList):
+def adjacencies2unimog(adjacenciesList, matchingList, telomeres):
 
     genomes = list()
     #
@@ -384,8 +385,7 @@ def adjacencies2unimog(adjacenciesList, matchingList):
     #
     node2fam = lambda x: x[1][:x[1].find('_')]
     famG = nx.Graph(matchingList)
-    famC = dict((node2fam(x), 1) for x in famG.nodes() if not
-            x[1].startswith('t'))
+    famC = dict((node2fam(x), 1) for x in famG.nodes() if x[1] not in telomeres[x[0]])
     for C in nx.connected_components(famG):
         f = node2fam(tuple(C)[0])
         # skip telomeres
@@ -401,7 +401,7 @@ def adjacencies2unimog(adjacenciesList, matchingList):
         for adj in adjs:
             for g, ext in adj:
                 # iterate through tail extremities, add genes
-                if not g.startswith('t') and ext == EXTR_TAIL:
+                if ext == EXTR_TAIL
                     G.add_edge((g, EXTR_TAIL), (g, EXTR_HEAD))
         chrs = list()
         for C in nx.connected_components(G):
@@ -418,23 +418,28 @@ def adjacencies2unimog(adjacenciesList, matchingList):
                     if len(path) > 2 and path[0][0][0] == path[1][0][0]:
                         path = path[1:] + path[:1]
                 chr_ = list()
-                for i in range(0, len(path), 2):
+
+                if [path[i][1] for i in range(isLinear and 1 or 0, len(path)-1, 2)].count(EXTR_HEAD) > len(path)/4:
+                    path.reverse()
+
+                for i in range(isLinear and 1 or 0, len(path)-1, 2):
                     u = path[i]
-                    if u[0].startswith('t'):
-                        continue
                     if (gName, u[0]) not in famG:
                         g = f'x_{u[0][:u[0].find("_")]}'
                     else:
                         g = '_'.join((u[0][:u[0].find('_')],
                             str(famG.nodes[(gName, u[0])]['id'])))
-                    if u[1] == EXTR_HEAD:
+                    if u[1] == EXTR_TAIL:
                         chr_.append((ORIENT_POSITIVE, g))
-                    elif u[1] == EXTR_TAIL:
+                    elif u[1] == EXTR_HEAD:
                         chr_.append((ORIENT_NEGATIVE, g))
+                    else:
+                        raise Exception(f'unexpected extremity {u[1]}')
                 if chr_:
                     chrs.append((isLinear and CHR_LINEAR or CHR_CIRCULAR, chr_))
                 elif not all(map(lambda x: x[0][1:].isdigit(), C)):
-                    raise Exception(f'chromosome {C} is empty')
+                    # raise Exception(f'chromosome {C} is empty')
+                    pass
             else:
                 raise Exception(f'genome {gName} is not linear/circular')
         genomes.append((gName, chrs))
@@ -604,7 +609,7 @@ def _fillUpCaps(G, gName, ncaps, extremityIdManager):
         id_ = 't_{}'.format(extremityIdManager._IdManager__count)
         v = extremityIdManager.getId((gName, (id_, EXTR_CAP)))
         new_caps.append(v)
-        G.add_node(v, id=(gName, (id_, EXTR_HEAD)), type=VTYPE_CAP,
+        G.add_node(v, id=(gName, (id_, EXTR_CAP)), type=VTYPE_CAP,
                    count_state=COUNT_DYNAMIC)
 
     for i in range(0, ncaps-1, 2):
@@ -885,8 +890,8 @@ def _constructRDNodes(G, gName, genes, counts, extremityIdManager):
 
 def _constructRDTelomeres(G, gName, telomeres, extremityIdManager):
     ''' create telomereic extremity nodes for the genome named <gName> '''
-    G.add_nodes_from(((extremityIdManager.getId((gName, (t, 'o'))),
-        dict(id=((gName, (t, 'o'))), type=VTYPE_CAP,
+    G.add_nodes_from(((extremityIdManager.getId((gName, (t, EXTR_CAP))),
+        dict(id=((gName, (t, EXTR_CAP))), type=VTYPE_CAP,
              count_state=COUNT_DYNAMIC)) for t in telomeres))
 
 
@@ -958,13 +963,17 @@ def writeAdjacencies(adjacenciesList, weightsDict, out):
     speciesList = adjacenciesList.keys()
     for species in speciesList:
         for [(gene1,ext1),(gene2,ext2)] in adjacenciesList[species]:
+            # canonicalize adjacencies list
+            w = weightsDict[species][(gene1,ext1), (gene2,ext2)]
+            if (gene1, ext1) > (gene2, ext2):
+                gene1, ext1, gene2, ext2 = gene2, ext2, gene1, ext1
             out.write('\t'.join([
                 species,
                 gene1,
                 ext1,
                 gene2,
                 ext2,
-                str(weightsDict[species][(gene1,ext1), (gene2,ext2)])])+'\n')
+                str(w)])+'\n')
 
 
 #
