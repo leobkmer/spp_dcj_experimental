@@ -80,23 +80,353 @@ def constraints(graphs, siblings, circ_singletons, caps, out):
 
         LOG.info(('writing constraints for relational diagram of {} and ' + \
                 '{}').format(child, parent))
-        c01(G, out)
-        c02(G, i, out)
-        c03(siblings[(child, parent)], out)
-        c04(G, i, out)
-        c05(G, i, out)
-        c06(G, i, out)
-        c07(G, i, out, (child, parent))
-        c08(G, i, out)
-        c09(G, i, out, (child, parent))
-        c10(G, i, out, (child, parent))
-        c11(G, i, out)
-        c12(circ_singletons[(child, parent)], i, out)
-        c13(caps, out)
-
     out.write('\n')
 
+def get_gene_extremities(G):
+    ids_to_v = {data['id'] : v for v,data in G.nodes(data=True)}
+    l = []
+    for v,data in G.nodes(data=True):
+        if data['type'] == du.VTYPE_CAP:
+            continue
+        l.append((v,ids_to_v[du.complement_id(data['id'])]))
+    return l
 
+
+#TODO: Integrate multiplicities!
+def c01(G,out):
+    for v,data in G.nodes(data=True):
+        print("g{sep}{v} = 1".format(sep=du.SEP,v=v),file=out)
+
+
+def c02(G,out):
+    for u,v in get_gene_extremities(G):
+        print("g{sep}{u} - g{sep}{v} = 0".format(u=u,v=v,sep=du.SEP),file=out)
+
+def c03(G,out):
+    for v,data in G.nodes(data=True):
+        if data['type']==du.VTYPE_CAP:
+            continue
+        aes = [G[v][u][i]['id'] for u in G[v] for i in G[v][u] if G[v][u][i]['type']==du.ETYPE_ADJ]
+        sm = ' + '.join(['a{sep}{e}'.format(sep=du.SEP,e=e) for e in aes])
+        print("{sm} - g{sep}{v}".format(sm=sm,sep=du.SEP,v=v),file=out)
+
+
+def global_constraints(G,out):
+    for c in [c01,c02,c03]:
+        c(G,out)
+
+def c04(G,tree_edge,out):
+    ws = [ '{w} x{sep}{te}{sep}{e}'.format(q=data['weight'],te=tree_edge,e=data['id'],sep=du.SEP) for u,v,data in G.edges(data=True) if data['type']==du.ETYPE_ADJ]
+    print("{s} - w{sep}{treeedge} = 0".format(treeedge=tree_edge,s=' + '.join(ws),sep=du.SEP),file=out)
+
+
+def c05(G,tree_edge,out):
+    print("n{sep}{te} - c{sep}{te} + q{sep}{te} + s{sep}{te} - f{sep}{te} = 0".format(sep=du.SEP,te=tree_edge),file=out)
+
+def c06(G,tree_edge,out):
+    xs = ['0.5 x{sep}{te}{sep}{e}'.format(te=tree_edge,sep=du.SEP,e=data['id']) for u,v,data in G.edges(data=True) if data['type']==du.ETYPE_ADJ]
+    print('{s} - n{sep}{te} = 0'.format(s=' + '.join(xs),sep=du.SEP,te=tree_edge),file=out)
+
+def c07(G,tree_edge,out):
+    cs = ['rc{sep}{te}{sep}{v}'.format(te=tree_edge,sep=du.SEP,v=v) for v,data in G.nodes(data=True) if data['type'] != du.VTYPE_CAP]
+    print('{s} - c{sep}{te} = 0'.format(s=' + '.join(cs),sep=du.SEP,te=tree_edge),file=out)
+
+def c08(G,tree_edge,out):
+    print("pab{sep}{te} + pABa{sep}{te} + pABb{sep}{te} - pAB{sep}{te} - 2q{sep}{te}".format(sep=du.SEP,te=tree_edge),file=out)
+
+
+def summary_constraint(pathtype,predicate,G,tree_edge,out):
+    sm = ['r{ptype}{sep}{te}{sep}{v}'.format(te=tree_edge,ptype=pathtype,sep=du.SEP,v=data['type']) for v,data in G.nodes(data=True) if predicate(data['type'])]
+    print("{s} - p{ptype}{sep}{te}".format(s=' + '.join(sm),ptype=pathtype,sep=du.SEP,te=tree_edge),file=out)
+    
+c09 = lambda G,tree_edge,out: summary_constraint('ab',lambda x: x!=du.VTYPE_CAP,G,tree_edge,out)
+c10 = lambda G,tree_edge,out: summary_constraint('Ab',lambda x: x==du.VTYPE_CAP,G,tree_edge,out)    
+c11 = lambda G,tree_edge,out: summary_constraint('Ba',lambda x: x==du.VTYPE_CAP,G,tree_edge,out)    
+c12 = lambda G,tree_edge,out: summary_constraint('Aa',lambda x: x==du.VTYPE_CAP,G,tree_edge,out)    
+c13 = lambda G,tree_edge,out: summary_constraint('Bb',lambda x: x==du.VTYPE_CAP,G,tree_edge,out)    
+
+def c14toc17(G,tree_edge,out):
+    for indel in "ab":
+        for tel in "AB":
+            print("pAB{ind}{sep}{te} - p{tel}{ind}{sep}{te}".format(ind=indel,tel=tel,te=tree_edge,sep=du.SEP),file=out)
+c18 = lambda G,tree_edge,out: summary_constraint('AB',lambda x: x==du.VTYPE_CAP,G,tree_edge,out)
+
+def c19(G,tree_edge,out):
+    sm = ['rs{sep}{te}{sep}{v}'.format(te=tree_edge,sep=du.SEP,v=data['type']) for v,data in G.nodes(data=True) if data['type'] != du.VTYPE_CAP]
+    print("{s} - s{sep}{te}".format(s=' + '.join(sm),sep=du.SEP,te=tree_edge),file=out)
+
+def c20(G,tree_edge,out):
+    for v in G.nodes():
+        ees = [G[v][u][i]['id'] for u in G[v] for i in G[v][u] if G[v][u][i]['type'] in [du.ETYPE_EXTR,du.ETYPE_ID]]
+        sm = ' + '.join(['x{sep}{te}{sep}{e}'.format(sep=du.SEP,te=tree_edge,e=e) for e in ees])
+        print("{sm} - g{sep}{v} = 0".format(sm=sm,sep=du.SEP,v=v),file=out)
+
+def c21(G,tree_edge,out):
+    for u,v,data in G.edges(data=True):
+        if data['type'] == du.ETYPE_ADJ:
+            print("a{sep}{e} - x{sep}{te}{sep}{e} = 0".format(sep=du.SEP,te=tree_edge,e=data['id']),file=out)
+
+def c22(G,tree_edge,out):
+    for v in G.nodes():
+        print("z{sep}{te}{sep}{v} - g{sep}{v} <= 0".format(sep=du.SEP,te=tree_edge,v=v),file=out)
+
+
+def loose_constraints(G,tree_edge,out):
+    for c in [c04,c05,c06,c07,c08,c09,c10,c11,c12,c13,c14toc17,c18,c19,c20,c21,c22]:
+        c(G,tree_edge,out)
+
+def c23(sibs,tree_edge,out):
+    for eid,did in sibs:
+        print("x{sep}{te}{sep}{eid} - x{sep}{te}{sep}{did} = 0".format(sep=du.SEP,eid=eid,did=did,te=tree_edge),file=out)
+
+def c24(G,tree_edge,out):
+    for e,data in G.edges(data=True):
+        eid = data['id']
+        for u,v in [e,e[::-1]]:
+            print("y{sep}{te}{sep}{v} - {u} x{sep}{te}{sep}{eid} - y{sep}{te}{sep}{u} >= {u}".format(sep=du.SEP,eid=eid,v=v,u=u,te=tree_edge),file=out)
+
+def c25(G,tree_edge,out):
+    for v in G.nodes():
+        print("{v} z{sep}{te}{sep}{v} - y{sep}{te}{sep}{v} <= 0".format(sep=du.SEP,v=v,te=tree_edge),file=out)
+
+def slm_constraints(G,tree_edge,sibs,out):
+    """
+    Shao-Lin-Moret Constraints as defined in Table 1.
+    """
+    c23(sibs,tree_edge,out)
+    c24(G,tree_edge,out)
+    c25(G,tree_edge,out)
+
+
+
+
+
+
+def c26(G,tree_edge,genomes,out):
+    for x,y, data in G.edges(data=True):
+        if data['type'] == du.ETYPE_ID:
+            for v in [x,y]:
+                if get_genome(G, v) == genomes[0]:
+                    print("l{sep}{te}{sep}{v} +  x{sep}{te}{sep}{e} <= 1".format(sep=du.SEP,te=tree_edge,v=v,e=data['id']),file=out)
+                else:
+                    print("l{sep}{te}{sep}{v} -  x{sep}{te}{sep}{e} >= 0".format(sep=du.SEP,te=tree_edge,v=v,e=data['id']),file=out)
+
+def get_genome(G, v):
+    return G.nodes[v]['id'][0]
+
+
+def c27(G,tree_edge,genomes,out):
+    for x,y, data in G.edges(data=True):
+        if data['type'] == du.ETYPE_ID or du.VTYPE_CAP in [G.nodes[v]['type'] for v in [x,y]]:
+            continue
+
+        for u,v in [(x,y),(y,x)]:
+            if get_genome(G,v) == genomes[0]  and data['type'] == du.ETYPE_ADJ:
+                print("l{sep}{te}{sep}{v} - l{sep}{te}{sep}{u} + x{sep}{te}{sep}{e} - rab{sep}{te}{sep}{v} <= 1".format(
+                    sep=du.SEP,
+                    te=tree_edge,
+                    e=data['id'],
+                    u=u,
+                    v=v
+                ), file=out)
+            else:
+                print("l{sep}{te}{sep}{v} - l{sep}{te}{sep}{u} + x{sep}{te}{sep}{e} <= 1".format(
+                    sep=du.SEP,
+                    te=tree_edge,
+                    e=data['id'],
+                    u=u,
+                    v=v
+                ), file=out)
+            
+def c28(G,tree_edge,genomes,out):
+    for v,data in G.nodes(data=True):
+        if data['type']==du.VTYPE_CAP or get_genome(G,v)!=genomes[0]:
+            continue
+        print('rc{sep}{te}{sep}{v} - z{sep}{te}{sep}{v} <= 0'.format(
+            sep=du.SEP,
+            te=tree_edge,
+            v=v
+        ), file=out)
+
+def c29(G,tree_edge,genomes,out):
+    for x, y, data in G.edges(data=True):
+        if data[type] != du.ETYPE_ID or get_genome(G,x) != genomes[0]:
+            continue
+        for v in [x,y]:
+            print("rab{sep}{te}{sep}{v} - x{sep}{te}{sep}{e} <= 0".format(
+                sep=du.SEP,
+                te=tree_edge,
+                v=v,
+                e=data['id']
+            ),file=out)
+
+def regular_reporting(G,tree_edge,genomes,out):
+    for c in [c26,c27,c28,c29]:
+        c(G,tree_edge,genomes,out)
+
+
+def c30(G,tree_edge,genomes,out):
+    for v,data in G.nodes(data=True):
+        if data['type']!= du.VTYPE_CAP:
+            continue
+        print("l{sep}{te}{sep}{v} = {gid}".format(
+            sep=du.SEP,
+            te=tree_edge,
+            v=v,
+            gid=0 if get_genome(G,v)==genomes[0] else 1
+        ),file=out)
+
+def c31(G,tree_edge,genomes,out):
+    for x,y,data in G.edges(data=True):
+        if data['type']!=du.ETYPE_ADJ or not du.VTYPE_CAP in [G.nodes[v]['type'] for v in [x,y]]:
+            continue
+        if get_genome(G,x) == genomes[0]:
+            if G.nodes[x]['type'] == du.VTYPE_CAP:
+                v,u = x,y
+            else:
+                v,u = y,x
+            print("l{sep}{te}{sep}{u} -  l{sep}{te}{sep}{v} - rAB{sep}{te}{sep}{v} - rAb{sep}{te}{sep}{v} + x{sep}{te}{sep}{e} <= 1".format(
+                sep=du.SEP,
+                te=tree_edge,
+                u=u,
+                v=v,
+                e=data['id']
+            ),file=out)
+        else:
+            if G.nodes[x]['type'] == du.VTYPE_CAP:
+                u,v = x,y
+            else:
+                u,v = y,x
+            print("l{sep}{te}{sep}{u} -  l{sep}{te}{sep}{v} - rBa{sep}{te}{sep}{u} + x{sep}{te}{sep}{e} <= 1".format(
+                sep=du.SEP,
+                te=tree_edge,
+                u=u,
+                v=v,
+                e=data['id']
+            ),file=out)
+
+def c32(G,tree_edge,genomes,out):
+    for v,data in G.nodes(data=True):
+        if get_genome(G,v)==genomes[0] and data['type']==du.VTYPE_CAP:
+            print("rAB{sep}{te}{sep}{v} - z{sep}{te}{sep}{v} <= 0".format(
+                sep=du.SEP,
+                v=v,
+                te=tree_edge
+            ),file=out)
+
+def c33(G,tree_edge,genomes,out):
+    for v,data in G.nodes(data=True):
+        if data['type']!=du.VTYPE_CAP:
+            continue
+        if get_genome(G,v)==genomes[0]:
+            reps = ["Ab","Aa"]
+        else:
+            reps = ["Ba","Bb"]
+        print("r{a}{sep}{te}{sep}{v} + r{b}{sep}{te}{sep}{v} + y{sep}{te}{sep}{v} >= 1".format(
+            a=reps[0],
+            b=reps[1],
+            te=tree_edge,
+            sep=du.SEP,
+            v=v
+        ),file=out)
+
+def c34(G,tree_edge,genomes,out):
+    for v,data in G.nodes(data=True):
+        if data['type']!=du.VTYPE_CAP:
+            continue
+        if get_genome(G,v)==genomes[0]:
+            reps = ["Ab","Aa"]
+        else:
+            reps = ["Ba","Bb"]
+        for r in reps:
+            print("y{sep}{te}{sep}{v} + {v} r{r}{sep}{te}{sep}{v} <= {v}".format(
+                sep=du.SEP,
+                te=tree_edge,
+                v=v,
+                r=r
+            ),file=out)
+
+def c35(G,tree_edge,genomes,out):
+    for x,y,data in G.edges(data=True):
+        if data['type'] != du.ETYPE_ADJ:
+            continue
+        if G.nodes[x]['type'] == du.VTYPE_CAP:
+            u,v = y,x
+        elif G.nodes[y]['type'] == du.VTYPE_CAP:
+            u,v = x,y
+        else:
+            continue
+        if get_genome(G,v) == genomes[0]:
+            for r in ["AB","Ab"]:
+                print("r{r}{sep}{te}{sep}{v} -  l{sep}{te}{sep}{u} + x{sep}{te}{sep}{e} <= 1".format(
+                    r=r,
+                    sep=du.SEP,
+                    te=tree_edge,
+                    v=v,
+                    u=u,
+                    e=data['id']
+                ),file=out)
+        else:
+            print("rBa{sep}{te}{sep}{v} +  l{sep}{te}{sep}{u} + x{sep}{te}{sep}{e} <= 2".format(
+                    r=r,
+                    sep=du.SEP,
+                    te=tree_edge,
+                    v=v,
+                    u=u,
+                    e=data['id']
+                ),file=out)
+            
+def pcap_reporting(G,tree_edge,genomes,out):
+    for c in [c30,c31,c32,c33,c34,c35]:
+        c(G,tree_edge,genomes,out)
+
+
+def c36(G,tree_edge,out):
+    for u,v,data in G.edges(data=True):
+        if du.VTYPE_CAP in [G.nodes[x]['type'] for x in [u,v]]:
+            continue
+        if data['type']==du.ETYPE_EXTR:
+            continue
+        print("d{sep}{te}{sep}{v} + d{sep}{te}{sep}{u} + x{sep}{te}{sep}{e} <= 2".format(
+            sep=du.SEP,
+            te=tree_edge,
+            v=v,
+            u=u,
+            e=data['id']
+        ),file=out)
+        print("d{sep}{te}{sep}{v} + d{sep}{te}{sep}{u} - x{sep}{te}{sep}{e} >= 0".format(
+            sep=du.SEP,
+            te=tree_edge,
+            v=v,
+            u=u,
+            e=data['id']
+        ),file=out)
+
+def c37(G,tree_edge,out):
+    for u,v,data in G.edges(data=True):
+        if data['type']!=du.ETYPE_ID:
+            continue
+        print("w{sep}{te}{sep}{u} - w{sep}{te}{sep}{v} = 0".format(
+            sep=du.SEP,
+            te=tree_edge,
+            u=u,
+            v=v
+        ),file=out)
+
+def c38(G,tree_edge,out,max_circ_len):
+    for u,v,data in G.edges(data=True):
+        if data['type']!=du.ETYPE_ADJ or du.VTYPE_CAP in [G.nodes[x]['type'] for x in [u,v]]:
+            continue
+        print("w{sep}{te}{sep}{u} - w{sep}{te}{sep}{v} + d{sep}{te}{sep}{v} - d{sep}{te}{sep}{u} + {K} x{sep}{te}{sep}{e} - {K} rs{sep}{te}{sep}{u} - {K} rs{sep}{te}{sep}{v} <= {K}".format(
+            sep=du.SEP,
+            u=u,
+            v=v,
+            e=data['id'],
+            K=max_circ_len
+        ),file=out)
+        
+
+'''
 def c01(G, out):
     for v, vdata in G.nodes(data = True):
         line = ''
@@ -253,7 +583,7 @@ def c13(caps, out):
         if cap_set:
             print('{} - 2 a{} = 0'.format(' + '.join(map(lambda x: f'o{x}',
                 cap_set)), j), file = out)
-
+'''
 
 def getAllCaps(graphs):
     res = dict((k, set()) for k in set(chain(*graphs.keys())))

@@ -33,6 +33,9 @@ VTYPE_CAP       = 'telomere'
 ORIENT_NEGATIVE = '-'
 ORIENT_POSITIVE = '+'
 
+#separator for ILP variables
+SEP='_'
+
 SIGN2EXT_1      = {ORIENT_NEGATIVE:EXTR_TAIL,ORIENT_POSITIVE:EXTR_HEAD}
 SIGN2EXT_2      = {ORIENT_NEGATIVE:EXTR_HEAD,ORIENT_POSITIVE:EXTR_TAIL}
 EXT2SIGN_1      = {EXTR_TAIL:ORIENT_NEGATIVE,EXTR_HEAD:ORIENT_POSITIVE}
@@ -48,6 +51,10 @@ PAT_ADJ = re.compile('^(\w+)@([0-9_]+)$')
 PAT_MATCHED_EDGE = re.compile('^x(\d+)_(\d+)([^0-9 \t]*) 1\s*$')
 
 
+def complement_id(v):
+    (gName, (g, extr)) = v
+    return (gName,(g,EXT_COMPLEMENT[extr]))
+    
 #
 # DATA ACQUISITION, PARSERS
 #
