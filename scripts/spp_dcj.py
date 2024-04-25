@@ -31,41 +31,13 @@ LOG.setLevel(logging.DEBUG)
 # ILP OBJECTIVE
 #
 
-def objective(graphs, circ_singletons, alpha, beta, out):
+def objective(graphs, circ_singletons, alpha, out):
     out.write('maximize ')
-
-    # sum of adjacency weights over all genomes
-    adjs = set(reduce(lambda x, y: x + y, (tuple(map(lambda z: (z[2]['id'], \
-            z[2]['weight']), filter(lambda x: x[2]['type'] == du.ETYPE_ADJ, \
-            G.edges(data = True)))) for i, (_, G) in \
-            enumerate(sorted(graphs.items())))))
-
-    out.write(' + '.join(map(lambda x: '{} x{}'.format(x[1] * (1-alpha), \
-            x[0]), adjs)))
-
-    for i, (_, G) in enumerate(sorted(graphs.items())):
-        if G.number_of_edges():
-            out.write(' + ')
-        # DCJ indel distance
-        out.write(' + '.join(map(lambda x: '{} z{}_{}'.format(alpha, x, i),
-            G.nodes())))
-        out.write(''.join(map(lambda x: ' - {} t{}_{}'.format(0.5 * alpha,
-            x[2]['id'], i), G.edges(data = True))))
-
-    for i, ident in enumerate(sorted(graphs.keys())):
-        cs = circ_singletons[ident]
-        if cs:
-            out.write(' - ')
-        # subtract circular singleton penality
-        out.write(' - '.join(('{} s{}_{}'.format(alpha, j, i) for j in range(len(cs)))))
-
-    for adj, weight in set(reduce(lambda x, y: x + y, (tuple(map(lambda z: (z[2]['id'], \
-            z[2]['penality']), filter(lambda x: 'penality' in x[2] and \
-            x[2]['type'] == du.ETYPE_ADJ, G.edges(data = True)))) for i, (_, G) in \
-            enumerate(sorted(graphs.items()))))):
-        out.write(f' - {weight * beta} x{adj}')
-
-    out.write('\n\n')
+    terms = ["{ialph} w{sep}{te} + {alph} f{sep}{te}".format(
+        alph=alpha,ialph=1-alpha,sep=du.SEP,te=tree_edge)
+        for tree_edge, _ in enumerate(sorted(graphs.items()))]
+    print(" + ".join(terms),file=out)
+        
 
 
 #
@@ -73,13 +45,18 @@ def objective(graphs, circ_singletons, alpha, beta, out):
 #
 
 def constraints(graphs, siblings, circ_singletons, caps, out):
-
     out.write('subject to\n')
-
     for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
 
         LOG.info(('writing constraints for relational diagram of {} and ' + \
                 '{}').format(child, parent))
+        global_constraints(G,out)
+        loose_constraints(G,i,out)
+        slm_constraints(G,i,siblings,out)
+        regular_reporting(G,i,out)
+        pcap_reporting(G,i,out)
+        cs_constraints(G,i,out,max_circ_len=len(G.nodes())/2)
+
     out.write('\n')
 
 def get_gene_extremities(G):
@@ -422,9 +399,14 @@ def c38(G,tree_edge,out,max_circ_len):
             u=u,
             v=v,
             e=data['id'],
-            K=max_circ_len
+            K=max_circ_len,
+            te=tree_edge
         ),file=out)
-        
+
+def cs_constraints(G,tree_edge,out,max_circ_len):
+    c36(G,tree_edge,out)
+    c37(G,tree_edge,out)
+    c38(G,tree_edge,out,max_circ_len)
 
 '''
 def c01(G, out):
