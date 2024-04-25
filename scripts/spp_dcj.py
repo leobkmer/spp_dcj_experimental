@@ -581,22 +581,20 @@ def getAllCaps(graphs):
 # ILP DOMAINS
 #
 
+COUNTERS = ['w','f','n','c','s','pab','pAB','pAb','pAa','pBa','pBb','pABa','pABb']
 def domains(graphs, out):
 
     out.write('bounds\n')
+    for te, ((child, parent), G) in enumerate(sorted(graphs.items())):
+        for rv in COUNTERS:
+            print("0 <= {rv}{sep}{e} <= inf".format(rv=rv,sep=du.SEP,e=te),file=out)
+        print("q{sep}{e} free".format(sep=du.SEP,e=te))
+        for v,data in G.nodes(data=True):
+            if data['type']==du.VTYPE_CAP:
+                continue
+            print("0 <= w{sep}{te}{sep}{v} <= inf".format(sep=du.SEP,te=te,v=v),file=out)
+            
 
-    for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
-        LOG.info(('writing domains for relational diagram of {} and ' + \
-                '{}').format(child, parent))
-        d02(G, i, out)
-
-    out.write('\n')
-
-
-def d02(G, i, out):
-
-    for v in G.nodes():
-        out.write('0 <= y{0}_{1} <= {0}\n'.format(v, i))
 
 
 #
