@@ -31,7 +31,7 @@ LOG.setLevel(logging.DEBUG)
 # ILP OBJECTIVE
 #
 
-def objective(graphs, circ_singletons, alpha, out):
+def objective(graphs, alpha, out):
     out.write('maximize ')
     terms = ["{ialph} w{sep}{te} + {alph} f{sep}{te}".format(
         alph=alpha,ialph=1-alpha,sep=du.SEP,te=tree_edge)
@@ -73,28 +73,28 @@ def get_gene_extremities(G):
 #TODO: Integrate multiplicities!
 def c01(G,out):
     for v,data in G.nodes(data=True):
-        print("g{sep}{v} = 1".format(sep=du.SEP,v=v),file=out)
+        print("g{sep}{v} = 1".format(sep=du.SEP,v=data['anc']),file=out)
 
 
 def c02(G,out):
     for u,v in get_gene_extremities(G):
-        print("g{sep}{u} - g{sep}{v} = 0".format(u=u,v=v,sep=du.SEP),file=out)
+        print("g{sep}{u} - g{sep}{v} = 0".format(u=G.nodes[u]['anc'],v=G.nodes[v]['anc'],sep=du.SEP),file=out)
 
 def c03(G,out):
     for v,data in G.nodes(data=True):
         if data['type']==du.VTYPE_CAP:
             continue
-        aes = [G[v][u][i]['id'] for u in G[v] for i in G[v][u] if G[v][u][i]['type']==du.ETYPE_ADJ]
+        aes = [G[v][u][i]['anc'] for u in G[v] for i in G[v][u] if G[v][u][i]['type']==du.ETYPE_ADJ]
         sm = ' + '.join(['a{sep}{e}'.format(sep=du.SEP,e=e) for e in aes])
-        print("{sm} - g{sep}{v}".format(sm=sm,sep=du.SEP,v=v),file=out)
+        print("{sm} - g{sep}{v} = 0".format(sm=sm,sep=du.SEP,v=G.nodes[v]['anc']),file=out)
 
 
 def global_constraints(G,out):
-    for c in [c01,c02,c03]:
+    for c in [c02,c03]:#[c01,c02,c03]:
         c(G,out)
 
 def c04(G,tree_edge,out):
-    ws = [ '{w} x{sep}{te}{sep}{e}'.format(q=data['weight'],te=tree_edge,e=data['id'],sep=du.SEP) for u,v,data in G.edges(data=True) if data['type']==du.ETYPE_ADJ]
+    ws = [ '{w} x{sep}{te}{sep}{e}'.format(w=data['weight'],te=tree_edge,e=data['id'],sep=du.SEP) for u,v,data in G.edges(data=True) if data['type']==du.ETYPE_ADJ]
     print("{s} - w{sep}{treeedge} = 0".format(treeedge=tree_edge,s=' + '.join(ws),sep=du.SEP),file=out)
 
 
@@ -110,12 +110,12 @@ def c07(G,tree_edge,out):
     print('{s} - c{sep}{te} = 0'.format(s=' + '.join(cs),sep=du.SEP,te=tree_edge),file=out)
 
 def c08(G,tree_edge,out):
-    print("pab{sep}{te} + pABa{sep}{te} + pABb{sep}{te} - pAB{sep}{te} - 2q{sep}{te}".format(sep=du.SEP,te=tree_edge),file=out)
+    print("pab{sep}{te} + pABa{sep}{te} + pABb{sep}{te} - pAB{sep}{te} - 2 q{sep}{te} = 0".format(sep=du.SEP,te=tree_edge),file=out)
 
 
 def summary_constraint(pathtype,predicate,G,tree_edge,out):
-    sm = ['r{ptype}{sep}{te}{sep}{v}'.format(te=tree_edge,ptype=pathtype,sep=du.SEP,v=data['type']) for v,data in G.nodes(data=True) if predicate(data['type'])]
-    print("{s} - p{ptype}{sep}{te}".format(s=' + '.join(sm),ptype=pathtype,sep=du.SEP,te=tree_edge),file=out)
+    sm = ['r{ptype}{sep}{te}{sep}{v}'.format(te=tree_edge,ptype=pathtype,sep=du.SEP,v=v) for v,data in G.nodes(data=True) if predicate(data['type'])]
+    print("{s} - p{ptype}{sep}{te} = 0".format(s=' + '.join(sm),ptype=pathtype,sep=du.SEP,te=tree_edge),file=out)
     
 c09 = lambda G,tree_edge,out: summary_constraint('ab',lambda x: x!=du.VTYPE_CAP,G,tree_edge,out)
 c10 = lambda G,tree_edge,out: summary_constraint('Ab',lambda x: x==du.VTYPE_CAP,G,tree_edge,out)    
@@ -126,27 +126,29 @@ c13 = lambda G,tree_edge,out: summary_constraint('Bb',lambda x: x==du.VTYPE_CAP,
 def c14toc17(G,tree_edge,out):
     for indel in "ab":
         for tel in "AB":
-            print("pAB{ind}{sep}{te} - p{tel}{ind}{sep}{te}".format(ind=indel,tel=tel,te=tree_edge,sep=du.SEP),file=out)
+            print("pAB{ind}{sep}{te} - p{tel}{ind}{sep}{te} >= 0".format(ind=indel,tel=tel,te=tree_edge,sep=du.SEP),file=out)
 c18 = lambda G,tree_edge,out: summary_constraint('AB',lambda x: x==du.VTYPE_CAP,G,tree_edge,out)
 
 def c19(G,tree_edge,out):
-    sm = ['rs{sep}{te}{sep}{v}'.format(te=tree_edge,sep=du.SEP,v=data['type']) for v,data in G.nodes(data=True) if data['type'] != du.VTYPE_CAP]
-    print("{s} - s{sep}{te}".format(s=' + '.join(sm),sep=du.SEP,te=tree_edge),file=out)
+    sm = ['rs{sep}{te}{sep}{v}'.format(te=tree_edge,sep=du.SEP,v=v) for v,data in G.nodes(data=True) if data['type'] != du.VTYPE_CAP]
+    print("{s} - s{sep}{te} = 0".format(s=' + '.join(sm),sep=du.SEP,te=tree_edge),file=out)
 
 def c20(G,tree_edge,out):
-    for v in G.nodes():
+    for v,data in G.nodes(data=True):
+        if data['type']==du.VTYPE_CAP:
+            continue
         ees = [G[v][u][i]['id'] for u in G[v] for i in G[v][u] if G[v][u][i]['type'] in [du.ETYPE_EXTR,du.ETYPE_ID]]
         sm = ' + '.join(['x{sep}{te}{sep}{e}'.format(sep=du.SEP,te=tree_edge,e=e) for e in ees])
-        print("{sm} - g{sep}{v} = 0".format(sm=sm,sep=du.SEP,v=v),file=out)
+        print("{sm} - g{sep}{anc} = 0".format(sm=sm,sep=du.SEP,anc = G.nodes[v]['anc']),file=out)
 
 def c21(G,tree_edge,out):
     for u,v,data in G.edges(data=True):
         if data['type'] == du.ETYPE_ADJ:
-            print("a{sep}{e} - x{sep}{te}{sep}{e} = 0".format(sep=du.SEP,te=tree_edge,e=data['id']),file=out)
+            print("a{sep}{anc} - x{sep}{te}{sep}{e} = 0".format(sep=du.SEP,te=tree_edge,e=data['id'],anc=data['anc']),file=out)
 
 def c22(G,tree_edge,out):
-    for v in G.nodes():
-        print("z{sep}{te}{sep}{v} - g{sep}{v} <= 0".format(sep=du.SEP,te=tree_edge,v=v),file=out)
+    for v,data in G.nodes(data=True):
+        print("z{sep}{te}{sep}{v} - g{sep}{anc} <= 0".format(sep=du.SEP,te=tree_edge,v=v,anc=data['anc']),file=out)
 
 
 def loose_constraints(G,tree_edge,out):
@@ -158,10 +160,13 @@ def c23(sibs,tree_edge,out):
         print("x{sep}{te}{sep}{eid} - x{sep}{te}{sep}{did} = 0".format(sep=du.SEP,eid=eid,did=did,te=tree_edge),file=out)
 
 def c24(G,tree_edge,out):
-    for e,data in G.edges(data=True):
+    for u_,v_,data in G.edges(data=True):
         eid = data['id']
-        for u,v in [e,e[::-1]]:
-            print("y{sep}{te}{sep}{v} - {u} x{sep}{te}{sep}{eid} - y{sep}{te}{sep}{u} >= {u}".format(sep=du.SEP,eid=eid,v=v,u=u,te=tree_edge),file=out)
+        for u,v in [(u_,v_),(v_,u_)]:
+            if data['type']==du.ETYPE_ID:
+                print("y{sep}{te}{sep}{u} + {u} x{sep}{te}{sep}{eid} >= {u}".format(sep=du.SEP,eid=eid,u=u,te=tree_edge),file=out)
+            else:
+                print("y{sep}{te}{sep}{v} - {u} x{sep}{te}{sep}{eid} - y{sep}{te}{sep}{u} >= -{u}".format(sep=du.SEP,eid=eid,v=v,u=u,te=tree_edge),file=out)
 
 def c25(G,tree_edge,out):
     for v in G.nodes():
@@ -228,7 +233,7 @@ def c28(G,tree_edge,genomes,out):
 
 def c29(G,tree_edge,genomes,out):
     for x, y, data in G.edges(data=True):
-        if data[type] != du.ETYPE_ID or get_genome(G,x) != genomes[0]:
+        if data['type'] != du.ETYPE_ID or get_genome(G,x) != genomes[0]:
             continue
         for v in [x,y]:
             print("rab{sep}{te}{sep}{v} - x{sep}{te}{sep}{e} <= 0".format(
@@ -593,7 +598,6 @@ def domains(graphs, out):
         for v,data in G.nodes(data=True):
             if data['type']==du.VTYPE_CAP:
                 continue
-            print("0 <= w{sep}{te}{sep}{v} <= inf".format(sep=du.SEP,te=te,v=v),file=out)
             global_generals.add("g{sep}{v}".format(sep=du.SEP,v=v))
     for gg in global_generals:
         print("0 <= {gg} <= inf".format(gg=gg),file=out)
@@ -638,8 +642,8 @@ def variables(graphs, out):
                 'and {}').format(child, parent))
         genomes = [child,parent]
         for v,data in G.nodes(data=True):
-            print("z{sep}{v}".format(sep=du.SEP,v=v),file=out)
-            print("l{sep}{v}".format(sep=du.SEP,v=v),file=out)
+            print("z{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
+            print("l{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
             if data['type']!=du.VTYPE_CAP:
                 print("rab{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
                 print("d{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
@@ -782,11 +786,11 @@ if __name__ == '__main__':
     weights = candidateAdjacencies['weights']
     penalities = candidateAdjacencies['penalities']
 
-    ext2id = du.IdManager()
+    global_ext2id = du.IdManager(0,is_cap=lambda x: False)
     LOG.info(('constructing relational diagrams for all {} branches of ' + \
             'the tree').format(len(speciesTree)))
     relationalDiagrams = du.constructRelationalDiagrams(speciesTree,
-            adjacencies, telomeres, weights, penalities, genes, ext2id,
+            adjacencies, telomeres, weights, penalities, genes, global_ext2id,
             sep=args.separator)
 
     graphs = relationalDiagrams['graphs']
@@ -828,7 +832,9 @@ if __name__ == '__main__':
     siblings = relationalDiagrams['siblings']
 
     for G in graphs.values():
-        du.checkGraph(G)
+        du.checkGraph(G,cf=True)
+        #if 7 in G:
+        #    LOG.info(G[7])
 
     #circ_singletons = dict()
     #for ident, G in graphs.items():
@@ -854,7 +860,7 @@ if __name__ == '__main__':
     if args.output_id_mapping:
         LOG.info('writing ID-to-gene extremity mapping to {}'.format(
             args.output_id_mapping.name))
-        idMap = ext2id.getMap()
+        idMap = global_ext2id.getMap()
         out_table = list()
         for k, v in idMap.items():
             out_table.append((str(v), k[0], k[1][0], k[1][1]))

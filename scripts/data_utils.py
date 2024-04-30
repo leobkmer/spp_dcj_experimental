@@ -8,6 +8,7 @@ from sys import stderr
 import random
 import csv
 import re
+import sys
 
 
 # import from third-party packages
@@ -530,13 +531,14 @@ def _constructRDAdjacencyEdges(G, gName, adjacencies, candidateWeights,
 
         # ensure that each edge has a unique identifier
         edge_id = '{}_{}'.format(*sorted((id1, id2)))
+        anc = '{}_{}'.format(*sorted((G.nodes[id1]['anc'],G.nodes[id2]['anc'])))
         weight = candidateWeights.get((ext1, ext2), 0)
         penality = candidatePenalities.get((ext1, ext2), None)
         if penality is None:
-            G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight)
+            G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight,anc=anc)
         else:
             G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight,
-                    penality=penality)
+                    penality=penality,anc=anc)
 
 
 def _constructNaiveRDCapping(G, gName1, gName2, extremityIdManager):
@@ -714,7 +716,7 @@ def _find_end_pairs(G, gName1, gName2):
     return {(u, v, Arun, Brun) for (u, v), (Arun, Brun) in res.items()}
 
 
-def checkGraph(G):
+def checkGraph(G,cf=False):
 
     for u, v, in G.edges():
         if u == v:
@@ -744,7 +746,7 @@ def checkGraph(G):
         if not hasAdj:
             raise Exception(f'node {v} {G.nodes[v]["id"]} is not incident ' + \
                     'to an adjacency edge')
-        if not hasExtrOrId:
+        if not hasExtrOrId and (not vdata['type']==VTYPE_CAP or not cf):
             raise Exception(f'node {v} {G.nodes[v]["id"]} is not incident ' + \
                     'to an extremity or indel edge')
 
@@ -843,17 +845,17 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
     return siblings
 
 
-def _constructRDNodes(G, gName, genes, extremityIdManager):
+def _constructRDNodes(G, gName, genes, globalIdManager,localIdManager):
     ''' create gene extremity nodes for the genome named <gName> '''
     for extr in (EXTR_HEAD, EXTR_TAIL):
-        G.add_nodes_from(((extremityIdManager.getId((gName, (g, extr))),
-            dict(id=((gName, (g, extr))), type=VTYPE_EXTR)) for g in genes))
+        G.add_nodes_from(((localIdManager.getId((gName, (g, extr))),
+            dict(id=((gName, (g, extr))), type=VTYPE_EXTR,anc=globalIdManager.getId((gName, (g, extr))))) for g in genes))
 
 
-def _constructRDTelomeres(G, gName, telomeres, extremityIdManager):
+def _constructRDTelomeres(G, gName, telomeres, extremityIdManager,localIdManager):
     ''' create telomereic extremity nodes for the genome named <gName> '''
-    G.add_nodes_from(((extremityIdManager.getId((gName, (t, 'o'))),
-        dict(id=((gName, (t, 'o'))), type=VTYPE_CAP)) for t in telomeres))
+    G.add_nodes_from(((localIdManager.getId((gName, (t, 'o'))),
+        dict(id=((gName, (t, 'o'))), type=VTYPE_CAP,anc=extremityIdManager.getId((gName, (t, 'o'))))) for t in telomeres))
 
 
 def hasIncidentAdjacencyEdges(G, v):
@@ -885,27 +887,29 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
 
     for child, parent in tree:
         G = nx.MultiGraph()
-
+        max_tels = 2*sum([len(genes[gnm]) for gnm in [child,parent]])
+        localIdManager = IdManager(max_tels)
         for gName in (child, parent):
-            _constructRDNodes(G, gName, genes[gName], extremityIdManager)
+            _constructRDNodes(G, gName, genes[gName], extremityIdManager,localIdManager)
+            #print(G.nodes(data=True),file=sys.stderr)
             _constructRDTelomeres(G, gName, candidateTelomeres[gName],
-                                  extremityIdManager)
+                                  extremityIdManager,localIdManager)
             _constructRDAdjacencyEdges(G, gName, candidateAdjacencies[gName],
-                    candidateWeights, candidatePenalities, extremityIdManager)
+                    candidateWeights, candidatePenalities, localIdManager)
 
         fam2genes1 = mapFamiliesToGenes(genes[child], sep=sep)
         fam2genes2 = mapFamiliesToGenes(genes[parent], sep=sep)
         siblings   = _constructRDExtremityEdges(G, child, parent, genes,
-                fam2genes1, fam2genes2, extremityIdManager)
-
+                fam2genes1, fam2genes2, localIdManager)
+        
         res['graphs'][(child, parent)] = G
         res['siblings'][(child, parent)] = siblings
 
 
     # create caps at last, assigning them the highest IDs
-    for child, parent in tree:
-        G = res['graphs'][(child, parent)]
-        _constructRDCapping(G, child, parent, extremityIdManager)
+    #for child, parent in tree:
+    #    G = res['graphs'][(child, parent)]
+    #    _constructRDCapping(G, child, parent, extremityIdManager)
 #        _constructNaiveRDCapping(G, child, parent, extremityIdManager)
         # remove caps from the graph that are not saturated by two edges
 #        for v, d in tuple(G.degree()):
@@ -940,20 +944,30 @@ def writeAdjacencies(adjacenciesList, weightsDict, out):
 
 class IdManager(object):
 
-    def __init__(self):
-        self.__count = 1
+    def __init__(self,cap_limit,is_cap = lambda x : x[1][1]=='o'):
+        self.__count_caps = 1
+        self.__count_ext = cap_limit+1
+        self.__cap_limit = cap_limit
         self.__table = dict()
-        self.__ary = list()
+        self.__reverse = dict()
+        self.__is_cap = is_cap
 
     def getId(self, obj):
         if obj not in self.__table:
-            self.__table[obj] = self.__count
-            self.__ary.append(obj)
-            self.__count += 1
+            if self.__is_cap(obj):
+                if self.__count_caps + 1 > self.__cap_limit:
+                    raise AssertionError("Caps have overflowed.")
+                self.__table[obj] = self.__count_caps
+                self.__reverse[self.__count_caps] = obj
+                self.__count_caps += 1
+            else:
+                self.__table[obj] = self.__count_ext
+                self.__reverse[self.__count_ext] = obj
+                self.__count_ext += 1
         return self.__table[obj]
 
     def getObj(self, id_):
-        return self.__ary[id_-1]
+        return self.__reverse[id_-1]
 
     def getMap(self):
         return dict(self.__table.items())
