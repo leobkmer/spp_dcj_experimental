@@ -32,7 +32,7 @@ LOG.setLevel(logging.DEBUG)
 #
 
 def objective(graphs, alpha, out):
-    out.write('maximize ')
+    out.write('minimize ')
     terms = ["{ialph} w{sep}{te} + {alph} f{sep}{te}".format(
         alph=alpha,ialph=1-alpha,sep=du.SEP,te=tree_edge)
         for tree_edge, _ in enumerate(sorted(graphs.items()))]
@@ -73,6 +73,8 @@ def get_gene_extremities(G):
 #TODO: Integrate multiplicities!
 def c01(G,out):
     for v,data in G.nodes(data=True):
+        if data['type']==du.VTYPE_CAP:
+            continue
         print("g{sep}{v} = 1".format(sep=du.SEP,v=data['anc']),file=out)
 
 
@@ -90,7 +92,7 @@ def c03(G,out):
 
 
 def global_constraints(G,out):
-    for c in [c02,c03]:#[c01,c02,c03]:
+    for c in [c01,c02,c03]:
         c(G,out)
 
 def c04(G,tree_edge,out):
@@ -102,7 +104,7 @@ def c05(G,tree_edge,out):
     print("n{sep}{te} - c{sep}{te} + q{sep}{te} + s{sep}{te} - f{sep}{te} = 0".format(sep=du.SEP,te=tree_edge),file=out)
 
 def c06(G,tree_edge,out):
-    xs = ['0.5 x{sep}{te}{sep}{e}'.format(te=tree_edge,sep=du.SEP,e=data['id']) for u,v,data in G.edges(data=True) if data['type']==du.ETYPE_ADJ]
+    xs = ['0.5 x{sep}{te}{sep}{e}'.format(te=tree_edge,sep=du.SEP,e=data['id']) for u,v,data in G.edges(data=True) if data['type']==du.ETYPE_EXTR]
     print('{s} - n{sep}{te} = 0'.format(s=' + '.join(xs),sep=du.SEP,te=tree_edge),file=out)
 
 def c07(G,tree_edge,out):
