@@ -1,38 +1,59 @@
-Academic license - for non-commercial use only - expires 2021-07-19
-Using license file /prj/tools/gurobi911/gurobi.lic
-Set parameter LogFile to value gurobi.log
+Set parameter Username
+Set parameter LogFile to value "gurobi.log"
+Using license file /home/leob/gurobi.lic
+Academic license - for non-commercial use only - expires 2025-04-26
 
-Gurobi Optimizer version 9.1.1 build v9.1.1rc0 (linux64)
-Copyright (c) 2020, Gurobi Optimization, LLC
+Gurobi Optimizer version 11.0.1 build v11.0.1rc0 (linux64 - "Debian GNU/Linux 12 (bookworm)")
+Copyright (c) 2024, Gurobi Optimization, LLC
 
 Read LP format model from file Example1.ilp
-Reading time = 0.00 seconds
-: 409 rows, 220 columns, 1169 nonzeros
-Thread count: 28 physical cores, 28 logical processors, using up to 28 threads
-Optimize a model with 409 rows, 220 columns and 1169 nonzeros
-Model fingerprint: 0xf9c71fb2
-Variable types: 0 continuous, 220 integer (185 binary)
+Reading time = 0.01 seconds
+: 1037 rows, 538 columns, 3108 nonzeros
+
+CPU model: Intel(R) Core(TM) i7-3667U CPU @ 2.00GHz, instruction set [SSE2|AVX]
+Thread count: 2 physical cores, 4 logical processors, using up to 4 threads
+
+Optimize a model with 1037 rows, 538 columns and 3108 nonzeros
+Model fingerprint: 0xff6e2700
+Variable types: 0 continuous, 538 integer (469 binary)
 Coefficient statistics:
-  Matrix range     [1e+00, 3e+01]
+  Matrix range     [1e+00, 5e+01]
   Objective range  [2e-01, 5e-01]
-  Bounds range     [1e+00, 3e+01]
-  RHS range        [1e+00, 3e+01]
-Presolve removed 356 rows and 190 columns
-Presolve time: 0.00s
-Presolved: 53 rows, 30 columns, 170 nonzeros
-Variable types: 0 continuous, 30 integer (26 binary)
-Found heuristic solution: objective 2.5000000
-Found heuristic solution: objective 3.0000000
+  Bounds range     [1e+00, 5e+01]
+  RHS range        [1e+00, 5e+01]
+Presolve removed 483 rows and 319 columns
+Presolve time: 0.02s
+Presolved: 554 rows, 219 columns, 1786 nonzeros
+Variable types: 0 continuous, 219 integer (175 binary)
+Found heuristic solution: objective 4.5000000
+Found heuristic solution: objective 5.0000000
 
-Root relaxation: cutoff, 0 iterations, 0.00 seconds
+Root relaxation: objective 6.000000e+00, 64 iterations, 0.00 seconds (0.00 work units)
 
-Explored 0 nodes (0 simplex iterations) in 0.00 seconds
-Thread count was 28 (of 28 available processors)
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
 
-Solution count 2: 3 2.5 
+     0     0    6.00000    0   29    5.00000    6.00000  20.0%     -    0s
+     0     0    5.42857    0   45    5.00000    5.42857  8.57%     -    0s
+     0     0    5.42857    0   43    5.00000    5.42857  8.57%     -    0s
+     0     0    5.40909    0   46    5.00000    5.40909  8.18%     -    0s
+     0     0    5.40909    0   42    5.00000    5.40909  8.18%     -    0s
+
+Cutting planes:
+  Learned: 5
+  Implied bound: 2
+  Clique: 1
+  MIR: 2
+  RLT: 5
+  Relax-and-lift: 1
+
+Explored 1 nodes (192 simplex iterations) in 0.07 seconds (0.02 work units)
+Thread count was 4 (of 4 available processors)
+
+Solution count 2: 5 4.5 
 
 Optimal solution found (tolerance 1.00e-04)
-Best objective 3.000000000000e+00, best bound 3.000000000000e+00, gap 0.0000%
+Best objective 5.000000000000e+00, best bound 5.000000000000e+00, gap 0.0000%
 
 Wrote result file 'Example.sol'
 
