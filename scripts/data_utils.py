@@ -9,6 +9,7 @@ import random
 import csv
 import re
 import sys
+import math
 
 
 # import from third-party packages
@@ -33,6 +34,8 @@ VTYPE_CAP       = 'telomere'
 
 ORIENT_NEGATIVE = '-'
 ORIENT_POSITIVE = '+'
+
+I_EPSILON=0.05
 
 #separator for ILP variables
 SEP='_'
@@ -409,6 +412,9 @@ def adjacencies2unimog(adjacenciesList, matchingList):
     return genomes
 
 
+def parse_edge_id(r):
+    return tuple(r.split('_'))
+
 def parseSOL(data, idMap):
     """ SOL file parser """
 
@@ -432,54 +438,41 @@ def parseSOL(data, idMap):
         var_, val = line.split()
         vars_[var_] = float(val)
         isEmpty = False
-        m = PAT_MATCHED_EDGE.match(line)
-        if m:
-            id1, id2, suf = m.groups()
+    #collect set adjacencies
+    for var_,val in vars_:
+        if math.abs(val - 1) > I_EPSILON:
+            continue
+        if var_.split(SEP)[0]=='a':
+            entries = var_.split(SEP)
+            #format aSEPedge
+            rest = SEP.join(entries[1::])
+            id1, id2, _ = parse_edge_id(rest)
             ext1 = idMap[id1]
             ext2 = idMap[id2]
-            if not suf:
-                if ext1[0] == ext2[0]:
-                    # edge is an adjacency
-                    if ext1[0] not in adjacenciesList:
-                        adjacenciesList[ext1[0]] = list()
-                    adj = (ext1[1:], ext2[1:])
-                    adjacenciesList[ext1[0]].append(adj)
-                    weightsDict[adj] = 0.0
-                else:
-                    # edge is an extremity edge (matching edge) 
-#                    for ext in (ext1, ext2):
-#                        if ext in matchingDict:
-#                            print(f'Fatal: extremity {ext} already matched to ' + \
-#                                    f'some other extremity ({matchingDict[ext]})',
-#                                    file = stderr)
-#                            exit(1)
-                    e = ext1 < ext2 and (ext1[:2], ext2[:2]) or (ext2[:2],
+            if ext1[0] not in adjacenciesList:
+                adjacenciesList[ext1[0]] = list()
+            adj = (ext1[1:], ext2[1:])
+            adjacenciesList[ext1[0]].append(adj)
+            weightsDict[adj] = 0.0
+        elif var_.split(SEP)[0]=='x' and not var_.split('_')[-1]=='adj':
+            #edge is either indel or match
+            entries = var_.split(SEP)
+            #format xSEPteSEPedge
+            rest = SEP.join(entries[2::])
+            id1, id2, etype = parse_edge_id(rest)
+            rest = var_[len('a')+len(SEP)::]
+            ext1 = idMap[id1]
+            ext2 = idMap[id2]
+            if etype=='ext':
+                e = ext1 < ext2 and (ext1[:2], ext2[:2]) or (ext2[:2],
                             ext1[:2])
-                    matchingList.add(e)
-                    matchingDict[ext1] = ext2
-                    matchingDict[ext1] = ext1
-            elif suf.startswith('_'):
+                matchingList.add(e)
+                matchingDict[ext1] = ext2
+                matchingDict[ext1] = ext1
+            elif etype=='ind':
                 if ext1[0] not in indelList:
                     indelList[ext1[0]] = list()
                 indelList[ext1[0]].append((ext1[1:], ext2[1:]))
-    if isEmpty:
-        print('Fatal: data is empty', file=stderr)
-        exit(1)
-
-    # check if each extremity of a gene has a match
-#    for matching in matchingDict.items():
-#        for ext1 in matching:
-#            if not ext1[1].startswith('t'):
-#                ext2 = ext1[:2] + (ext1[2] == EXTR_HEAD and EXTR_TAIL or
-#                        EXTR_HEAD,)
-#                if ext2 not in matchingDict:
-#                    print(f'Fatal: missing matching of {ext2}', file = stderr)
-#                    exit(1)
-#    for gName, adjs in in adjacenciesList:
-#        for g, _ in adjs:
-#            if (gName, g) not in matchingDict:
-#                    print(f'Fatal: missing matching for gene {ext2}', file = stderr)
-#                    exit(1)
     return adjacenciesList, indelList, weightsDict, sorted(matchingList), \
             obj_value, vars_
 
@@ -530,8 +523,8 @@ def _constructRDAdjacencyEdges(G, gName, adjacencies, candidateWeights,
         id2 = extremityIdManager.getId((gName, ext2))
 
         # ensure that each edge has a unique identifier
-        edge_id = '{}_{}'.format(*sorted((id1, id2)))
-        anc = '{}_{}'.format(*sorted((G.nodes[id1]['anc'],G.nodes[id2]['anc'])))
+        edge_id = '{}_{}_adj'.format(*sorted((G.nodes[id1]['anc'], G.nodes[id2]['anc'])))
+        anc = '{}_{}_adj'.format(*sorted((G.nodes[id1]['anc'],G.nodes[id2]['anc'])))
         weight = candidateWeights.get((ext1, ext2), 0)
         penality = candidatePenalities.get((ext1, ext2), None)
         if penality is None:
@@ -819,8 +812,9 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
             id2h = extremityIdManager.getId((gName2, (gene2, EXTR_HEAD)))
             id2t = extremityIdManager.getId((gName2, (gene2, EXTR_TAIL)))
 
-            edge_idh = '{}_{}'.format(*sorted((id1h, id2h)))
-            edge_idt = '{}_{}'.format(*sorted((id1t, id2t)))
+            edge_idh = '{}_{}_ext'.format(*sorted((G.nodes[id1h]['anc'], G.nodes[id2h]['anc'])))
+            edge_idt = '{}_{}_ext'.format(*sorted((G.nodes[id1t]['anc'], G.nodes[id2t]['anc'])))
+
 
             G.add_edge(id1h, id2h, type=ETYPE_EXTR, id=edge_idh)
             G.add_edge(id1t, id2t, type=ETYPE_EXTR, id=edge_idt)
@@ -835,11 +829,12 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
                 for gene in fam2genes[i][fam]:
                     idh = extremityIdManager.getId((gName, (gene, EXTR_HEAD)))
                     idt = extremityIdManager.getId((gName, (gene, EXTR_TAIL)))
+
                     # ensure that each edge has a unique identifier
-                    edge_id = '{}_{}'.format(*sorted((idh, idt), reverse=True))
-                    if G.has_edge(idh, idt):
-                        edge_id = '{}_{}'.format(*sorted((idh, idt),
-                            reverse=True))
+                    edge_id = '{}_{}_ind'.format(*sorted((G.nodes[idh]['anc'], G.nodes[idt]['anc'])))
+                    #if G.has_edge(idh, idt):
+                    #    edge_id = '{}_{}'.format(*sorted((idh, idt),
+                    #        reverse=True))
                     G.add_edge(idh, idt, type=ETYPE_ID, id=edge_id)
 
     return siblings
