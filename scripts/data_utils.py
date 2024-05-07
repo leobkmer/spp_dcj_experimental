@@ -9,7 +9,7 @@ import random
 import csv
 import re
 import sys
-import math
+
 
 
 # import from third-party packages
@@ -439,8 +439,8 @@ def parseSOL(data, idMap):
         vars_[var_] = float(val)
         isEmpty = False
     #collect set adjacencies
-    for var_,val in vars_:
-        if math.abs(val - 1) > I_EPSILON:
+    for var_,val in vars_.items():
+        if abs(val - 1) > I_EPSILON:
             continue
         if var_.split(SEP)[0]=='a':
             entries = var_.split(SEP)

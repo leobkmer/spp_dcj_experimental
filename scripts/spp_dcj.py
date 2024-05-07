@@ -601,6 +601,7 @@ def domains(graphs, out):
             if data['type']==du.VTYPE_CAP:
                 continue
             global_generals.add("g{sep}{v}".format(sep=du.SEP,v=v))
+            print("0 <= y{sep}{te}{sep}{v} <= {v}".format(sep=du.SEP,te=te,v=v))
     for gg in global_generals:
         print("0 <= {gg} <= inf".format(gg=gg),file=out)
         
@@ -649,11 +650,13 @@ def variables(graphs, out):
             if data['type']!=du.VTYPE_CAP:
                 print("rab{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
                 print("d{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
+                print("rc{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
             else:
                 if get_genome(G,v) == genomes[0]:
                     print("rAB{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
                     print("rAa{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
                     print("rAb{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
+                    
                 else:
                     print("rBa{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
         for u,v,data in G.edges(data=True):

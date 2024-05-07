@@ -5,8 +5,8 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter as ADHF, File
 from sys import stdout, stderr, exit
 
 # import from third-party packages
-import os, locale
-locale.setlocale(locale.LC_ALL, 'en_US')
+import os#, locale
+#locale.setlocale(locale.LC_ALL, 'en_US')
 if not os.environ.get('DISPLAY', None):
     import matplotlib; matplotlib.use('Agg')
 from matplotlib import pylab as plt
