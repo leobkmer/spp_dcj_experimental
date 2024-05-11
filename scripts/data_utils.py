@@ -319,6 +319,7 @@ def unimog2adjacencies(genome):
 
     # ignore genome name
     _, chromosomes = genome
+    tels=0
     for chr_ in chromosomes:
         # set counter for first marker
         if chr_[1][0][1] not in occ:
@@ -326,7 +327,6 @@ def unimog2adjacencies(genome):
         occ[chr_[1][0][1]] += 1
 
         fst_occ = occ[chr_[1][0][1]]
-
         for i in range(len(chr_[1])-1):
             (o1, g1), (o2, g2) = chr_[1][i:i+2]
             if g2 not in occ:
@@ -341,8 +341,10 @@ def unimog2adjacencies(genome):
             res.append(((f'{g1}_{occ[g1]}', SIGN2EXT_1[o1]),
                 (f'{g2}_{fst_occ}', SIGN2EXT_2[o2])))
         elif chr_[0] == CHR_LINEAR:
-            res.append(((f'{g1}_{occ[g1]}', SIGN2EXT_1[o1]), ('t', EXTR_HEAD)))
-            res.append((('t', EXTR_HEAD), (f'{g2}_{fst_occ}', SIGN2EXT_2[o2])))
+            tels+=1
+            res.append(((f'{g1}_{occ[g1]}', SIGN2EXT_1[o1]), ('t_{}'.format(tels), EXTR_CAP)))
+            tels+=1
+            res.append((('t_{}'.format(tels), EXTR_CAP), (f'{g2}_{fst_occ}', SIGN2EXT_2[o2])))
 
     return res
 
@@ -710,7 +712,8 @@ def _find_end_pairs(G, gName1, gName2):
 
 
 def checkGraph(G,cf=False):
-
+    for v,data in G.nodes(data=True):
+        print(v,",".join(["{}={}".format(k,x) for k,x in data.items()]),file=sys.stderr)
     for u, v, in G.edges():
         if u == v:
             raise Exception(f'node {v} is connected to itself')
@@ -839,12 +842,13 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
 
     return siblings
 
-
+TELOMERE_GENE='t'
 def _constructRDNodes(G, gName, genes, globalIdManager,localIdManager):
     ''' create gene extremity nodes for the genome named <gName> '''
+    
     for extr in (EXTR_HEAD, EXTR_TAIL):
         G.add_nodes_from(((localIdManager.getId((gName, (g, extr))),
-            dict(id=((gName, (g, extr))), type=VTYPE_EXTR,anc=globalIdManager.getId((gName, (g, extr))))) for g in genes))
+            dict(id=((gName, (g, extr))), type=VTYPE_EXTR,anc=globalIdManager.getId((gName, (g, extr))))) for g in genes)) #if g!=TELOMERE_GENE))
 
 
 def _constructRDTelomeres(G, gName, telomeres, extremityIdManager,localIdManager):
@@ -886,7 +890,6 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
         localIdManager = IdManager(max_tels)
         for gName in (child, parent):
             _constructRDNodes(G, gName, genes[gName], extremityIdManager,localIdManager)
-            #print(G.nodes(data=True),file=sys.stderr)
             _constructRDTelomeres(G, gName, candidateTelomeres[gName],
                                   extremityIdManager,localIdManager)
             _constructRDAdjacencyEdges(G, gName, candidateAdjacencies[gName],
