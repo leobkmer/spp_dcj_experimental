@@ -1,7 +1,7 @@
 
 SCRIPT_DIR = '../../scripts'
 
-TESTS = ['test%02d'%d for d in range(1,14)]
+TESTS = ['test%02d'%d for d in range(1,17)]
 
 rule all_test:
     input:
