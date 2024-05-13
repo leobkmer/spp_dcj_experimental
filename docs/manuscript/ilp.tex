@@ -1,55 +1,55 @@
-\todoLIn{Remove idx stuff and bring back $v_i$ notation}
+%\todoLIn{Remove idx stuff and bring back $v_i$ notation} --doneLB
 
 \begin{algorithm}[tbh]
 \caption{Capping-free Small Parsimony}
 \textbf{Objective}
 
 \newcommand{\idx}{\texttt{ix}}
-\hspace{0.5cm}\texttt{Maximize} 
+\hspace{0.5cm}\texttt{Minimize} 
 \begin{equation*}
-    \sum_{\edt \in\tree} (1-\alpha) \ilpvar{w}_\edt + \alpha \ilpvar{f}_\edt 
+    \sum_{\edt \in\tree} (\alpha-1) \ilpvar{w}_\edt + \alpha \ilpvar{f}_\edt 
 \end{equation*}
 
-\levelsep{Local level}
+\levelsep{Global level}
 
-\textbf{For each ancestral genome $\X$ of phylogeny $\tree$ with $\ggraph(\X) = (\vertices, \edges, \family)$}
+\textbf{For each genome $\X$ of phylogeny $\tree$ with extremities $\extremities(\X)$, markers $\markers(\X)$ and adjacencies $\adjacencies(\X)$.}
 
 \begin{constraints}
 \begin{tabular}{lcl}
-    \cns \label{c:cn} & $\minmulti_\X(i) \leq \sum_{v \in F_i} \ilpvar{g}_v \leq \maxmulti_\X(i)$ & $\forall i \in \{\family(u) \mid u \in V\}$\\
-    \cns \label{c:cn_consistent}& $\ilpvar{g}_v = \ilpvar{g}_u$ & for each pair of nodes $(u, v)$ corresponding to head/tail extremity of the same gene\todoDIn{improve}\\
+    \cns \label{c:cn} & $\ilpvar{g}_\nu = 1$& $\nu$ not a pseudo-cap\\
+    \cns \label{c:cn_consistent}& $\ilpvar{g}_\nu = \ilpvar{g}_\mu$ & with $(\nu,\mu) \in \markers(\X)$\\% \in \markers (\X)$\\
 %    \cns & $g_{v} = x^{\X\A}_{v} = x^{\X\B}_{v} = x^{\X\C}_{v}$& $\forall v \in V$ and genomes $\A$, $\B$, $\C$ adjacent to $\X$ in $\Gamma$\\
-    \cns \label{c:genome}& $\sum_{uv \in \edges} \ilpvar{a}_{uv} = \ilpvar{g}_u$ & $\forall u \in \vertices$\\
+    \cns \label{c:genome}& $\sum_{\nu\mu \in \adjacencies (\X)} \ilpvar{a}_{\nu\mu} = \ilpvar{g}_\mu$ & $\forall \mu \in \extremities (\X)$\\
 \end{tabular}
 \end{constraints}
 
 \medskip
-\levelsep{Global level}
+\levelsep{Local level}
 
 \textbf{For each branch $(\A,\B):=\edt\in \tree$ with $\pcmrd(\A,\B) = (\vertices\cup\pseudocaps, \adjacencyedges \cup \extremityedges \cup \selfedges)$:}
 
 \begin{constraints}
 \begin{tabular}{lcl}
 
-    \cns & $\ilpvar{w}_\edt = \sum_{e \in \adjacencyedges} \w(e) x_e$\\
+    \cns\label{c:beginform} & $\ilpvar{w}_\edt = \sum_{e \in \adjacencyedges} \w(e) x_e$\\
 	\cns & $\ilpvar{f}_\edt = \ilpvar{n}_\edt - \ilpvar{c}_\edt + \ilpvar{q}_\edt + \ilpvar{s}_\edt$\\
     \cns & $\ilpvar{n}_\edt = \frac{1}{2} \sum_{e \in \extremityedges} \ilpvar{x}_{e}$\\
     \cns & $\ilpvar{c}_\edt = \sum_{v\in \vertices} \ilpvar{r}^c_v$\\
-    \cns & $2\ilpvar{q}_\edt \geq \ilpvar{p}^{a\trans b}+ \ilpvar{p}^{ABa} + \ilpvar{p}^{ABb} - \ilpvar{p}^{A\trans B} $\\
-    \cns & $\ilpvar{p}^{a\trans b} = \sum_{v \in \vertices}\ilpvar{r}^{a\trans b}_v$\\
-    \cns & $\ilpvar{p}^{A\trans b} = \sum_{v \in \pseudocaps^A} \ilpvar{r}^{A\trans b}_e$\\
-    \cns & $\ilpvar{p}^{B\trans a} = \sum_{v\in \pseudocaps^B} \ilpvar{r}^{B\trans a}_e$\\
-    \cns & $\ilpvar{p}^{A\cis a} = \sum_{v \in \pseudocaps^A} \ilpvar{r}^{A\cis a}_e$\\
-    \cns & $\ilpvar{p}^{B\cis b} = \sum_{e \in \pseudocaps^B} \ilpvar{r}^{B\cis b}_e$\\
-    \cns & $\ilpvar{p}^{ABa} \geq p^{B\trans a}$\\
-    \cns & $\ilpvar{p}^{ABa} \geq p^{A\cis a}$\\
-    \cns & $\ilpvar{p}^{ABb} \geq p^{B\cis b}$\\
-    \cns & $\ilpvar{p}^{ABb} \geq p^{A\trans b}$\\
-    \cns & $\ilpvar{p}^{A\trans B} = \sum_{v\in \pseudocaps^A} \ilpvar{r}^{A\trans B}_v$\\
+    \cns\label{c:endform} & $2\ilpvar{q}_\edt \geq \ilpvar{p}^{a\trans b}_\edt+ \ilpvar{p}^{ABa}_\edt + \ilpvar{p}^{ABb}_\edt - \ilpvar{p}^{A\trans B}_\edt $\\
+    \cns\label{c:beginsum} & $\ilpvar{p}^{a\trans b}_\edt = \sum_{v \in \vertices}\ilpvar{r}^{a\trans b}_v$\\
+    \cns & $\ilpvar{p}^{A\trans b}_\edt = \sum_{v \in \pseudocaps^A} \ilpvar{r}^{A\trans b}_e$\\
+    \cns & $\ilpvar{p}^{B\trans a}_\edt = \sum_{v\in \pseudocaps^B} \ilpvar{r}^{B\trans a}_e$\\
+    \cns & $\ilpvar{p}^{A\cis a}_\edt = \sum_{v \in \pseudocaps^A} \ilpvar{r}^{A\cis a}_e$\\
+    \cns\label{c:endsum} & $\ilpvar{p}^{B\cis b}_\edt = \sum_{e \in \pseudocaps^B} \ilpvar{r}^{B\cis b}_e$\\
+    \cns\label{c:begingeq} & $\ilpvar{p}^{ABa}_\edt \geq p^{B\trans a}_\edt$\\
+    \cns & $\ilpvar{p}^{ABa}_\edt \geq p^{A\cis a}_\edt$\\
+    \cns & $\ilpvar{p}^{ABb}_\edt \geq p^{B\cis b}_\edt$\\
+    \cns\label{c:endgeq} & $\ilpvar{p}^{ABb}_\edt \geq p^{A\trans b}_\edt$\\
+    \cns\label{c:outsum} & $\ilpvar{p}^{A\trans B}_\edt = \sum_{v\in \pseudocaps^A} \ilpvar{r}^{A\trans B}_v$\\
     \cns & $\ilpvar{s}_\edt = \sum_{v\in\vertices} \ilpvar{r}^{s}_{v}$ \\
-    \cns & $\sum_{uv\in E_{ext} \cup E_{id} } \ilpvar{x}_{uv}= \ilpvar{g}_{\map(u)}$ & $\forall u\in \vertices$  \\
-    \cns & $\ilpvar{a}_{\map(u)\map(v)} = \ilpvar{x}_{uv}$ & $\forall uv \in \adjacencyedges$ \\
-    \cns & $\ilpvar{z}_{v} \leq \ilpvar{g}_{\map (v)}$ & $\forall v \in \vertices$ \\
+    \cns\label{c:inheritext} & $\sum_{uv\in E_{ext} \cup E_{id} } \ilpvar{x}_{uv}= \ilpvar{g}_{\map(u)}$ & $\forall u\in \vertices, u\notin \pseudocaps$  \\
+    \cns\label{c:inheritadj} & $\ilpvar{a}_{\map(u)\map(v)} = \ilpvar{x}_{uv}$ & $\forall uv \in \adjacencyedges$ \\
+    \cns\label{c:inheritz} & $\ilpvar{z}_{v} \leq \ilpvar{g}_{\map (v)}$ & $\forall v \in \vertices$ \\
     (\ref{ilp:slmstart}) to (\ref{ilp:slmend})& Shao-Lin-Moret~\cite{SHA-LIN-MOR-2015} constraints& -- see Table~\ref{tab:slmcons}\\
     (\ref{ilp:regvstart}) to (\ref{ilp:regvend})& Reporting for regular vertices& -- see Table~\ref{tab:regv}\\
     (\ref{ilp:pcstart}) to (\ref{ilp:pcend})& Reporting for \gls{pcaps}& -- see Table~\ref{tab:pcaps}\\
@@ -63,7 +63,6 @@
 
 \FloatBarrier
 
-\newcommand{\idx}{}
 \begin{table}
 
 \begin{constraints}
@@ -71,9 +70,9 @@
 \begin{tabular}{lcl}
 % \cns\label{ilp:slmstart} & $\sum_{uv\in \ades} x_{e} = 1 $ & $\forall u\in \vertices$\\
     \cns\label{ilp:slmstart} & $\ilpvar{x}_e=\ilpvar{x}_d$ & for all sibling edges $e,d$\\
-    \cns & $\ilpvar{y}_v + \idx{u}(1-\ilpvar{x}_{uv}) \geq \ilpvar{y}_u$ &$\forall uv \in \adjacencyedges\cup \extremityedges$\\
-         & $\idx{u}(1-\ilpvar{x}_{uv})\geq \ilpvar{y}_u$& $\forall uv \in \selfedges$\\
-    \cns\label{ilp:slmend} & $\idx{v}\ilpvar{z}_v \leq \ilpvar{y}_v$ & $\forall v\in \vertices\cup\pseudocaps $\\
+    \cns & $\ilpvar{y}_{v_i} + j(1-\ilpvar{x}_{u_jv_i}) \geq \ilpvar{y}_{u_j}$ &$\forall u_jv_i \in \adjacencyedges\cup \extremityedges$\\
+         & $j(1-\ilpvar{x}_{u_jv_i})\geq \ilpvar{y}_{u_j}$& $\forall u_jv_i \in \selfedges$\\
+    \cns\label{ilp:slmend} & $i\ilpvar{z}_{v_i} \leq \ilpvar{y}_{v_i}$ & $\forall v\in \vertices\cup\pseudocaps $\\
 \end{tabular}
 \end{constraints}
 
@@ -122,10 +121,10 @@
 
 \begin{table} \caption{Reporting circular singletons.\comment{(This is what we developed last week.)}}\label{tab:csreport}
 \begin{tabular}{lcl}
-     \cns\label{ilp:csstart} & $\ilpvar{d}_u+\ilpvar{d}_v + \ilpvar{x}_{uv}\leq 2$ & $\forall uv \in \adjacencyedges\cup \selfedges$  \\
+     \cns\label{ilp:csstart}\label{c:dflip} & $\ilpvar{d}_u+\ilpvar{d}_v + \ilpvar{x}_{uv}\leq 2$ & $\forall uv \in \adjacencyedges\cup \selfedges$  \\
      & $\ilpvar{d}_u + \ilpvar{d}_v - \ilpvar{x}_{uv} \geq 0$ & $\forall uv \in \adjacencyedges\cup \selfedges$  \\
-    \cns & $\ilpvar{w}_u = \ilpvar{w}_v$ & $\forall uv \in \selfedges$\\
-    \cns\label{ilp:csend} &$K (1- \ilpvar{x}_{uv} + \ilpvar{r}^{s}_{u} + \ilpvar{r}^{s}_{v}) + \ilpvar{w}_v \geq \ilpvar{w}_u + \ilpvar{d}_v - \ilpvar{d}_u $ & $\forall uv\in \adjacencyedges$\\
+    \cns\label{c:weq} & $\ilpvar{w}_u = \ilpvar{w}_v$ & $\forall uv \in \selfedges$\\
+    \cns\label{ilp:csend}\label{c:winc} &$K (1- \ilpvar{x}_{uv} + \ilpvar{r}^{s}_{u} + \ilpvar{r}^{s}_{v}) + \ilpvar{w}_v \geq \ilpvar{w}_u + \ilpvar{d}_v - \ilpvar{d}_u $ & $\forall uv\in \adjacencyedges$\\
      %& $K (1- x_{uv} + r^{s}_{v} + r^{s}_{u}) + w_u \geq w_v + d_u - d_v $ & $\forall uv\in \adjacencyedges$\\
 \end{tabular}
 \end{table}

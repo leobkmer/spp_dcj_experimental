@@ -127,20 +127,28 @@ $\minmulti_\X : \mathbb N \to \mathbb N$ reports the minimum multiplicity of a g
 
 
 The algorithm described in the following operates on two levels: 
-on the local level, a genome is derived from each GAG, constituting a set of linear or circular chromosomes. 
-On the global level, genomes are connected to each other along the branches of the phylogeny. Each branch gives rise to a pairwise comparison by means of the CFMRD. 
+on the global level, a genome is derived from each GAG, constituting a set of linear or circular chromosomes. 
+On the local level, genomes are connected to each other along the branches of the phylogeny. Each branch gives rise to a pairwise comparison by means of the CFMRD. 
 In doing so, the selection of adjacencies of a derived genome is propagated from across CFMRDs, thus ensuring global consistency. 
 
-\paragraph{Local level.} 
-Constraint \ref{c:cn} implements the user-provided copy number requirement. 
-In doing so, we define the set of tail extremities of markers from family $i$ in GAG $\ggraph(\X)$ as $F_i = \{ v \mid v \in V: \family(v) = i \text{ and } \extf(v) = \et\}$ and iterate over the associated $\ilpvar{g}$ variables of its members to bound the number of active markers within the given range. 
-The choice of counting tail extremities is arbitrary, however, the subsequent constraint (\ref{c:cn_consistent}) ensures that the assignment of $\ilpvar{g}$ variables for both extremities of a markers is consistent. 
-At last, Constraint \ref{c:genome} makes sure that a valid genome is derived from the GAG when solving the ILP, by enforcing that each extremity node of $\ggraph(\X)$ is incident to at most one adjacency edge. 
+\paragraph{Global level.} 
+The global level deals with the setting of adjacencies or telomeres of (ancestral) genomes. For each extremity or pseudo-cap $\nu$, we determine its presence or absence with a binary variable $\ilpvar{g}_\nu$. We require each extremity to occur, except for pseudo-caps (see Constraints~\ref{c:cn}, \ref{c:cn_consistent}). Each extremity is required to be part of exactly one (possibly telomeric) adjacency (\ref{c:genome}), which ensures a properly linearized genome.
 
-\paragraph{Global level.}
+\paragraph{Local level.}
+The local level deals with each branch of the tree separately, making use of the CFMRD of the genome pair. Since this part is entirely local to the branch in question, we presume that each vertex $v_i$ of the CFMRD has a unique identifier among all other CFMRDs, making all its variables globally unique. In order to limit the range of the general variable $y_{v_i}$, we also assign each vertex a rank $i$ that is local and only unique within the specific CFMRD.
 
-When comparing pairs of genomes within a CFMRD, we make use of a capping-free formulation for the computation of the pairwise DCJ indel distance~\cite{BOH-2023}.
+In order to compute decompositions of CFMRDs, we make use of a capping-free formulation for the computation of the pairwise DCJ indel distance~\cite{BOH-2024}. This formulation is based on the following distance formula,
 
+\begin{equation}
+	.... TODO.
+\end{equation}
+
+The formulation counts cycles $\ilpvar{c}_E$ as well as 6 different types of paths, namely $\ilpvar{p}^{AB},\ilpvar{p}^{Aa},\ilpvar{p}^{Ab},\ilpvar{p}^{ab},\ilpvar{p}^{Ba},\ilpvar{p}^{Bb}$, depending on whether a path ends in a pseudo-cap (uppercase letter) or a lava vertex (lowercase letter) and the genome in which it ends ($A,B$). Each counting variable $\ilpvar{p}^X$ is set by summing up binary report variables $\ilpvar{r}^X_v$ that are set to $1$ once per component on a specific vertex $v$ (see Constraints~\ref{c:beginsum} to~\ref{c:endsum} and~\ref{c:outsum}). These counters are then combined to the terms of the formula in Constraints~\ref{c:begingeq} to~\ref{c:endgeq} and \ref{c:beginform} to~\ref{c:endform}. The constraints for ensuring the reporting variables being set correctly can be found in Tables~\ref{tab:slmcons}, \ref{tab:regv} and~\ref{tab:pcaps}. For a complete description of the ILP the interested reader is referred to~\cite{BOH-2024}.
+
+We make only few major changes in our local section w.r.t.\ the ILP described in~\cite{BOH-2024}. Firstly, we determine whether an adjacency edge $e$ is set ($x_e=1$) by ``inheriting'' this value from the global setting (see~\ref{c:inheritadj}) of the corresponding adjacency. Secondly, we only allow vertices that are part of the genome ($\ilpvar{g}_v=1$) to contribute to the count of components that decrease the formula ($\ilpvar{z}_v=1$), see~\ref{c:inheritz}.
+Finally, due to the fact that ancestral genomes are degenerate, the number of possible circular singletons is much higher and listing all candidates might lead to a combinatorial explosion on some input data. We therefore use a new technique for counting circular singletons without listing all candidates, the constraints of which are listed in Table~\ref{tab:csreport}.
+
+A circular singleton manifests in the graph as a cycle of alternating adjacency and indel edges. The idea of the technique is to have a general integer variable $\ilpvar{w}$ that is required to increase at each adjacency edge in a walk of the cycle. There must then be one point in the walk in which it decreases again. Detecting this, one can then report a circular singleton. For this to work, the walk needs a direction. This is accomplished by annotating the vertices with a binary variable $\ilpvar{d}_v$ that ``flips'' across each pair of connected vertices (see~\ref{c:dflip}). We then require $\ilpvar{w}$ to be the same for vertices connected by an indel edge (see~\ref{c:weq}) and for it to increase by $1$ in the direction of the vertex that has $\ilpvar{d}_v=1$ (see~\ref{c:winc}). We require this except when vertices are not connected $(1-\ilpvar{x}_{uv})=0$ or when reporting a circular singleton ($\ilpvar{r}_v=1$ or $\ilpvar{r}_u=1$). In this case, the constraint is automatically fulfilled by adding the maximum length of circular singletons $K$ to the left hand side of the inequation.
 
 \todoL{Insert a description of the formulation here}
 
