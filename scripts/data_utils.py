@@ -51,8 +51,8 @@ TRUE_ADJ_WEIGHT  = 1
 
 DEFAULT_GENE_FAM_SEP = '_'
 
-PAT_ADJ = re.compile('^(\w+)@([0-9_]+)$')
-PAT_MATCHED_EDGE = re.compile('^x(\d+)_(\d+)([^0-9 \t]*) 1\s*$')
+PAT_ADJ = re.compile(r'^(\w+)@([0-9_]+)$')
+PAT_MATCHED_EDGE = re.compile(r'^x(\d+)_(\d+)([^0-9 \t]*) 1\s*$')
 
 
 def complement_id(v):
