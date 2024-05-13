@@ -388,7 +388,7 @@ def c36(G,tree_edge,out):
 
 def c37(G,tree_edge,out):
     for u,v,data in G.edges(data=True):
-        if data['type']==du.ETYPE_ADJ:
+        if data['type']!=du.ETYPE_ID:
             continue
         print("w{sep}{te}{sep}{u} - w{sep}{te}{sep}{v} = 0".format(
             sep=du.SEP,
@@ -443,10 +443,7 @@ def domains(graphs, out):
         for v,data in G.nodes(data=True):
             if data['type']==du.VTYPE_CAP:
                 continue
-            global_generals.add("g{sep}{v}".format(sep=du.SEP,v=v))
             print("0 <= y{sep}{te}{sep}{v} <= {v}".format(sep=du.SEP,te=te,v=v))
-    for gg in global_generals:
-        print("0 <= {gg} <= inf".format(gg=gg),file=out)
         
 
 
@@ -472,7 +469,7 @@ def variables(graphs, out):
             if data['type']==du.VTYPE_CAP:
                 continue
             print("w{sep}{te}{sep}{v}".format(sep=du.SEP,te=te,v=v),file=out)
-            global_generals.add("g{sep}{v}".format(sep=du.SEP,v=v))
+            
 
     for gg in global_generals:
         print(gg,file=out)
@@ -490,10 +487,12 @@ def variables(graphs, out):
         for v,data in G.nodes(data=True):
             print("z{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
             print("l{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
+            global_binaries.add("g{sep}{v}".format(sep=du.SEP,v=data['anc']))
             if data['type']!=du.VTYPE_CAP:
-                print("rab{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
+                if get_genome(G,v) == genomes[0]:
+                    print("rab{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
+                    print("rc{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
                 print("d{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
-                print("rc{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
                 print("rs{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
             else:
                 if get_genome(G,v) == genomes[0]:
