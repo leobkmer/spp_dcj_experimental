@@ -367,7 +367,7 @@ def pcap_reporting(G,tree_edge,genomes,out):
 
 def c36(G,tree_edge,out):
     for u,v,data in G.edges(data=True):
-        if du.VTYPE_CAP in [G.nodes[x]['type'] for x in [u,v]]:
+        if du.VTYPE_CAP in [G.nodes[x]['type'] for x in [u,v]] or not G.nodes[u].get('cscandidate',False):
             continue
         if data['type']==du.ETYPE_EXTR:
             continue
@@ -388,7 +388,7 @@ def c36(G,tree_edge,out):
 
 def c37(G,tree_edge,out):
     for u,v,data in G.edges(data=True):
-        if data['type']!=du.ETYPE_ID:
+        if data['type']!=du.ETYPE_ID or not G.nodes[u].get('cscandidate',False):
             continue
         print("w{sep}{te}{sep}{u} - w{sep}{te}{sep}{v} = 0".format(
             sep=du.SEP,
@@ -399,7 +399,7 @@ def c37(G,tree_edge,out):
 
 def c38(G,tree_edge,out,max_circ_len):
     for u_,v_,data in G.edges(data=True):
-        if data['type']!=du.ETYPE_ADJ or du.VTYPE_CAP in [G.nodes[x]['type'] for x in [u_,v_]]:
+        if data['type']!=du.ETYPE_ADJ or du.VTYPE_CAP in [G.nodes[x]['type'] for x in [u_,v_]] or not G.nodes[u_].get('cscandidate',False):
             continue
         for u,v in [(u_,v_),(v_,u_)]:
             print("w{sep}{te}{sep}{u} - w{sep}{te}{sep}{v} + d{sep}{te}{sep}{v} - d{sep}{te}{sep}{u} + {K} x{sep}{te}{sep}{e} - {K} rs{sep}{te}{sep}{u} - {K} rs{sep}{te}{sep}{v} <= {K}".format(
@@ -466,7 +466,7 @@ def variables(graphs, out):
         print("q{sep}{e}".format(sep=du.SEP,e=te))
         for v,data in G.nodes(data=True):
             print("y{sep}{te}{sep}{v}".format(sep=du.SEP,te=te,v=v),file=out)
-            if data['type']==du.VTYPE_CAP:
+            if data['type']==du.VTYPE_CAP or not G.nodes[v].get('cscandidate',False):
                 continue
             print("w{sep}{te}{sep}{v}".format(sep=du.SEP,te=te,v=v),file=out)
             
@@ -492,7 +492,8 @@ def variables(graphs, out):
                 if get_genome(G,v) == genomes[0]:
                     print("rab{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
                     print("rc{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
-                print("d{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
+                if G.nodes[v].get('cscandidate',False):
+                    print("d{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
                 print("rs{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
             else:
                 if get_genome(G,v) == genomes[0]:

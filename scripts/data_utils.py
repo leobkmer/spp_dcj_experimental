@@ -712,8 +712,8 @@ def _find_end_pairs(G, gName1, gName2):
 
 
 def checkGraph(G,cf=False):
-    for v,data in G.nodes(data=True):
-        print(v,",".join(["{}={}".format(k,x) for k,x in data.items()]),file=sys.stderr)
+    #for v,data in G.nodes(data=True):
+    #    print(v,",".join(["{}={}".format(k,x) for k,x in data.items()]),file=sys.stderr)
     for u, v, in G.edges():
         if u == v:
             raise Exception(f'node {v} is connected to itself')
@@ -783,6 +783,24 @@ def identifyCircularSingletonCandidates(G):
     return res
 
 
+def annotate_v_circ_sing(G):
+    #Find all vertices that could be in a circular singleton
+    F = G.copy()
+    rmedges= [(u,v,k) for u,v,k,etype in G.edges(keys=True,data='type') if etype==ETYPE_EXTR]
+    #print("rmedge: {}".format(rmedges),file=sys.stderr)
+    F.remove_edges_from(rmedges)
+
+    for c in nx.connected_components(F):
+        S=F.subgraph(c)
+        try:
+            nx.find_cycle(S)
+            #print("CS candidate: {}".format(c),file=sys.stderr)
+            for v in c:
+                G.nodes[v]['cscandidate']=True
+        except nx.NetworkXNoCycle:
+            pass
+
+
 def rotateToMin(path):
     m = min((path[i] for i in range(0, len(path), 2)))
     i = path.index(m)
@@ -829,6 +847,7 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
         for i, gName in enumerate((gName1, gName2)):
             if len(fam2genes[i].get(fam, ())) > len(fam2genes[i-1].get(fam, \
                     ())):
+                #print("Fam {} in genome {} overrepresented. Adding indel edges...".format(fam,gName),file=sys.stderr)
                 for gene in fam2genes[i][fam]:
                     idh = extremityIdManager.getId((gName, (gene, EXTR_HEAD)))
                     idt = extremityIdManager.getId((gName, (gene, EXTR_TAIL)))
@@ -902,6 +921,7 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
         
         res['graphs'][(child, parent)] = G
         res['siblings'][(child, parent)] = siblings
+        annotate_v_circ_sing(G)
 
 
     # create caps at last, assigning them the highest IDs
