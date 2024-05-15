@@ -622,6 +622,7 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--beta', default = -1, type=float,
             help='linear weighting factor for telomeric adjacencies;' + \
                     'if beta < 0, then beta is set to 1/2 * alpha')
+    parser.add_argument('--set-circ-sing-handling',choices=['adaptive','enumerate','barbershop'],default='adaptive')
     parser.add_argument('-s', '--separator', default = du.DEFAULT_GENE_FAM_SEP, \
             help='Separator of in gene names to split <family ID> and ' +
                     '<uniquifying identifier> in adjacencies file')
@@ -709,8 +710,16 @@ if __name__ == '__main__':
 
     circ_singletons = dict()
     for ident, G in graphs.items():
-        max_tolerable = len([u for u in G.nodes() if G.nodes[u].get('cscandidate',False)])
-        if max_tolerable > 0:
+        if args.set_circ_sing_handling=='adaptive':
+            max_tolerable = len([u for u in G.nodes() if G.nodes[u].get('cscandidate',False)])
+        elif args.set_circ_sing_handling=='enumerate':
+            max_tolerable = None
+        else:
+            max_tolerable=0
+        if max_tolerable==None:
+            circ_singletons[ident] = du.identifyCircularSingletonCandidates(G)
+            LOG.info(f'identified {len(circ_singletons[ident])} circular singleton candidates')
+        elif max_tolerable > 0:
             try:
                 circ_singletons[ident] = du.identifyCircularSingletonCandidates(G,max_number=max_tolerable)
                 LOG.info(f'identified {len(circ_singletons[ident])} circular singleton candidates')
