@@ -747,7 +747,10 @@ def checkGraph(G,cf=False):
                     'to an extremity or indel edge')
 
 
-def identifyCircularSingletonCandidates(G):
+class TooManyCSException(Exception):
+    pass
+
+def identifyCircularSingletonCandidates(G,max_number=None):
     """ finds all components that can be circular singletons """
 
     res = dict()
@@ -777,9 +780,14 @@ def identifyCircularSingletonCandidates(G):
                             ppath = rotateToMin(path + (data, ))
                             vpath = tuple((ppath[i] for i in range(0,
                                 len(ppath), 2)))
+                            #TODO: Tell dany I found a bug here!
+                            vpath=canonicizePath(vpath)
                             epath = tuple((ppath[i] for i in range(1,
                                 len(ppath), 2)))
                             res[vpath] = epath
+                            if max_number is not None:
+                                if len(res)>max_number:
+                                    raise TooManyCSException("Number of CS is over maximum {}.".format(max_number))
     return res
 
 
@@ -805,6 +813,19 @@ def rotateToMin(path):
     m = min((path[i] for i in range(0, len(path), 2)))
     i = path.index(m)
     return path[i:] + path[:i]
+
+def canonicizePath(path):
+    m = min(path)
+    i = path.index(m)
+    path = path[i:] + path[:i]
+    if len(path) > 2:
+        if path[1] <= path[-1]:
+            return path
+        else:
+            return (path[0],) + path[-1:0:-1]
+    return path
+        
+
 
 
 def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,

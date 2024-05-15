@@ -40,11 +40,12 @@ def objective(graphs, alpha, out):
         
 
 
+
 #
 # ILP CONSTRAINTS
 #
 
-def constraints(graphs, siblings, out):
+def constraints(graphs, siblings,circ_singletons, out):
     out.write('subject to\n')
     for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
 
@@ -56,7 +57,12 @@ def constraints(graphs, siblings, out):
         slm_constraints(G,i,siblings,out)
         regular_reporting(G,i,genomes,out)
         pcap_reporting(G,i,genomes,out)
-        cs_constraints(G,i,out,max_circ_len=len(G.nodes())/2)
+        if (child,parent) in circ_singletons:
+            c19(G,i,out,candidates=circ_singletons[(child,parent)])
+            manual_cs_constraints(circ_singletons[(child,parent)],i,out)
+        else:
+            c19(G,i,out)
+            cs_constraints(G,i,out,max_circ_len=len(G.nodes())/2)
 
     out.write('\n')
 
@@ -129,8 +135,14 @@ def c14toc17(G,tree_edge,out):
             print("pAB{ind}{sep}{te} - p{tel}{ind}{sep}{te} >= 0".format(ind=indel,tel=tel,te=tree_edge,sep=du.SEP),file=out)
 c18 = lambda G,tree_edge,genomes,out: summary_constraint('AB',lambda G,v: get_genome(G,v)==genomes[0] and G.nodes[v]['type']==du.VTYPE_CAP,G,tree_edge,out)
 
-def c19(G,tree_edge,out):
-    sm = ['rs{sep}{te}{sep}{v}'.format(te=tree_edge,sep=du.SEP,v=v) for v,data in G.nodes(data=True) if data['type'] != du.VTYPE_CAP]
+def c19(G,tree_edge,out,candidates=None):
+    if candidates is None:
+        sm = ['rs{sep}{te}{sep}{v}'.format(te=tree_edge,sep=du.SEP,v=v) for v,data in G.nodes(data=True) if data['type'] != du.VTYPE_CAP and data.get('cscandidate',False)]
+        
+    else:
+        LOG.info("manual candidates: {}".format(candidates))
+        sm = ['rms{sep}{te}{sep}{j}'.format(sep=du.SEP,te=tree_edge,j=j) for j in range(len(candidates))]
+        LOG.info("sm: {}".format(sm))
     print("{s} - s{sep}{te} = 0".format(s=' + '.join(sm),sep=du.SEP,te=tree_edge),file=out)
 
 def c20(G,tree_edge,out):
@@ -152,7 +164,7 @@ def c22(G,tree_edge,out):
 
 
 def loose_constraints(G,tree_edge,genomes,out):
-    for c in [c04,c05,c06,c08,c14toc17,c19,c20,c21,c22]:
+    for c in [c04,c05,c06,c08,c14toc17,c20,c21,c22]:
         c(G,tree_edge,out)
     for c in [c07,c09,c10,c11,c12,c13,c18]:
         c(G,tree_edge,genomes,out)
@@ -418,6 +430,12 @@ def cs_constraints(G,tree_edge,out,max_circ_len):
 
 
 
+def manual_cs_constraints(circ_singletons,te,out):
+    for j, path in enumerate(circ_singletons.values()):
+        component_vars = ['x{sep}{te}{sep}{e}'.format(sep=du.SEP,te=te,e=data['id']) for data in path]
+        print('{sm} - rms{sep}{te}{sep}{j} <= {totlen}'.format(sm=' + '.join(component_vars), j=j, te=te,sep=du.SEP,
+            totlen=len(component_vars)-1), file = out)
+
 def getAllCaps(graphs):
     res = dict((k, set()) for k in set(chain(*graphs.keys())))
 
@@ -451,7 +469,7 @@ def domains(graphs, out):
 # ILP VARIABLES
 #
 
-def variables(graphs, out):
+def variables(graphs,circ_sings, out):
 
     #
     # integer variables
@@ -468,7 +486,8 @@ def variables(graphs, out):
             print("y{sep}{te}{sep}{v}".format(sep=du.SEP,te=te,v=v),file=out)
             if data['type']==du.VTYPE_CAP or not G.nodes[v].get('cscandidate',False):
                 continue
-            print("w{sep}{te}{sep}{v}".format(sep=du.SEP,te=te,v=v),file=out)
+            if (child, parent) not in circ_sings:
+                print("w{sep}{te}{sep}{v}".format(sep=du.SEP,te=te,v=v),file=out)
             
 
     for gg in global_generals:
@@ -484,6 +503,9 @@ def variables(graphs, out):
         LOG.info(('writing binary variables for relational diagram of {} ' + \
                 'and {}').format(child, parent))
         genomes = [child,parent]
+        if (child, parent) in circ_sings:
+            for j in range(len(circ_singletons[(child, parent)])):
+                print('rms{sep}{te}{sep}{j}'.format(sep=du.SEP,te=tree_edge,j=j))
         for v,data in G.nodes(data=True):
             print("z{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
             print("l{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
@@ -492,9 +514,10 @@ def variables(graphs, out):
                 if get_genome(G,v) == genomes[0]:
                     print("rab{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
                     print("rc{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
-                if G.nodes[v].get('cscandidate',False):
-                    print("d{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
-                print("rs{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
+                if (child, parent) not in circ_sings:
+                    if G.nodes[v].get('cscandidate',False):
+                        print("d{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=v),file=out)
+                        print("rs{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
             else:
                 if get_genome(G,v) == genomes[0]:
                     print("rAB{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
@@ -684,10 +707,16 @@ if __name__ == '__main__':
         #if 7 in G:
         #    LOG.info(G[7])
 
-    #circ_singletons = dict()
-    #for ident, G in graphs.items():
-    #    circ_singletons[ident] = du.identifyCircularSingletonCandidates(G)
-    #    LOG.info(f'identified {len(circ_singletons[ident])} circular singleton candidates')
+    circ_singletons = dict()
+    for ident, G in graphs.items():
+        max_tolerable = len([u for u in G.nodes() if G.nodes[u].get('cscandidate',False)])
+        if max_tolerable > 0:
+            try:
+                circ_singletons[ident] = du.identifyCircularSingletonCandidates(G,max_number=max_tolerable)
+                LOG.info(f'identified {len(circ_singletons[ident])} circular singleton candidates')
+            except du.TooManyCSException:
+                pass
+        
 
     #caps = getAllCaps(graphs)
     # construct & output ILP
@@ -697,13 +726,13 @@ if __name__ == '__main__':
     objective(graphs, args.alpha, out)
 
     LOG.info('writing constraints...')
-    constraints(graphs, siblings, out)
+    constraints(graphs, siblings,circ_singletons, out)
 
     LOG.info('writing domains...')
     domains(graphs, out)
 
     LOG.info('writing variables...')
-    variables(graphs, out)
+    variables(graphs,circ_singletons,out)
 
     if args.output_id_mapping:
         LOG.info('writing ID-to-gene extremity mapping to {}'.format(
