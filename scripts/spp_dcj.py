@@ -533,7 +533,7 @@ def variables(graphs,circ_sings, out):
     print('\n')
 
 
-def identifyCandidateTelomeres(candidateAdjacencies, weightThreshold, dont_add=False):
+def identifyCandidateTelomeres(candidateAdjacencies, telomere_default_weight, dont_add=False):
 
     res = dict()
     weights = candidateAdjacencies['weights']
@@ -579,6 +579,7 @@ def identifyCandidateTelomeres(candidateAdjacencies, weightThreshold, dont_add=F
                         t = f't_{g}_{extr}'
                         telomeres.add(t)
                         adjs.append(((g, extr), (t, 'o')))
+                        candidateAdjacencies['weights'][((g, extr), (t, 'o'))]=telomere_default_weight
 
 #        genes_edg = [((g, du.EXTR_HEAD), (g, du.EXTR_TAIL)) for g in genes]
 #        if species == 'n3':
@@ -619,9 +620,10 @@ if __name__ == '__main__':
             help='linear weighting factor for adjacency weights vs DCJ ' + \
                     'indel distance (alpha = 1 => maximize only DCJ indel ' + \
                     'distance)')
-    parser.add_argument('-b', '--beta', default = -1, type=float,
-            help='linear weighting factor for telomeric adjacencies;' + \
-                    'if beta < 0, then beta is set to 1/2 * alpha')
+    #parser.add_argument('-b', '--beta', default = -1, type=float,
+    #        help='Default weight for added telomeres. Has no effect if -t is used.')
+    parser.add_argument('-def-telomere-weight', '--dtw', default = -1, type=float,
+            help='Default weight for added telomeres. Has no effect if -t is used. For most use cases this should be <= 0.')
     parser.add_argument('--set-circ-sing-handling',choices=['adaptive','enumerate','barbershop'],default='adaptive')
     parser.add_argument('-s', '--separator', default = du.DEFAULT_GENE_FAM_SEP, \
             help='Separator of in gene names to split <family ID> and ' +
@@ -634,9 +636,6 @@ if __name__ == '__main__':
     ch.setFormatter(logging.Formatter('%(levelname)s\t%(asctime)s\t%(message)s'))
     LOG.addHandler(ch)
 
-    beta = args.beta
-    if beta < 0:
-        beta = args.alpha * 0.5
 
     # load & process input data
     LOG.info('loading species tree from {}'.format(args.tree.name))
@@ -649,8 +648,7 @@ if __name__ == '__main__':
                                                sep=args.separator)
 
     # add telomeres
-    telomeres = identifyCandidateTelomeres(candidateAdjacencies,
-            ADJ_TRUST_THRESHOLD, args.no_telomeres)
+    telomeres = identifyCandidateTelomeres(candidateAdjacencies,args.dtw, args.no_telomeres)
 
     # construct adjacency graphs
     genes = candidateAdjacencies['genes']
