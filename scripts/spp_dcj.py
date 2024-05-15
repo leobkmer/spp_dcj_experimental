@@ -533,7 +533,7 @@ def variables(graphs,circ_sings, out):
     print('\n')
 
 
-def identifyCandidateTelomeres(candidateAdjacencies, telomere_default_weight, dont_add=False):
+def identifyCandidateTelomeres(candidateAdjacencies, telomere_default_weight,leaves, dont_add=False,addToAll=False):
 
     res = dict()
     weights = candidateAdjacencies['weights']
@@ -574,8 +574,11 @@ def identifyCandidateTelomeres(candidateAdjacencies, telomere_default_weight, do
                 # - linear/circular or
                 # - fully connected
                 # - even (in terms of #nodes)
-                if degs.difference((1, 2)) and degs.difference((len(C)-1,)) or len(C) % 2:
+                if degs.difference((1, 2)) and degs.difference((len(C)-1,)) or len(C) % 2 or (addToAll and species not in leaves):
                     for g, extr in C:
+                        #skip already existing telomeres
+                        if extr=='o':
+                            continue
                         t = f't_{g}_{extr}'
                         telomeres.add(t)
                         adjs.append(((g, extr), (t, 'o')))
@@ -613,7 +616,9 @@ if __name__ == '__main__':
     parser.add_argument('candidateAdjacencies', type=open,
             help='candidate adjacencies of the genomes in the phylogeny')
     parser.add_argument('-t', '--no_telomeres', action='store_true',
-            help='don\'t add any additional telomeres')
+            help='don\'t add any additional telomeres. Overrides -at.')
+    parser.add_argument('-l', '--all_telomeres', action='store_true',
+            help='Add additional telomeres to all nodes.')
     parser.add_argument('-m', '--output_id_mapping', type=FileType('w'),
             help='writs a table with ID-to-gene extremity mapping')
     parser.add_argument('-a', '--alpha', default = 0.5, type=float,
@@ -622,7 +627,7 @@ if __name__ == '__main__':
                     'distance)')
     #parser.add_argument('-b', '--beta', default = -1, type=float,
     #        help='Default weight for added telomeres. Has no effect if -t is used.')
-    parser.add_argument('-def-telomere-weight', '--dtw', default = -1, type=float,
+    parser.add_argument('--def-telomere-weight', '-w', default = -1, type=float,
             help='Default weight for added telomeres. Has no effect if -t is used. For most use cases this should be <= 0.')
     parser.add_argument('--set-circ-sing-handling',choices=['adaptive','enumerate','barbershop'],default='adaptive')
     parser.add_argument('-s', '--separator', default = du.DEFAULT_GENE_FAM_SEP, \
@@ -646,9 +651,10 @@ if __name__ == '__main__':
         args.candidateAdjacencies.name, args.separator))
     candidateAdjacencies = du.parseAdjacencies(args.candidateAdjacencies,
                                                sep=args.separator)
-
+    leaves = set([x for x, v in du.getLeaves(speciesTree).items() if v])
+    LOG.info("Leaves of phylogeny: {}".format(leaves))
     # add telomeres
-    telomeres = identifyCandidateTelomeres(candidateAdjacencies,args.dtw, args.no_telomeres)
+    telomeres = identifyCandidateTelomeres(candidateAdjacencies,args.def_telomere_weight,leaves, dont_add=args.no_telomeres,addToAll=args.all_telomeres)
 
     # construct adjacency graphs
     genes = candidateAdjacencies['genes']
@@ -702,7 +708,7 @@ if __name__ == '__main__':
     siblings = relationalDiagrams['siblings']
 
     for G in graphs.values():
-        du.checkGraph(G,cf=True)
+        du.checkGraph(G,cf=True,checkForAllTels=args.all_telomeres and not args.no_telomeres)
         #if 7 in G:
         #    LOG.info(G[7])
 

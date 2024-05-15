@@ -711,7 +711,7 @@ def _find_end_pairs(G, gName1, gName2):
     return {(u, v, Arun, Brun) for (u, v), (Arun, Brun) in res.items()}
 
 
-def checkGraph(G,cf=False):
+def checkGraph(G,cf=False,checkForAllTels=False):
     #for v,data in G.nodes(data=True):
     #    print(v,",".join(["{}={}".format(k,x) for k,x in data.items()]),file=sys.stderr)
     for u, v, in G.edges():
@@ -734,7 +734,12 @@ def checkGraph(G,cf=False):
         if vdata['id'][1][1] not in {EXTR_HEAD, EXTR_TAIL, EXTR_CAP}:
             raise Exception(f'node {v} {G.nodes[v]["id"]} has malformed ' + \
                     'extremity')
-
+        # if vdata['id'][1][1] != EXTR_CAP and checkForAllTels:
+        #     has_cap=False
+        #     for u in G.neighbors(v):
+        #         has_cap=has_cap or G.nodes[u]['type']==EXTR_CAP
+        #     if not has_cap:
+        #         raise Exception("Looked for caps, but node {} ({}) is lacking one.".format(v,vdata))
         for u in G.neighbors(v):
             for data in G[u][v].values():
                 hasAdj |= data['type'] == ETYPE_ADJ
@@ -926,7 +931,7 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
 
     for child, parent in tree:
         G = nx.MultiGraph()
-        max_tels = 2*sum([len(genes[gnm]) for gnm in [child,parent]])
+        max_tels = len(candidateTelomeres[child]) + len(candidateTelomeres[parent]) +2 #2*sum([len(genes[gnm]) for gnm in [child,parent]])
         localIdManager = IdManager(max_tels)
         for gName in (child, parent):
             _constructRDNodes(G, gName, genes[gName], extremityIdManager,localIdManager)
