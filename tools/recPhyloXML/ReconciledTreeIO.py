@@ -144,7 +144,7 @@ class recPhyloXML_parser:
         if not self.isOfTag(element, TAG):
             raise Exception('BadTagException. The element is of tag ' + element.tag + " instead of " + TAG + "." )
 
-        children = element.getchildren()
+        children = list(element)
 
         RTL = ReconciledTreeList()
 
@@ -179,7 +179,7 @@ class recPhyloXML_parser:
         if not self.isOfTag(element, TAG):
             raise Exception('BadTagException. The element is of tag ' + element.tag + " instead of " + TAG + "." )
 
-        children = element.getchildren()
+        children = list(element)
 
         node = None
 
@@ -211,7 +211,7 @@ class recPhyloXML_parser:
         if not self.isOfTag(element, TAG):
             raise Exception('BadTagException. The element is of tag ' + element.tag + " instead of " + TAG + "." )
 
-        children = element.getchildren()
+        children = list(element)
 
         node = None
 
@@ -246,7 +246,7 @@ class recPhyloXML_parser:
         if not self.isOfTag(element, TAG):
             raise Exception('BadTagException. The element is of tag ' + element.tag + " instead of " + TAG + "." )
 
-        children = element.getchildren()
+        children = list(element)
 
         node = None
 
@@ -299,7 +299,7 @@ class recPhyloXML_parser:
         if not self.isOfTag(element, TAG):
             raise Exception('BadTagException. The element is of tag ' + element.tag + " instead of " + TAG + "." )
 
-        children = element.getchildren()
+        children = list(element)
 
         name = None
         childrenNodes = []
@@ -369,7 +369,7 @@ class recPhyloXML_parser:
         if not self.isOfTag(element, TAG):
             raise Exception('BadTagException. The element is of tag ' + element.tag + " instead of " + TAG + "." )
 
-        children = element.getchildren()
+        children = list(element)
 
         events = []
 

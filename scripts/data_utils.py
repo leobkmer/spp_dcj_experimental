@@ -129,8 +129,7 @@ def parseAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
     delimiter = '\t'
     resAdjacencies = defaultdict(list)
     resGenes       = defaultdict(list)
-    resWeights     = {}
-    resPenalities  = {}
+    resWeights     = defaultdict(dict)
     for line in csv.reader(data, delimiter = delimiter):
         if line[0][0] != headerMark:
             species  = line[0]
@@ -144,11 +143,7 @@ def parseAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
                         f'feasible, skipping {line[1]}:{line[2]}-{line[4]}:{line[5]}',
                         file=stderr)
             else:
-                addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights,resGenes[species])
-
-            # optional penality
-            if len(line) > 7 and line[7]:
-                resPenalities[ext1 > ext2 and (ext2, ext1) or (ext1, ext2)] = float(line[7])
+                addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights[species],resGenes[species])
 
     speciesList = list(resAdjacencies.keys())
     for species in speciesList:
@@ -157,7 +152,7 @@ def parseAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
 
     return {'species':speciesList, 'genes':resGenes,
             'adjacencies':resAdjacencies, 'weights':resWeights,
-            'families': resFamilies, 'penalities': resPenalities}
+            'families': resFamilies}
 
 
 def parseCandidateAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
@@ -172,7 +167,7 @@ def parseCandidateAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
     delimiter = ' '
     resAdjacencies = defaultdict(list)
     resGenes       = defaultdict(list)
-    resWeights     = {}
+    resWeights     = defaultdict(dict)
     for line in csv.reader(data, delimiter = delimiter):
         if line[0][0] != headerMark:
             species = line[0]
@@ -192,7 +187,7 @@ def parseCandidateAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
             weight  = float(line[5])
             ext1 = (gene1,SIGN2EXT_1[sign1])
             ext2 = (gene2,SIGN2EXT_2[sign2])
-            addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights,resGenes[species])
+            addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights[species],resGenes[species])
     speciesList = list(resAdjacencies.keys())
     for species in speciesList:
         resGenes[species] = list(set(resGenes[species]))
@@ -217,7 +212,7 @@ def parseTrueGeneOrders(data, close_linear=False, sep=DEFAULT_GENE_FAM_SEP):
     delimiter = '\t'
     resAdjacencies = defaultdict(list)
     resGenes       = defaultdict(list)
-    resWeights     = {}
+    resWeights     = defaultdict(dict)
     prevGene       = ''
     prevSign       = ''
     prevSpecies    = ''
@@ -238,7 +233,7 @@ def parseTrueGeneOrders(data, close_linear=False, sep=DEFAULT_GENE_FAM_SEP):
                 if ext1>ext2:
                     ext1,ext2=ext2,ext1
                 resAdjacencies[currentSpecies].append([ext1,ext2])
-                resWeights[ext1,ext2] = TRUE_ADJ_WEIGHT
+                resWeights[currentSpecies][ext1,ext2] = TRUE_ADJ_WEIGHT
             else:
                 # we start a new chromosome
                 if close_linear:
@@ -252,7 +247,7 @@ def parseTrueGeneOrders(data, close_linear=False, sep=DEFAULT_GENE_FAM_SEP):
                             ext1,ext2=ext2,ext1
                         if [ext1,ext2] not in resAdjacencies[prevSpecies]:
                             resAdjacencies[prevSpecies].append([ext1,ext2])
-                            resWeights[ext1,ext2] = TRUE_ADJ_WEIGHT
+                            resWeights[prevSpecies][ext1,ext2] = TRUE_ADJ_WEIGHT
                     # We record the current gene as the first gene of the previous chromosome
                     firstGene = currentGene
                     firstSign = currentSign
@@ -271,7 +266,7 @@ def parseTrueGeneOrders(data, close_linear=False, sep=DEFAULT_GENE_FAM_SEP):
             ext1,ext2=ext2,ext1
         if [ext1,ext2] not in resAdjacencies[prevSpecies]:
             resAdjacencies[prevSpecies].append([ext1,ext2])
-            resWeights[ext1,ext2] = TRUE_ADJ_WEIGHT
+            resWeights[prevSpecies][ext1,ext2] = TRUE_ADJ_WEIGHT
 
     speciesList = list(resAdjacencies.keys())
     resFamilies = getFamiliesFromGenes(resGenes,speciesList, sep=sep)
@@ -425,7 +420,7 @@ def parseSOL(data, idMap):
     matchingList = set()
     matchingDict = dict()
     indelList = dict()
-    weightsDict = dict()
+    weightsDict = defaultdict(defaultdict(float))
     isEmpty = True
 
     vars_ = dict()
@@ -455,7 +450,6 @@ def parseSOL(data, idMap):
                 adjacenciesList[ext1[0]] = list()
             adj = (ext1[1:], ext2[1:])
             adjacenciesList[ext1[0]].append(adj)
-            weightsDict[adj] = 0.0
         elif var_.split(SEP)[0]=='x' and not var_.split('_')[-1]=='adj':
             #edge is either indel or match
             entries = var_.split(SEP)
@@ -518,7 +512,7 @@ def mapFamiliesToGenes(genes, sep=DEFAULT_GENE_FAM_SEP):
 
 
 def _constructRDAdjacencyEdges(G, gName, adjacencies, candidateWeights,
-        candidatePenalities, extremityIdManager):
+        extremityIdManager):
     ''' create adjacencies of the genome named <gName>'''
     for ext1, ext2 in adjacencies:
         id1 = extremityIdManager.getId((gName, ext1))
@@ -528,12 +522,7 @@ def _constructRDAdjacencyEdges(G, gName, adjacencies, candidateWeights,
         edge_id = '{}_{}_adj'.format(*sorted((G.nodes[id1]['anc'], G.nodes[id2]['anc'])))
         anc = '{}_{}_adj'.format(*sorted((G.nodes[id1]['anc'],G.nodes[id2]['anc'])))
         weight = candidateWeights.get((ext1, ext2), 0)
-        penality = candidatePenalities.get((ext1, ext2), None)
-        if penality is None:
-            G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight,anc=anc)
-        else:
-            G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight,
-                    penality=penality,anc=anc)
+        G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight,anc=anc)
 
 
 def _constructNaiveRDCapping(G, gName1, gName2, extremityIdManager):
@@ -877,7 +866,7 @@ def getIncidentAdjacencyEdges(G, v):
 
 
 def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
-        candidateWeights, candidatePenalities, genes, extremityIdManager,
+        candidateWeights, genes, extremityIdManager,
         sep=DEFAULT_GENE_FAM_SEP):
     ''' constructs for each edge of the tree a relational diagram of the
     adjacent genomes'''
@@ -893,7 +882,7 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
             _constructRDTelomeres(G, gName, candidateTelomeres[gName],
                                   extremityIdManager,localIdManager)
             _constructRDAdjacencyEdges(G, gName, candidateAdjacencies[gName],
-                    candidateWeights, candidatePenalities, localIdManager)
+                    candidateWeights[gName], localIdManager)
 
         fam2genes1 = mapFamiliesToGenes(genes[child], sep=sep)
         fam2genes2 = mapFamiliesToGenes(genes[parent], sep=sep)
@@ -933,7 +922,7 @@ def writeAdjacencies(adjacenciesList, weightsDict, out):
                 species,
                 gene2,
                 ext2,
-                str(weightsDict[(gene1,ext1), (gene2,ext2)])])+'\n')
+                str(weightsDict[species][(gene1,ext1), (gene2,ext2)])])+'\n')
 
 
 #

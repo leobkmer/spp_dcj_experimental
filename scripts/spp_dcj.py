@@ -631,13 +631,12 @@ if __name__ == '__main__':
     genes = candidateAdjacencies['genes']
     adjacencies = candidateAdjacencies['adjacencies']
     weights = candidateAdjacencies['weights']
-    penalities = candidateAdjacencies['penalities']
 
     global_ext2id = du.IdManager(0,is_cap=lambda x: False)
     LOG.info(('constructing relational diagrams for all {} branches of ' + \
             'the tree').format(len(speciesTree)))
     relationalDiagrams = du.constructRelationalDiagrams(speciesTree,
-            adjacencies, telomeres, weights, penalities, genes, global_ext2id,
+            adjacencies, telomeres, weights, genes, global_ext2id,
             sep=args.separator)
 
     graphs = relationalDiagrams['graphs']
