@@ -4,11 +4,11 @@ BDIR=bin
 SDIR=source
 IDIR=include
 
-BPP_INCLUDE=/include
-BPP_LIB=/lib
+BPP_INCLUDE=/home/doerrda/medbioinf/projects/spp_dcj_v2/tools/bpp/include
+BPP_LIB=/home/doerrda/medbioinf/projects/spp_dcj_v2/tools/bpp/lib64
 
-BOOST_INCLUDE=/usr/include
-BOOST_LIB=/usr/lib
+BOOST_INCLUDE=/software/boost/1.70.0/skylake/gnu/include
+BOOST_LIB=/software/boost/1.70.0/skylake/gnu/lib
 
 
 
