@@ -7,6 +7,7 @@ from os.path import abspath
 # GENERAL VARIABLES ----------------------------------------------------------
 
 SCRIPT_DIR          = config.get('script_dir', '../../scripts')
+OLD_SCRIPTS         = config.get('script_dir', '../../oldscripts')
 
 BENCHMARK_DIR       = config.get('benchmark_dir', 'benchmarks')
 DECO_DIR            = config.get('deco_dir', 'deco')
@@ -75,12 +76,12 @@ rule all:
 #            ADJ_NOISE, adv = ADJ_ADVNOISE),
         expand(f'{RESULT_DIR}/dr{{dupl}}_de{{dupl_ext}}' +
             '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
-            '_re{rearr_ext}_s{tree_scale}/PrecisionRecall_Noisy_n{noise}_adv{adv}.txt',
+            '_re{rearr_ext}_s{tree_scale}/PrecisionRecall_{no}_Noisy_n{noise}_adv{adv}.txt',
             dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
             ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
             ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
             rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES, noise =
-            ADJ_NOISE, adv = ADJ_ADVNOISE),
+            ADJ_NOISE, adv = ADJ_ADVNOISE,no=['new','old']),
 #        expand(f'{PLOT_DIR}/dr{{dupl}}_de{{dupl_ext}}' +
 #            '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
 #            '_re{rearr_ext}_s{tree_scale}/AdjacenciesPredicted_Noisy_n{noise}_adv{adv}.pdf',
@@ -103,11 +104,11 @@ rule all:
 #            ADJ_NOISE, adv = ADJ_ADVNOISE),
         expand('{}/dr{{dupl}}_de{{dupl_ext}}'.format(RESULT_DIR) +
             '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
-            '_re{rearr_ext}_s{tree_scale}/PrecisionRecall_Deco.txt',
+            '_re{rearr_ext}_s{tree_scale}/PrecisionRecall_{no}_Deco.txt',
             dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
             ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
             ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
-            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES),
+            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,no=['new','old']),
 #        expand('{}/dr{{dupl}}_de{{dupl_ext}}'.format(PLOT_DIR) +
 #            '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
 #            '_re{rearr_ext}_s{tree_scale}/AdjacenciesPredicted_Deco.pdf',
@@ -121,21 +122,21 @@ rule all:
         #
         # Deco and True Adjacencies
         #
-        expand('{}/dr{{dupl}}_de{{dupl_ext}}'.format(PLOT_DIR) +
-            '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
-            '_re{rearr_ext}_s{tree_scale}/AdjacenciesDecoAndTrue.pdf',
-            dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
-            ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
-            ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
-            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES, noise =
-            ADJ_NOISE, adv = ADJ_ADVNOISE),
+        #expand('{}/dr{{dupl}}_de{{dupl_ext}}'.format(PLOT_DIR) +
+        #    '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
+        #    '_re{rearr_ext}_s{tree_scale}/AdjacenciesDecoAndTrue.pdf',
+        #    dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
+        #    ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
+        #    ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
+        #    rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES, noise =
+        #    ADJ_NOISE, adv = ADJ_ADVNOISE),
         expand('{}/dr{{dupl}}_de{{dupl_ext}}'.format(RESULT_DIR) +
             '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
-            '_re{rearr_ext}_s{tree_scale}/PrecisionRecall_DecoAndTrue.txt',
+            '_re{rearr_ext}_s{tree_scale}/PrecisionRecall_{no}_DecoAndTrue.txt',
             dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
             ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
             ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
-            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES),
+            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,no=['new','old']),
 
 # -----------------------------------------------------------------------------
 
@@ -354,12 +355,25 @@ rule construct_ilp:
         tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
         candAdj = f'{RESULT_DIR}/{{experiment}}/Adjacencies{{params}}.txt',
     output:
-        ilp = temp(f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_{{params}}.ilp'),
-        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_{{params}}.txt',
+        ilp = temp(f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_new_{{params}}.ilp'),
+        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_new_{{params}}.txt',
     log:
-        f'{LOG_DIR}/{{experiment}}_{{params}}_spp_dcj.log',
+        f'{LOG_DIR}/{{experiment}}_new_{{params}}_spp_dcj.log',
     shell:
         f'{SCRIPT_DIR}/spp_dcj.py -a0.5 -m {{output.idMap}} {{input.tree}} '+
+        '{input.candAdj} > {output.ilp} 2> {log}'
+
+rule construct_old_ilp:
+    input:
+        tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
+        candAdj = f'{RESULT_DIR}/{{experiment}}/Adjacencies{{params}}.txt',
+    output:
+        ilp = temp(f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_old_{{params}}.ilp'),
+        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_old_{{params}}.txt',
+    log:
+        f'{LOG_DIR}/{{experiment}}_old_{{params}}_spp_dcj.log',
+    shell:
+        f'{OLD_SCRIPTS}/spp_dcj.py -a0.5 -m {{output.idMap}} {{input.tree}} '+
         '{input.candAdj} > {output.ilp} 2> {log}'
 
 
