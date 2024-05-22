@@ -34,7 +34,7 @@ LOG.setLevel(logging.DEBUG)
 def objective(graphs, alpha, out):
     out.write('minimize ')
     terms = ["{ialph} w{sep}{te} + {alph} f{sep}{te}".format(
-        alph=alpha,ialph=1-alpha,sep=du.SEP,te=tree_edge)
+        alph=alpha,ialph=alpha-1,sep=du.SEP,te=tree_edge)
         for tree_edge, _ in enumerate(sorted(graphs.items()))]
     print(" + ".join(terms),file=out)
         
