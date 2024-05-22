@@ -398,14 +398,23 @@ rule run_ilp:
 
 rule sol_to_adjacencies:
     input:
-        sol = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_{{params}}.sol',
-        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_{{params}}.txt',
+        sol = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_new_{{params}}.sol',
+        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_new_{{params}}.txt',
     output:
-        f'{RESULT_DIR}/{{experiment,[^/]+}}/AdjacenciesPredicted_{{params}}.txt'
+        f'{RESULT_DIR}/{{experiment,[^/]+}}/AdjacenciesPredicted_new_{{params}}.txt'
     shell:
         f'{SCRIPT_DIR}/sol2adjacencies.py {{input.sol}} ' +
         '{input.idMap} > {output}'
 
+rule old_sol_to_adjacencies:
+    input:
+        sol = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_old_{{params}}.sol',
+        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_old_{{params}}.txt',
+    output:
+        f'{RESULT_DIR}/{{experiment,[^/]+}}/AdjacenciesPredicted_old_{{params}}.txt'
+    shell:
+        f'{OLD_SCRIPTS}/sol2adjacencies.py {{input.sol}} ' +
+        '{input.idMap} > {output}'
 
 rule evaluate_predicted_adjacencies:
     input:
