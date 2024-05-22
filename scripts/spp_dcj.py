@@ -450,7 +450,7 @@ def getAllCaps(graphs):
 # ILP DOMAINS
 #
 
-COUNTERS = ['w','f','n','c','s','pab','pAB','pAb','pAa','pBa','pBb','pABa','pABb']
+COUNTERS = ['f','n','c','s','pab','pAB','pAb','pAa','pBa','pBb','pABa','pABb']
 def domains(graphs, out):
     global_generals = set()
     out.write('bounds\n')
