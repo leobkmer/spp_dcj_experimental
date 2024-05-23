@@ -16,12 +16,12 @@ recphyloxml_dir:        ../../tools/recPhyloXML
 # ZOMBI TREE EVOLUTION PARAMETERS -------------------------------------------
 
 tree:                   ../../data/N10.nwk
-tree_scales:            [5] #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+tree_scales:            [10,20,30,40,50] #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] # benchmark mainly for tree scale
 
 # ZOMBI GENOME EVOLUTION PARAMETERS -----------------------------------------
 
 zombi_bin:              python3 ../../tools/ZOMBI_01042020/Zombi.py
-zombi_dupl_rates:       ['f:2']
+zombi_dupl_rates:       ['f:2'] #benchmark possibly for duprates
 zombi_dupl_exts:        ['g:0.8', 'g:0.5']
 zombi_genome_sizes:     [1_000]
 zombi_loss_rates:       ['f:2']

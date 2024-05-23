@@ -52,6 +52,17 @@ ADJ_ADVNOISE        = config.get('adjacency_adversarial_noise', [50])
 
 from os.path import basename
 
+rule all_benchmark:
+    input:
+        expand(f'{BENCHMARK_DIR}/dr{{dupl}}_de{{dupl_ext}}' +
+            '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
+            '_re{rearr_ext}_s{tree_scale}.{no}_Noisy_n{noise}_adv{adv}_gurobi.log',
+            dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
+            ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
+            ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
+            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES, noise =
+            ADJ_NOISE, adv = ADJ_ADVNOISE,no=['new','old'])
+
 # INITIAL RULE ---------------------------------------------------------------
 rule all:
     input:
@@ -390,7 +401,7 @@ rule run_ilp:
     log:
         f'{LOG_DIR}/{{experiment}}_{{params1}}_gurobi.log',
     benchmark:
-        f'{BENCHMARK_DIR}/{{experiment}}_{{params1}}_gurobi.log'
+        f'{BENCHMARK_DIR}/{{experiment}}.{{params1}}_gurobi.log'
     shell:
         f'{GUROBI_BIN} ResultFile={{output}} Threads={{params.threads}} ' +
         'TimeLimit={params.time_limit} {input} > {log}'
