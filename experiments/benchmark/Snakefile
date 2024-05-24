@@ -7,7 +7,7 @@ from os.path import abspath
 # GENERAL VARIABLES ----------------------------------------------------------
 
 SCRIPT_DIR          = config.get('script_dir', '../../scripts')
-OLD_SCRIPTS         = config.get('script_dir', '../../oldscripts')
+OLD_SCRIPTS         = config.get('old_scripts', '../../oldscripts')
 
 BENCHMARK_DIR       = config.get('benchmark_dir', 'benchmarks')
 DECO_DIR            = config.get('deco_dir', 'deco')
