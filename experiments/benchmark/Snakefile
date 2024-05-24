@@ -19,7 +19,8 @@ RECPHYLOXML_PATH    = config.get('recphyloxml_dir')
 RESULT_DIR          = config.get('result_dir', 'results')
 SIMULATION_DIR      = config.get('simulated_evolution_dir', 'simulated_evolution')
 TREE_DIR            = config.get('tree_dir', 'trees')
-
+N_REPS = config.get('n_reps',10)
+REPLICATES = list(range(1,N_REPS+1))
 
 # ZOMBI TREE EVOLUTION PARAMETERS -------------------------------------------
 
@@ -54,13 +55,13 @@ from os.path import basename
 
 rule all_benchmark:
     input:
-        expand(f'{BENCHMARK_DIR}/dr{{dupl}}_de{{dupl_ext}}' +
+        expand(f'{BENCHMARK_DIR}/rep{{replicate}}_dr{{dupl}}_de{{dupl_ext}}' +
             '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
             '_re{rearr_ext}_s{tree_scale}.{no}_Deco_gurobi.log',
             dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
             ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
             ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
-            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,no=['new','old'])
+            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,no=['new','old'],replicate=REPLICATES)
 
 # INITIAL RULE ---------------------------------------------------------------
 rule all:
@@ -162,14 +163,14 @@ rule rescale_tree:
 rule zombi_generate_tree_events:
     input:
         tree = f'{TREE_DIR}/s{{scale}}.nwk',
-        gp = f'{SIMULATION_DIR}/{{experiment}}_s{{scale}}/GenomeParameters.tsv'
+        gp = f'{SIMULATION_DIR}/rep{{rep}}_{{experiment}}_s{{scale}}/GenomeParameters.tsv'
     output:
-        events = f'{SIMULATION_DIR}/{{experiment,[^/]+}}' +
+        events = f'{SIMULATION_DIR}/rep{{rep}}_{{experiment,[^/]+}}' +
                 '_s{scale,[0-9.]+}/T/Events.tsv',
-        tree = f'{SIMULATION_DIR}/{{experiment,[^/]+}}' +
+        tree = f'{SIMULATION_DIR}/rep{{rep}}_{{experiment,[^/]+}}' +
                 '_s{scale,[0-9.]+}/T/CompleteTree.nwk',
     log:
-        f'{LOG_DIR}/zombi_tree_events_{{experiment}}_s{{scale}}.log'
+        f'{LOG_DIR}/zombi_tree_events_rep{{rep}}_{{experiment}}_s{{scale}}.log'
     shell:
         f'{ZOMBI_BIN} Ti {{input.tree}} ' +
         '$(dirname {input.gp}) > {log}'
@@ -177,7 +178,7 @@ rule zombi_generate_tree_events:
 
 rule zombi_generate_genome_params:
     output:
-        f'{SIMULATION_DIR}/dr{{dupl,[efglnu]:[0-9.]+}}' +
+        f'{SIMULATION_DIR}/rep{{rep}}_dr{{dupl,[efglnu]:[0-9.]+}}' +
         '_de{dupl_ext,[efglnu]:[0-9.]+}_gs{genome_size,\\d+}'
         '_lr{loss,[efglnu]:[0-9.]+}_le{loss_ext,[efglnu]:[0-9.]+}'
         '_or{origin,[efglnu]:[0-9.]+}_rr{rearr,[efglnu]:[0-9.]+}'
