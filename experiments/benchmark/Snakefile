@@ -56,12 +56,11 @@ rule all_benchmark:
     input:
         expand(f'{BENCHMARK_DIR}/dr{{dupl}}_de{{dupl_ext}}' +
             '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
-            '_re{rearr_ext}_s{tree_scale}.{no}_Noisy_n{noise}_adv{adv}_gurobi.log',
+            '_re{rearr_ext}_s{tree_scale}.{no}_Deco_gurobi.log',
             dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
             ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
             ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
-            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES, noise =
-            ADJ_NOISE, adv = ADJ_ADVNOISE,no=['new','old'])
+            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,no=['new','old'])
 
 # INITIAL RULE ---------------------------------------------------------------
 rule all:
