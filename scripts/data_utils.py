@@ -420,7 +420,7 @@ def parseSOL(data, idMap):
     matchingList = set()
     matchingDict = dict()
     indelList = dict()
-    weightsDict = defaultdict(defaultdict(float))
+    weightsDict = defaultdict(lambda: defaultdict(float))
     isEmpty = True
 
     vars_ = dict()
@@ -431,7 +431,7 @@ def parseSOL(data, idMap):
         if line.startswith(obj_txt):
             obj_value = float(line[len(obj_txt):])
             continue
-
+        #print(line,file=sys.stderr)
         var_, val = line.split()
         vars_[var_] = float(val)
         isEmpty = False
