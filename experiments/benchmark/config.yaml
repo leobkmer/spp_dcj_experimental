@@ -16,7 +16,7 @@ recphyloxml_dir:        ../../tools/recPhyloXML
 # ZOMBI TREE EVOLUTION PARAMETERS -------------------------------------------
 
 tree:                   ../../data/N10.nwk
-tree_scales:            [10,20,30,40,50] #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] # benchmark mainly for tree scale
+tree_scales:            [5,10,15,20] #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] # benchmark mainly for tree scale
 
 # ZOMBI GENOME EVOLUTION PARAMETERS -----------------------------------------
 
@@ -41,6 +41,7 @@ deco_boltzmann_temperature: 1
 adjacency_noise:        [600] #[200, 400, 600, 800, 1_000, 2_000]
 adjacency_adversarial_noise: [0] #[0, 0.5, 1]
 
+old_scripts : ../../oldscripts
 #
 # DON'T TOUCH UNLESS YOU KNOW WHAT YOU'RE DOING -------------------------------
 script_dir: ../../scripts
