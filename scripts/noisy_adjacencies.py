@@ -6,6 +6,7 @@ from sys import stdout, stderr, exit
 from collections import defaultdict
 import random
 import csv
+import sys
 
 # import from own packages
 import data_utils as du
@@ -17,7 +18,10 @@ MAX_TRIES = 10000 # Max number of tries to find a random adjacency
 
 def createRandomAdjacency(species,genesList,adjacenciesList):
     repeat = 0
+    print(genesList,file=sys.stderr)
+    print(species,file=sys.stderr)
     while repeat <= MAX_TRIES:
+        print(genesList[species],file=sys.stderr)
         [gene1,gene2] = random.sample(genesList[species],2)
         sign1 = random.choice(['h','t'])
         sign2 = random.choice(['h','t'])
