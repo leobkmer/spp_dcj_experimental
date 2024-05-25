@@ -4,7 +4,7 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter as ADHF, FileType
 import data_utils as du
 import csv
-
+import sys
 #
 # COMPARING TWO SOLUTIONS
 #
@@ -21,11 +21,19 @@ def SDDistance(adjacencies1,adjacencies2,speciesList,noiseInLeaves=False,leavesD
             adjacencies1Aux[species] = []
             adjacencies2Aux[species] = []
             for [ext1,ext2] in adjacencies1[species]:
+                if ext1[1] =='o' or ext2[1]=='o':
+                    #telomeric
+                    print("Skipping telomere",file=sys.stderr)
+                    continue
                 if ext1<ext2:
                     adjacencies1Aux[species].append([ext1,ext2])
                 else:
                     adjacencies1Aux[species].append([ext2,ext1])
             for [ext1,ext2] in adjacencies2[species]:
+                if ext1[1]=='o' or ext2[1]=='o':
+                    print("Skipping telomere",file=sys.stderr)
+                    #telomeric
+                    continue
                 if ext1<ext2:
                     adjacencies2Aux[species].append([ext1,ext2])
                 else:

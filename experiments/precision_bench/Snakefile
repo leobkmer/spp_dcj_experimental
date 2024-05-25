@@ -19,7 +19,8 @@ RESULT_DIR          = config.get('result_dir', 'results')
 SIMULATION_DIR      = config.get('simulated_evolution_dir', 'simulated_evolution')
 TREE_DIR            = config.get('tree_dir', 'trees')
 
-
+REPS          = config.get('reps', 1)
+REPLICATES = list(range(1,REPS+1))
 # ZOMBI TREE EVOLUTION PARAMETERS -------------------------------------------
 
 TREE                = config.get('tree')
@@ -54,13 +55,13 @@ from os.path import basename
 # INITIAL RULE ---------------------------------------------------------------
 rule all:
     input:
-        expand(f'{SIMULATION_DIR}/dr{{dupl}}_de{{dupl_ext}}' +
+        expand(f'{SIMULATION_DIR}/rep{{r}}/dr{{dupl}}_de{{dupl_ext}}' +
             '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
             '_re{rearr_ext}_s{tree_scale}/EventCounts.txt',
             dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
             ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
             ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
-            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES),
+            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,r=REPLICATES),
 
         # 
         # Noisy Adjacencies
@@ -101,13 +102,13 @@ rule all:
 #            ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
 #            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES, noise =
 #            ADJ_NOISE, adv = ADJ_ADVNOISE),
-        expand('{}/dr{{dupl}}_de{{dupl_ext}}'.format(RESULT_DIR) +
+        expand('{}/rep{{r}}/dr{{dupl}}_de{{dupl_ext}}'.format(RESULT_DIR) +
             '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
             '_re{rearr_ext}_s{tree_scale}/PrecisionRecall_Deco/l{l}.txt',
             dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
             ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
             ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
-            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,l=['y','n']),
+            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,l=['y','n'],r=REPLICATES),
 #        expand('{}/dr{{dupl}}_de{{dupl_ext}}'.format(PLOT_DIR) +
 #            '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
 #            '_re{rearr_ext}_s{tree_scale}/AdjacenciesPredicted_Deco.pdf',
@@ -143,22 +144,22 @@ rule rescale_tree:
     input:
         TREE
     output:
-       f'{TREE_DIR}/s{{scale,[0-9.]+}}.nwk'
+        f'{TREE_DIR}/rep{{r}}/s{{scale,[0-9.]+}}.nwk'
     shell:
         f'{SCRIPT_DIR}/rescale.py -s{{wildcards.scale}} {{input}} > {{output}}'
 
 
 rule zombi_generate_tree_events:
     input:
-        tree = f'{TREE_DIR}/s{{scale}}.nwk',
-        gp = f'{SIMULATION_DIR}/{{experiment}}_s{{scale}}/GenomeParameters.tsv'
+        tree = f'{TREE_DIR}/rep{{r}}/s{{scale}}.nwk',
+        gp = f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}_s{{scale}}/GenomeParameters.tsv'
     output:
-        events = f'{SIMULATION_DIR}/{{experiment,[^/]+}}' +
+        events = f'{SIMULATION_DIR}/rep{{r}}/{{experiment,[^/]+}}' +
                 '_s{scale,[0-9.]+}/T/Events.tsv',
-        tree = f'{SIMULATION_DIR}/{{experiment,[^/]+}}' +
+        tree = f'{SIMULATION_DIR}/rep{{r}}/{{experiment,[^/]+}}' +
                 '_s{scale,[0-9.]+}/T/CompleteTree.nwk',
     log:
-        f'{LOG_DIR}/zombi_tree_events_{{experiment}}_s{{scale}}.log'
+        f'{LOG_DIR}/rep{{r}}/zombi_tree_events_{{experiment}}_s{{scale}}.log'
     shell:
         f'{ZOMBI_BIN} Ti {{input.tree}} ' +
         '$(dirname {input.gp}) > {log}'
@@ -166,7 +167,7 @@ rule zombi_generate_tree_events:
 
 rule zombi_generate_genome_params:
     output:
-        f'{SIMULATION_DIR}/dr{{dupl,[efglnu]:[0-9.]+}}' +
+        f'{SIMULATION_DIR}/r{{reps}}/dr{{dupl,[efglnu]:[0-9.]+}}' +
         '_de{dupl_ext,[efglnu]:[0-9.]+}_gs{genome_size,\\d+}'
         '_lr{loss,[efglnu]:[0-9.]+}_le{loss_ext,[efglnu]:[0-9.]+}'
         '_or{origin,[efglnu]:[0-9.]+}_rr{rearr,[efglnu]:[0-9.]+}'
@@ -200,12 +201,12 @@ VERBOSE 1""".format(**wildcards)
 
 rule zombi_simulate_genomes:
     input:
-        gp = f'{SIMULATION_DIR}/{{experiment}}/GenomeParameters.tsv',
-        events = f'{SIMULATION_DIR}/{{experiment}}/T/Events.tsv',
+        gp = f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/GenomeParameters.tsv',
+        events = f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/T/Events.tsv',
     output:
-        gp = f'{SIMULATION_DIR}/{{experiment,[^/]+}}/G/GenomeParameters.tsv',
+        gp = f'{SIMULATION_DIR}/rep{{r}}/{{experiment,[^/]+}}/G/GenomeParameters.tsv',
     log:
-         f'{LOG_DIR}/zombi_simulate_genomes_{{experiment,[^/]+}}.log',
+         f'{LOG_DIR}/rep{{r}}/zombi_simulate_genomes_{{experiment,[^/]+}}.log',
     shell:
         f'{ZOMBI_BIN} G {{input.gp}} $(dirname {{input.gp}})' +
         ' > {log}'
@@ -213,10 +214,10 @@ rule zombi_simulate_genomes:
 
 rule display_events:
     input:
-        events = f'{SIMULATION_DIR}/{{experiment}}/T/Events.tsv',
-        gp = f'{SIMULATION_DIR}/{{experiment}}/G/GenomeParameters.tsv',
+        events = f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/T/Events.tsv',
+        gp = f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/G/GenomeParameters.tsv',
     output:
-        f'{SIMULATION_DIR}/{{experiment,[^/]+}}/EventCounts.txt',
+        f'{SIMULATION_DIR}/rep{{r}}/{{experiment,[^/]+}}/EventCounts.txt',
     shell:
         f'{SCRIPT_DIR}/displayEventCounts.py {{input.events}} ' +
         '$(dirname {input.gp})/Events_per_branch > {output}'
@@ -224,18 +225,18 @@ rule display_events:
 
 rule nwk_to_tabular:
     input:
-        tree = f'{SIMULATION_DIR}/{{experiment}}/T/CompleteTree.nwk',
+        tree = f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/T/CompleteTree.nwk',
     output:
-        f'{SIMULATION_DIR}/{{experiment,[^/]+}}/SpTree.txt',
+        f'{SIMULATION_DIR}/rep{{r}}/{{experiment,[^/]+}}/SpTree.txt',
     shell:
         f'{SCRIPT_DIR}/nwk2tabular.py {{input}} > {{output}}'
 
 
 rule genomes_to_gene_order:
     input:
-        f'{SIMULATION_DIR}/{{experiment}}/G/GenomeParameters.tsv',
+        f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/G/GenomeParameters.tsv',
     output:
-        f'{SIMULATION_DIR}/{{experiment,[^/]+}}/GeneOrders.txt',
+        f'{SIMULATION_DIR}/rep{{r}}/{{experiment,[^/]+}}/GeneOrders.txt',
     shell:
         f'{SCRIPT_DIR}/genomes2geneorders.py ' +
         '$(dirname {input})/Genomes/* > {output}'
@@ -243,17 +244,17 @@ rule genomes_to_gene_order:
 
 rule gene_order_to_true_adjacencies:
     input:
-        f'{SIMULATION_DIR}/{{experiment}}/GeneOrders.txt',
+        f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/GeneOrders.txt',
     output:
-        f'{SIMULATION_DIR}/{{experiment,[^/]+}}/AdjacenciesTrue.txt',
+        f'{SIMULATION_DIR}/rep{{r}}/{{experiment,[^/]+}}/AdjacenciesTrue.txt',
     shell:
         f'{SCRIPT_DIR}/data_utils.py {{input}} {{output}}'
 
 
 rule noisy_adjacencies:
     input:
-        tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
-        adj  = f'{SIMULATION_DIR}/{{experiment}}/AdjacenciesTrue.txt',
+        tree = f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/SpTree.txt',
+        adj  = f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/AdjacenciesTrue.txt',
     output:
         f'{RESULT_DIR}/{{experiment,[^/]+}}/AdjacenciesNoisy' +
         '_n{noise,[0-9]+}_adv{adv,[0-9.]+}.txt'
@@ -267,12 +268,12 @@ rule noisy_adjacencies:
 
 rule zombi_to_deco:
     input:
-        f'{SIMULATION_DIR}/{{experiment}}/AdjacenciesTrue.txt',
+        f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/AdjacenciesTrue.txt',
     output:
-        f'{DECO_DIR}/{{experiment}}/parameters_exp.txt',
-        f'{DECO_DIR}/{{experiment}}/adjacencies_exp',
-        f'{DECO_DIR}/{{experiment}}/list_gene_trees_exp',
-        f'{DECO_DIR}/{{experiment}}/species_tree',
+        f'{DECO_DIR}/rep{{r}}/{{experiment}}/parameters_exp.txt',
+        f'{DECO_DIR}/rep{{r}}/{{experiment}}/adjacencies_exp',
+        f'{DECO_DIR}/rep{{r}}/{{experiment}}/list_gene_trees_exp',
+        f'{DECO_DIR}/rep{{r}}/{{experiment}}/species_tree',
     params:
         boltz_temp = DECO_BOLTZMANN_TEMP,
         boltz_samp = DECO_BOLTZMANN_SAMP
@@ -284,11 +285,11 @@ rule zombi_to_deco:
 
 rule prune_genetrees:
     input:
-        treelist = f'{DECO_DIR}/{{experiment}}/list_gene_trees_exp',
-        param = f'{DECO_DIR}/{{experiment}}/parameters_exp.txt',
+        treelist = f'{DECO_DIR}/rep{{r}}/{{experiment}}/list_gene_trees_exp',
+        param = f'{DECO_DIR}/rep{{r}}/{{experiment}}/parameters_exp.txt',
     output:
-        param = f'{DECO_DIR}/{{experiment}}/parameters_pruned.txt',
-        treelist = f'{DECO_DIR}/{{experiment}}/list_gene_trees_pruned',
+        param = f'{DECO_DIR}/rep{{r}}/{{experiment}}/parameters_pruned.txt',
+        treelist = f'{DECO_DIR}/rep{{r}}/{{experiment}}/list_gene_trees_pruned',
     shell:
         f'export PYTHONPATH={RECPHYLOXML_PATH};' +
         'while read LINE; do'
@@ -302,14 +303,14 @@ rule prune_genetrees:
 
 rule run_deco:
     input:
-        param_file = f'{DECO_DIR}/{{experiment}}/parameters_pruned.txt',
+        param_file = f'{DECO_DIR}/rep{{r}}/{{experiment}}/parameters_pruned.txt',
     output:
-        adj = f'{DECO_DIR}/{{experiment}}/exp.adjacencies.txt',
-        rec = f'{DECO_DIR}/{{experiment}}/exp.reconciliations.newick',
-        sp  = f'{DECO_DIR}/{{experiment}}/exp.species.txt',
-        gen = f'{DECO_DIR}/{{experiment}}/exp.genes.txt',
+        adj = f'{DECO_DIR}/rep{{r}}/{{experiment}}/exp.adjacencies.txt',
+        rec = f'{DECO_DIR}/rep{{r}}/{{experiment}}/exp.reconciliations.newick',
+        sp  = f'{DECO_DIR}/rep{{r}}/{{experiment}}/exp.species.txt',
+        gen = f'{DECO_DIR}/rep{{r}}/{{experiment}}/exp.genes.txt',
     log:
-        f'{LOG_DIR}/{basename(DECO_BIN)}_{{experiment}}.log'
+        f'{LOG_DIR}/rep{{r}}/{basename(DECO_BIN)}_{{experiment}}.log'
     shell:
         'CUR_DIR=$(pwd); cd $(dirname {input.param_file});' +
         f'{DECO_BIN} params=$(basename {{input.param_file}})' +
@@ -318,13 +319,13 @@ rule run_deco:
 
 rule convert_deco_adjacencies:
     input:
-        gen = f'{DECO_DIR}/{{experiment}}/exp.genes.txt',
-        adj = f'{DECO_DIR}/{{experiment}}/exp.adjacencies.txt',
-        rec = f'{DECO_DIR}/{{experiment}}/exp.reconciliations.newick',
+        gen = f'{DECO_DIR}/rep{{r}}/{{experiment}}/exp.genes.txt',
+        adj = f'{DECO_DIR}/rep{{r}}/{{experiment}}/exp.adjacencies.txt',
+        rec = f'{DECO_DIR}/rep{{r}}/{{experiment}}/exp.reconciliations.newick',
     output:
-        f'{RESULT_DIR}/{{experiment}}/AdjacenciesDeco.txt',
+        f'{RESULT_DIR}/rep{{r}}/{{experiment}}/AdjacenciesDeco.txt',
     log:
-        f'{LOG_DIR}/decoadj2adj_{{experiment}}.log',
+        f'{LOG_DIR}/rep{{r}}/decoadj2adj_{{experiment}}.log',
     shell:
         # complement adjacencies with zero-adjacencies:
         #f'{SCRIPT_DIR}/decoadj2adj.py -c {{input.adj}} {{input.gen}} ' +
@@ -333,10 +334,10 @@ rule convert_deco_adjacencies:
 
 rule deco_and_true_adjacencies:
     input:
-        adj  = f'{SIMULATION_DIR}/{{experiment}}/AdjacenciesTrue.txt',
-        deco = f'{RESULT_DIR}/{{experiment}}/AdjacenciesDeco.txt',
+        adj  = f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/AdjacenciesTrue.txt',
+        deco = f'{RESULT_DIR}/rep{{r}}/{{experiment}}/AdjacenciesDeco.txt',
     output:
-        f'{RESULT_DIR}/{{experiment,[^/]+}}/AdjacenciesDecoAndTrue.txt'
+        f'{RESULT_DIR}/rep{{r}}/{{experiment,[^/]+}}/AdjacenciesDecoAndTrue.txt'
     shell:
         f'{SCRIPT_DIR}/merge_adjs.py {{input.adj}} {{input.deco}} > {{output}}'
 
@@ -351,13 +352,13 @@ rule visualize_candidate_adjacencies:
 
 rule construct_ilp:
     input:
-        tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
-        candAdj = f'{RESULT_DIR}/{{experiment}}/Adjacencies{{params}}.txt',
+        tree = f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/SpTree.txt',
+        candAdj = f'{RESULT_DIR}/rep{{r}}/{{experiment}}/Adjacencies{{params}}.txt',
     output:
-        ilp = temp(f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_{{params}}/l{{l}}.ilp'),
-        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_{{params}}/l{{l}}.txt',
+        ilp = temp(f'{ILP_DIR}/rep{{r}}/{{experiment,[^/]+}}/SPP_DCJ_{{params}}/l{{l}}.ilp'),
+        idMap = f'{ILP_DIR}/rep{{r}}/{{experiment}}/IdToExtremity_{{params}}/l{{l}}.txt',
     log:
-        f'{LOG_DIR}/{{experiment}}_{{params}}/l{{l}}_spp_dcj.log',
+        f'{LOG_DIR}/rep{{r}}/{{experiment}}_{{params}}/l{{l}}_spp_dcj.log',
     run:
         shell(f'{SCRIPT_DIR}/spp_dcj.py -a0.5 -m {{output.idMap}} {{input.tree}} '+
         '{input.candAdj} %s > {output.ilp} 2> {log}'%("-l" if wildcards.l=='y' else ""))
@@ -365,18 +366,18 @@ rule construct_ilp:
 
 rule run_ilp:
     input:
-        ilp = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_{{params1}}/l{{l}}.ilp',
+        ilp = f'{ILP_DIR}/rep{{r}}/{{experiment}}/SPP_DCJ_{{params1}}/l{{l}}.ilp',
     output:
-        f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_{{params1}}/l{{l}}.sol',
+        f'{ILP_DIR}/rep{{r}}/{{experiment,[^/]+}}/SPP_DCJ_{{params1}}/l{{l}}.sol',
     params:
         time_limit = 5* 60,
         threads = 1
     threads:
         1
     log:
-        f'{LOG_DIR}/{{experiment}}_{{params1}}/l{{l}}_gurobi.log',
+        f'{LOG_DIR}/rep{{r}}/{{experiment}}_{{params1}}/l{{l}}_gurobi.log',
     benchmark:
-        f'{BENCHMARK_DIR}/{{experiment}}_{{params1}}/l{{l}}_gurobi.log'
+        f'{BENCHMARK_DIR}/rep{{r}}/{{experiment}}_{{params1}}/l{{l}}_gurobi.log'
     shell:
         f'{GUROBI_BIN} ResultFile={{output}} Threads={{params.threads}} ' +
         'TimeLimit={params.time_limit} {input} > {log}'
@@ -384,10 +385,10 @@ rule run_ilp:
 
 rule sol_to_adjacencies:
     input:
-        sol = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_{{params}}/l{{l}}.sol',
-        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_{{params}}/l{{l}}.txt',
+        sol = f'{ILP_DIR}/rep{{r}}/{{experiment}}/SPP_DCJ_{{params}}/l{{l}}.sol',
+        idMap = f'{ILP_DIR}/rep{{r}}/{{experiment}}/IdToExtremity_{{params}}/l{{l}}.txt',
     output:
-        f'{RESULT_DIR}/{{experiment,[^/]+}}/AdjacenciesPredicted_{{params}}/l{{l}}.txt'
+        f'{RESULT_DIR}/rep{{r}}/{{experiment,[^/]+}}/AdjacenciesPredicted_{{params}}/l{{l}}.txt'
     shell:
         f'{SCRIPT_DIR}/sol2adjacencies.py {{input.sol}} ' +
         '{input.idMap} > {output}'
@@ -395,11 +396,11 @@ rule sol_to_adjacencies:
 
 rule evaluate_predicted_adjacencies:
     input:
-        tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
-        trueAdj= f'{SIMULATION_DIR}/{{experiment}}/AdjacenciesTrue.txt',
-        predAdj= f'{RESULT_DIR}/{{experiment}}/AdjacenciesPredicted_{{params}}/l{{l}}.txt',
+        tree = f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/SpTree.txt',
+        trueAdj= f'{SIMULATION_DIR}/rep{{r}}/{{experiment}}/AdjacenciesTrue.txt',
+        predAdj= f'{RESULT_DIR}/rep{{r}}/{{experiment}}/AdjacenciesPredicted_{{params}}/l{{l}}.txt',
     output:
-        f'{RESULT_DIR}/{{experiment,[^/]+}}/PrecisionRecall_{{params}}/l{{l}}.txt',
+        f'{RESULT_DIR}/rep{{r}}/{{experiment,[^/]+}}/PrecisionRecall_{{params}}/l{{l}}.txt',
     shell:
         f'{SCRIPT_DIR}/spp_utils.py {{input.tree}} {{input.predAdj}} ' +
         '{input.trueAdj} > {output}'

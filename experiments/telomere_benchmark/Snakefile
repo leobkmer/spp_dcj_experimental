@@ -1,8 +1,8 @@
 
 NOISE = [30]
-ADV = [0]
+ADV = [1]
 OPS = [30]
-LINEARS = [1,2,3,4,5]
+LINEARS = [2,4,6,8,10,12,14,16]
 DUPRATE=[0.4]
 DUPZIPF=[6]
 DELRATE=[0.2]
