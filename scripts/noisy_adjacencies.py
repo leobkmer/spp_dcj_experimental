@@ -21,10 +21,18 @@ def createRandomAdjacency(species,genesList,adjacenciesList):
     print(genesList,file=sys.stderr)
     print(species,file=sys.stderr)
     while repeat <= MAX_TRIES:
-        print(genesList[species],file=sys.stderr)
+        #print(genesList[species],file=sys.stderr)
         [gene1,gene2] = random.sample(genesList[species],2)
+        
         sign1 = random.choice(['h','t'])
         sign2 = random.choice(['h','t'])
+        #print(gene1,gene2,file=sys.stderr)
+        if gene1.startswith("t_")and gene2.startswith("t_"):
+            continue
+        if gene1.startswith("t_"):
+            sign1 = 'o'
+        if gene2.startswith("t_"):
+            sign2 = 'o'
         ext1 = (gene1,sign1)
         ext2 = (gene2,sign2)
         if ext1>ext2:
@@ -43,6 +51,12 @@ def createRandomAdversarialAdjacency(species,parent,familiesDict,adjacenciesList
             gene2 = random.choice(familiesDict[species][fam2])
             sign1 = random.choice(['h','t'])
             sign2 = random.choice(['h','t'])
+            if gene1.startswith("t_")and gene2.startswith("t_"):
+                continue
+            if gene1.startswith("t_"):
+                sign1 = 'o'
+            if gene2.startswith("t_"):
+                sign2 = 'o'
             ext1 = (gene1,sign1)
             ext2 = (gene2,sign2)
             if ext1 != ext2:
