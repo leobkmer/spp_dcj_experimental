@@ -19,6 +19,42 @@ rule all_benchmark:
         expand('benchmark/{no}/n{noise}_a{adv}/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.txt',
             no=['new','old'],noise=NOISE,adv=ADV,ops=OPS,linears=LINEARS,duprate=DUPRATE,dupzipf=DUPZIPF,delrate=DELRATE,insrate=INSRATE,idzipf=IDZIPF,markers=MARKERS,n=SAMPLES)
 
+rule summarize:
+    input:
+        expand('benchmark/unified/n{noise}_a{adv}/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}.txt',
+        noise=NOISE,adv=ADV,ops=OPS,linears=LINEARS,duprate=DUPRATE,dupzipf=DUPZIPF,delrate=DELRATE,insrate=INSRATE,idzipf=IDZIPF,markers=MARKERS)
+    output:
+        'summary.txt'
+    shell:
+        'cat {input} > {output}'
+
+rule unify_samples:
+    input:
+        old=expand('benchmark/old/{{noiseparams}}/{{simparams}}/sample{n}.txt',n=SAMPLES),
+        nw =expand('benchmark/new/{{noiseparams}}/{{simparams}}/sample{n}.txt',n=SAMPLES)
+    output:
+        'benchmark/unified/{noiseparams}/{simparams}.txt'
+    run:
+        olds = {}
+        nws = {}
+        for i in input.old:
+            prms = i.split("benchmark/old/")[1]
+            with open(i) as f:
+                s = f.readlines()[-1].split()[0]
+                olds[prms]=s
+        for j in input.nw:
+            prms = j.split("benchmark/new/")[1]
+            with open(j) as f:
+                s = f.readlines()[-1].split()[0]
+                nws[prms]=s
+        with open(output[0],'w') as f:
+            for k,v in olds.items():
+                ls=k.split('linears')[1].split('_')[0]
+                print(k,ls,v,nws[k],file=f)
+
+            
+
+
 rule simulate:
     output:
         task='genomes/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.txt',
@@ -83,3 +119,4 @@ rule solve_ilp:
         'benchmark/{newold}/{path}/{name}.txt'
     shell:
         'gurobi_cl ResultFile={output} Threads={params.threads} TimeLimit={params.time_limit} {input} > {log}'
+
