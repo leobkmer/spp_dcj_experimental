@@ -1,0 +1,85 @@
+
+NOISE = [30]
+ADV = [0]
+OPS = [50]
+LINEARS = [1,2,3]
+DUPRATE=[0.4]
+DUPZIPF=[6]
+DELRATE=[0.2]
+INSRATE=[0.1]
+IDZIPF=[4]
+MARKERS = 100
+SAMPLES = list(range(1,2))
+
+FFS_DIR = '/home/leob/Documents/ffs-dcj'
+SCRIPT_DIR = '../../scripts'
+OLD_SCRIPT_DIR = '/home/leob/Documents/spp_dcj/scripts'
+rule all_benchmark:
+    input:
+        expand('benchmark/{no}/n{noise}_a{adv}/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.txt',
+            no=['new','old'],noise=NOISE,adv=ADV,ops=OPS,linears=LINEARS,duprate=DUPRATE,dupzipf=DUPZIPF,delrate=DELRATE,insrate=INSRATE,idzipf=IDZIPF,markers=MARKERS,n=SAMPLES)
+
+rule simulate:
+    output:
+        task='genomes/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.txt',
+    log:
+        'genomes/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.log'
+    shell:
+        '%s/simulate --genes {wildcards.markers} --nops {wildcards.ops} --nchrms {wildcards.linears} --dup-rate {wildcards.duprate} --dup-size-zipf {wildcards.dupzipf} --del-rate {wildcards.delrate} --ins-rate {wildcards.insrate} --indel-size-zipf {wildcards.idzipf} --nwk tree.nwk > {output.task} 2> {log}'%FFS_DIR
+
+rule adjacencies:
+    input:
+        'genomes/{params}/{name}.txt'
+    output:
+        'adjacencies/{params}/{name}.txt'
+    shell:
+        '%s/unimog2adjacencies.py {input} > {output}'%SCRIPT_DIR
+
+rule noise:
+    input:
+        'adjacencies/{params}/{name}.txt'
+    output:
+        'noisy/n{noise}_a{adv}/{params}/{name}.txt'
+    log:
+        'noisy/n{noise}_a{adv}/{params}/{name}.log'
+    shell:
+        '%s/noisy_adjacencies.py tree.txt {input} {wildcards.noise} {wildcards.adv} {output} 2> {log}'%SCRIPT_DIR
+
+rule ilp_new:
+    input:
+        'noisy/{noiseparams}/{params}/{name}.txt'
+    output:
+        ilp='ilp/new/{noiseparams}/{params}/{name}.ilp',
+        idMap='ilp/new/{noiseparams}/{params}/{name}.idmap'
+    log:
+        'ilp/new/{noiseparams}/{params}/{name}.log'
+    shell:
+        '%s/spp_dcj.py -a0.5 -m {output.idMap} tree.txt {input} > {output.ilp} 2> {log}'%SCRIPT_DIR
+
+rule ilp_old:
+    input:
+        'noisy/{noiseparams}/{params}/{name}.txt'
+    output:
+        ilp='ilp/old/{noiseparams}/{params}/{name}.ilp',
+        idMap='ilp/old/{noiseparams}/{params}/{name}.idmap'
+    log:
+        'ilp/old/{noiseparams}/{params}/{name}.log'
+    shell:
+        '%s/spp_dcj.py -a0.5 -m {output.idMap} tree.txt {input} > {output.ilp} 2> {log}'%OLD_SCRIPT_DIR
+
+rule solve_ilp:
+    input:
+        'ilp/{newold}/{path}/{name}.ilp'
+    output:
+        'sol/{newold}/{path}/{name}.sol'
+    params:
+        time_limit = 10 * 60,
+        threads = 1
+    threads:
+        1
+    log:
+        'sol/{newold}/{path}/{name}.sol'
+    benchmark:
+        'benchmark/{newold}/{path}/{name}.txt'
+    shell:
+        'gurobi_cl ResultFile={output} Threads={params.threads} TimeLimit={params.time_limit} {input} > {log}'
