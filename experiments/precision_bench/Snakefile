@@ -167,7 +167,7 @@ rule zombi_generate_tree_events:
 rule zombi_generate_genome_params:
     output:
         f'{SIMULATION_DIR}/dr{{dupl,[efglnu]:[0-9.]+}}' +
-        '_de{dupl_ext,[efglnu]:[0-9.]+}_gs{genome_size,\d+}'
+        '_de{dupl_ext,[efglnu]:[0-9.]+}_gs{genome_size,\\d+}'
         '_lr{loss,[efglnu]:[0-9.]+}_le{loss_ext,[efglnu]:[0-9.]+}'
         '_or{origin,[efglnu]:[0-9.]+}_rr{rearr,[efglnu]:[0-9.]+}'
         '_re{rearr_ext,[efglnu]:[0-9.]+}_s{scale,[0-9.]+}/GenomeParameters.tsv'
@@ -294,7 +294,7 @@ rule prune_genetrees:
         'while read LINE; do'
         '   A=$(dirname {input.param});'
         '   NEW=${{LINE%.xml}}_pruned.xml;' +
-        f'   /prj/tools/python3/bin/python3 {SCRIPT_DIR}/prune_reconciled_genetrees.py $A/$LINE > $A/$NEW;' +
+        f'   python3 {SCRIPT_DIR}/prune_reconciled_genetrees.py $A/$LINE > $A/$NEW;' +
         '   echo $NEW >> {output.treelist};'
         'done < {input.treelist};'
         'sed "s/$(basename {input.treelist})/$(basename {output.treelist})/" '
@@ -369,7 +369,7 @@ rule run_ilp:
     output:
         f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_{{params1}}/l{{l}}.sol',
     params:
-        time_limit = 120 * 60,
+        time_limit = 5* 60,
         threads = 1
     threads:
         1
@@ -410,7 +410,7 @@ rule visualize_predicted_adjacencies:
         candAdj  = f'{RESULT_DIR}/{{experiment}}/Adjacencies{{params}}txt',
         predAdj  = f'{RESULT_DIR}/{{experiment}}/AdjacenciesPredicted_{{params}}txt',
     output:
-        f'{PLOT_DIR}/{{experiment}}/AdjacenciesPredicted_{{params,\w+\.|\.}}pdf',
+        f'{PLOT_DIR}/{{experiment}}/AdjacenciesPredicted_{{params,\\w+\\.|\\.}}pdf',
     shell:
         f'{SCRIPT_DIR}/visualize_genomes.py -i {{input.predAdj}} ' +
         '{input.candAdj} > {output}'

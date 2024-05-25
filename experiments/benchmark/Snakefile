@@ -61,7 +61,7 @@ rule all_benchmark:
             dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
             ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
             ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
-            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,no=['new','old'],replicate=REPLICATES)
+            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,no=['new','old'],replicate=REPLICATES) #,noise=ADJ_NOISE,adv=ADJ_ADVNOISE)
 
 # INITIAL RULE ---------------------------------------------------------------
 rule all:
@@ -394,7 +394,7 @@ rule run_ilp:
     output:
         f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_{{params1}}.sol',
     params:
-        time_limit = 120 * 60,
+        time_limit = 60 * 60,
         threads = 1
     threads:
         1
