@@ -52,6 +52,7 @@ ADJ_ADVNOISE        = config.get('adjacency_adversarial_noise', [50])
 
 from os.path import basename
 
+
 # INITIAL RULE ---------------------------------------------------------------
 rule all:
     input:
@@ -139,6 +140,31 @@ rule all:
         #    rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES),
 
 # -----------------------------------------------------------------------------
+
+
+rule all_summarize:
+    input:
+        expand('{}/rep{{r}}/dr{{dupl}}_de{{dupl_ext}}'.format(RESULT_DIR) +
+            '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
+            '_re{rearr_ext}_s{tree_scale}/PrecisionRecall_Deco/unified.txt',
+            dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
+            ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
+            ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
+            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,r=REPLICATES)
+    output:
+        'summary.txt'
+    shell:
+        'cat {input} > {output}'
+
+rule summarize_prec_recall:
+    input:
+        n='%s/{params}/PrecisionRecall_Deco/ln.txt'%RESULT_DIR,
+        y='%s/{params}/PrecisionRecall_Deco/ly.txt'%RESULT_DIR,
+    output:
+        '%s/{params}/PrecisionRecall_Deco/unfied.txt'%RESULT_DIR
+    run:
+        s=input.n.split('_s')[1].split('/')[0]
+        shell('echo %s %s $(paste {input.n} {input.y} | head -n 2 | tail -n 1) > {output}'%(input.n,s))
 
 rule rescale_tree:
     input:
