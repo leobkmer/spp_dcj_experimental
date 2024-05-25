@@ -16,7 +16,7 @@ recphyloxml_dir:        ../../tools/recPhyloXML
 # ZOMBI TREE EVOLUTION PARAMETERS -------------------------------------------
 
 tree:                   ../../data/N10.nwk
-tree_scales:            [20,25,30,35,40,45,50,55,60,65,70]
+tree_scales:            [35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50]
 
 # ZOMBI GENOME EVOLUTION PARAMETERS -----------------------------------------
 

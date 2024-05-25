@@ -1,19 +1,19 @@
 
 NOISE = [30]
 ADV = [0]
-OPS = [50]
-LINEARS = [1,2,3]
+OPS = [30]
+LINEARS = [1,2,3,4,5]
 DUPRATE=[0.4]
 DUPZIPF=[6]
 DELRATE=[0.2]
 INSRATE=[0.1]
 IDZIPF=[4]
 MARKERS = 100
-SAMPLES = list(range(1,2))
+SAMPLES = list(range(1,11))
 
-FFS_DIR = '/home/leob/Documents/ffs-dcj'
+FFS_DIR = '/prj/gsp/urm/leonardsplayground/ffs-dcj'
 SCRIPT_DIR = '../../scripts'
-OLD_SCRIPT_DIR = '/home/leob/Documents/spp_dcj/scripts'
+OLD_SCRIPT_DIR = '/prj/gsp/urm/leonardsplayground/spp_dcj/scripts'
 rule all_benchmark:
     input:
         expand('benchmark/{no}/n{noise}_a{adv}/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.txt',
@@ -73,7 +73,7 @@ rule solve_ilp:
     output:
         'sol/{newold}/{path}/{name}.sol'
     params:
-        time_limit = 10 * 60,
+        time_limit = 60 * 60,
         threads = 1
     threads:
         1
