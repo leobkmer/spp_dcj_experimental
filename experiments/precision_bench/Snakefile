@@ -144,7 +144,7 @@ rule all:
 
 rule all_summarize:
     input:
-        expand('{}/rep{{r}}/dr{{dupl}}_de{{dupl_ext}}'.format(RESULT_DIR) +
+        expand('unified/rep{r}/dr{dupl}_de{dupl_ext}' +
             '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
             '_re{rearr_ext}_s{tree_scale}/PrecisionRecall_Deco/unified.txt',
             dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
@@ -158,10 +158,10 @@ rule all_summarize:
 
 rule summarize_prec_recall:
     input:
-        n='%s/{params}/PrecisionRecall_Deco/ln.txt'%RESULT_DIR,
-        y='%s/{params}/PrecisionRecall_Deco/ly.txt'%RESULT_DIR,
+        n='%s/rep{r}/{params}/PrecisionRecall_Deco/ln.txt'%RESULT_DIR,
+        y='%s/rep{r}/{params}/PrecisionRecall_Deco/ly.txt'%RESULT_DIR,
     output:
-        '%s/{params}/PrecisionRecall_Deco/unfied.txt'%RESULT_DIR
+        'unified/rep{r}/{params}/PrecisionRecall_Deco/unified.txt'
     run:
         s=input.n.split('_s')[1].split('/')[0]
         shell('echo %s %s $(paste {input.n} {input.y} | head -n 2 | tail -n 1) > {output}'%(input.n,s))
