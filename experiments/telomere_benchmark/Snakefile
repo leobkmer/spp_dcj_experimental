@@ -1,0 +1,122 @@
+
+NOISE = [30]
+ADV = [1]
+OPS = [30]
+LINEARS = [2,4,6,8,10,12,14,16]
+DUPRATE=[0.4]
+DUPZIPF=[6]
+DELRATE=[0.2]
+INSRATE=[0.1]
+IDZIPF=[4]
+MARKERS = 100
+SAMPLES = list(range(1,11))
+
+FFS_DIR = '/prj/gsp/urm/leonardsplayground/ffs-dcj'
+SCRIPT_DIR = '../../scripts'
+OLD_SCRIPT_DIR = '/prj/gsp/urm/leonardsplayground/spp_dcj/scripts'
+rule all_benchmark:
+    input:
+        expand('benchmark/{no}/n{noise}_a{adv}/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.txt',
+            no=['new','old'],noise=NOISE,adv=ADV,ops=OPS,linears=LINEARS,duprate=DUPRATE,dupzipf=DUPZIPF,delrate=DELRATE,insrate=INSRATE,idzipf=IDZIPF,markers=MARKERS,n=SAMPLES)
+
+rule summarize:
+    input:
+        expand('benchmark/unified/n{noise}_a{adv}/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}.txt',
+        noise=NOISE,adv=ADV,ops=OPS,linears=LINEARS,duprate=DUPRATE,dupzipf=DUPZIPF,delrate=DELRATE,insrate=INSRATE,idzipf=IDZIPF,markers=MARKERS)
+    output:
+        'summary.txt'
+    shell:
+        'cat {input} > {output}'
+
+rule unify_samples:
+    input:
+        old=expand('benchmark/old/{{noiseparams}}/{{simparams}}/sample{n}.txt',n=SAMPLES),
+        nw =expand('benchmark/new/{{noiseparams}}/{{simparams}}/sample{n}.txt',n=SAMPLES)
+    output:
+        'benchmark/unified/{noiseparams}/{simparams}.txt'
+    run:
+        olds = {}
+        nws = {}
+        for i in input.old:
+            prms = i.split("benchmark/old/")[1]
+            with open(i) as f:
+                s = f.readlines()[-1].split()[0]
+                olds[prms]=s
+        for j in input.nw:
+            prms = j.split("benchmark/new/")[1]
+            with open(j) as f:
+                s = f.readlines()[-1].split()[0]
+                nws[prms]=s
+        with open(output[0],'w') as f:
+            for k,v in olds.items():
+                ls=k.split('linears')[1].split('_')[0]
+                print(k,ls,v,nws[k],file=f)
+
+            
+
+
+rule simulate:
+    output:
+        task='genomes/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.txt',
+    log:
+        'genomes/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.log'
+    shell:
+        '%s/simulate --genes {wildcards.markers} --nops {wildcards.ops} --nchrms {wildcards.linears} --dup-rate {wildcards.duprate} --dup-size-zipf {wildcards.dupzipf} --del-rate {wildcards.delrate} --ins-rate {wildcards.insrate} --indel-size-zipf {wildcards.idzipf} --nwk tree.nwk > {output.task} 2> {log}'%FFS_DIR
+
+rule adjacencies:
+    input:
+        'genomes/{params}/{name}.txt'
+    output:
+        'adjacencies/{params}/{name}.txt'
+    shell:
+        '%s/unimog2adjacencies.py {input} > {output}'%SCRIPT_DIR
+
+rule noise:
+    input:
+        'adjacencies/{params}/{name}.txt'
+    output:
+        'noisy/n{noise}_a{adv}/{params}/{name}.txt'
+    log:
+        'noisy/n{noise}_a{adv}/{params}/{name}.log'
+    shell:
+        '%s/noisy_adjacencies.py tree.txt {input} {wildcards.noise} {wildcards.adv} {output} 2> {log}'%SCRIPT_DIR
+
+rule ilp_new:
+    input:
+        'noisy/{noiseparams}/{params}/{name}.txt'
+    output:
+        ilp='ilp/new/{noiseparams}/{params}/{name}.ilp',
+        idMap='ilp/new/{noiseparams}/{params}/{name}.idmap'
+    log:
+        'ilp/new/{noiseparams}/{params}/{name}.log'
+    shell:
+        '%s/spp_dcj.py -a0.5 -m {output.idMap} tree.txt {input} > {output.ilp} 2> {log}'%SCRIPT_DIR
+
+rule ilp_old:
+    input:
+        'noisy/{noiseparams}/{params}/{name}.txt'
+    output:
+        ilp='ilp/old/{noiseparams}/{params}/{name}.ilp',
+        idMap='ilp/old/{noiseparams}/{params}/{name}.idmap'
+    log:
+        'ilp/old/{noiseparams}/{params}/{name}.log'
+    shell:
+        '%s/spp_dcj.py -a0.5 -m {output.idMap} tree.txt {input} > {output.ilp} 2> {log}'%OLD_SCRIPT_DIR
+
+rule solve_ilp:
+    input:
+        'ilp/{newold}/{path}/{name}.ilp'
+    output:
+        'sol/{newold}/{path}/{name}.sol'
+    params:
+        time_limit = 60 * 60,
+        threads = 1
+    threads:
+        1
+    log:
+        'sol/{newold}/{path}/{name}.sol'
+    benchmark:
+        'benchmark/{newold}/{path}/{name}.txt'
+    shell:
+        'gurobi_cl ResultFile={output} Threads={params.threads} TimeLimit={params.time_limit} {input} > {log}'
+

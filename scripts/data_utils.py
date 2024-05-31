@@ -8,6 +8,8 @@ from sys import stderr
 import random
 import csv
 import re
+import sys
+
 
 
 # import from third-party packages
@@ -33,6 +35,11 @@ VTYPE_CAP       = 'telomere'
 ORIENT_NEGATIVE = '-'
 ORIENT_POSITIVE = '+'
 
+I_EPSILON=0.05
+
+#separator for ILP variables
+SEP='_'
+
 SIGN2EXT_1      = {ORIENT_NEGATIVE:EXTR_TAIL,ORIENT_POSITIVE:EXTR_HEAD}
 SIGN2EXT_2      = {ORIENT_NEGATIVE:EXTR_HEAD,ORIENT_POSITIVE:EXTR_TAIL}
 EXT2SIGN_1      = {EXTR_TAIL:ORIENT_NEGATIVE,EXTR_HEAD:ORIENT_POSITIVE}
@@ -44,10 +51,14 @@ TRUE_ADJ_WEIGHT  = 1
 
 DEFAULT_GENE_FAM_SEP = '_'
 
-PAT_ADJ = re.compile('^(\w+)@([0-9_]+)$')
-PAT_MATCHED_EDGE = re.compile('^x(\d+)_(\d+)([^0-9 \t]*) 1\s*$')
+PAT_ADJ = re.compile(r'^(\w+)@([0-9_]+)$')
+PAT_MATCHED_EDGE = re.compile(r'^x(\d+)_(\d+)([^0-9 \t]*) 1\s*$')
 
 
+def complement_id(v):
+    (gName, (g, extr)) = v
+    return (gName,(g,EXT_COMPLEMENT[extr]))
+    
 #
 # DATA ACQUISITION, PARSERS
 #
@@ -118,8 +129,7 @@ def parseAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
     delimiter = '\t'
     resAdjacencies = defaultdict(list)
     resGenes       = defaultdict(list)
-    resWeights     = {}
-    resPenalities  = {}
+    resWeights     = defaultdict(dict)
     for line in csv.reader(data, delimiter = delimiter):
         if line[0][0] != headerMark:
             species  = line[0]
@@ -133,11 +143,7 @@ def parseAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
                         f'feasible, skipping {line[1]}:{line[2]}-{line[4]}:{line[5]}',
                         file=stderr)
             else:
-                addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights,resGenes[species])
-
-            # optional penality
-            if len(line) > 7 and line[7]:
-                resPenalities[ext1 > ext2 and (ext2, ext1) or (ext1, ext2)] = float(line[7])
+                addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights[species],resGenes[species])
 
     speciesList = list(resAdjacencies.keys())
     for species in speciesList:
@@ -146,7 +152,7 @@ def parseAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
 
     return {'species':speciesList, 'genes':resGenes,
             'adjacencies':resAdjacencies, 'weights':resWeights,
-            'families': resFamilies, 'penalities': resPenalities}
+            'families': resFamilies}
 
 
 def parseCandidateAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
@@ -161,7 +167,7 @@ def parseCandidateAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
     delimiter = ' '
     resAdjacencies = defaultdict(list)
     resGenes       = defaultdict(list)
-    resWeights     = {}
+    resWeights     = defaultdict(dict)
     for line in csv.reader(data, delimiter = delimiter):
         if line[0][0] != headerMark:
             species = line[0]
@@ -181,7 +187,7 @@ def parseCandidateAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
             weight  = float(line[5])
             ext1 = (gene1,SIGN2EXT_1[sign1])
             ext2 = (gene2,SIGN2EXT_2[sign2])
-            addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights,resGenes[species])
+            addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights[species],resGenes[species])
     speciesList = list(resAdjacencies.keys())
     for species in speciesList:
         resGenes[species] = list(set(resGenes[species]))
@@ -206,7 +212,7 @@ def parseTrueGeneOrders(data, close_linear=False, sep=DEFAULT_GENE_FAM_SEP):
     delimiter = '\t'
     resAdjacencies = defaultdict(list)
     resGenes       = defaultdict(list)
-    resWeights     = {}
+    resWeights     = defaultdict(dict)
     prevGene       = ''
     prevSign       = ''
     prevSpecies    = ''
@@ -227,7 +233,7 @@ def parseTrueGeneOrders(data, close_linear=False, sep=DEFAULT_GENE_FAM_SEP):
                 if ext1>ext2:
                     ext1,ext2=ext2,ext1
                 resAdjacencies[currentSpecies].append([ext1,ext2])
-                resWeights[ext1,ext2] = TRUE_ADJ_WEIGHT
+                resWeights[currentSpecies][ext1,ext2] = TRUE_ADJ_WEIGHT
             else:
                 # we start a new chromosome
                 if close_linear:
@@ -241,7 +247,7 @@ def parseTrueGeneOrders(data, close_linear=False, sep=DEFAULT_GENE_FAM_SEP):
                             ext1,ext2=ext2,ext1
                         if [ext1,ext2] not in resAdjacencies[prevSpecies]:
                             resAdjacencies[prevSpecies].append([ext1,ext2])
-                            resWeights[ext1,ext2] = TRUE_ADJ_WEIGHT
+                            resWeights[prevSpecies][ext1,ext2] = TRUE_ADJ_WEIGHT
                     # We record the current gene as the first gene of the previous chromosome
                     firstGene = currentGene
                     firstSign = currentSign
@@ -260,7 +266,7 @@ def parseTrueGeneOrders(data, close_linear=False, sep=DEFAULT_GENE_FAM_SEP):
             ext1,ext2=ext2,ext1
         if [ext1,ext2] not in resAdjacencies[prevSpecies]:
             resAdjacencies[prevSpecies].append([ext1,ext2])
-            resWeights[ext1,ext2] = TRUE_ADJ_WEIGHT
+            resWeights[prevSpecies][ext1,ext2] = TRUE_ADJ_WEIGHT
 
     speciesList = list(resAdjacencies.keys())
     resFamilies = getFamiliesFromGenes(resGenes,speciesList, sep=sep)
@@ -308,6 +314,7 @@ def unimog2adjacencies(genome):
 
     # ignore genome name
     _, chromosomes = genome
+    tels=0
     for chr_ in chromosomes:
         # set counter for first marker
         if chr_[1][0][1] not in occ:
@@ -315,7 +322,6 @@ def unimog2adjacencies(genome):
         occ[chr_[1][0][1]] += 1
 
         fst_occ = occ[chr_[1][0][1]]
-
         for i in range(len(chr_[1])-1):
             (o1, g1), (o2, g2) = chr_[1][i:i+2]
             if g2 not in occ:
@@ -330,8 +336,10 @@ def unimog2adjacencies(genome):
             res.append(((f'{g1}_{occ[g1]}', SIGN2EXT_1[o1]),
                 (f'{g2}_{fst_occ}', SIGN2EXT_2[o2])))
         elif chr_[0] == CHR_LINEAR:
-            res.append(((f'{g1}_{occ[g1]}', SIGN2EXT_1[o1]), ('t', EXTR_HEAD)))
-            res.append((('t', EXTR_HEAD), (f'{g2}_{fst_occ}', SIGN2EXT_2[o2])))
+            tels+=1
+            res.append(((f'{g1}_{occ[g1]}', SIGN2EXT_1[o1]), ('t_{}'.format(tels), EXTR_CAP)))
+            tels+=1
+            res.append((('t_{}'.format(tels), EXTR_CAP), (f'{g2}_{fst_occ}', SIGN2EXT_2[o2])))
 
     return res
 
@@ -401,6 +409,9 @@ def adjacencies2unimog(adjacenciesList, matchingList):
     return genomes
 
 
+def parse_edge_id(r):
+    return tuple(r.split('_'))
+
 def parseSOL(data, idMap):
     """ SOL file parser """
 
@@ -409,7 +420,7 @@ def parseSOL(data, idMap):
     matchingList = set()
     matchingDict = dict()
     indelList = dict()
-    weightsDict = dict()
+    weightsDict = defaultdict(lambda: defaultdict(float))
     isEmpty = True
 
     vars_ = dict()
@@ -420,58 +431,44 @@ def parseSOL(data, idMap):
         if line.startswith(obj_txt):
             obj_value = float(line[len(obj_txt):])
             continue
-
+        #print(line,file=sys.stderr)
         var_, val = line.split()
         vars_[var_] = float(val)
         isEmpty = False
-        m = PAT_MATCHED_EDGE.match(line)
-        if m:
-            id1, id2, suf = m.groups()
+    #collect set adjacencies
+    for var_,val in vars_.items():
+        if abs(val - 1) > I_EPSILON:
+            continue
+        if var_.split(SEP)[0]=='a':
+            entries = var_.split(SEP)
+            #format aSEPedge
+            rest = SEP.join(entries[1::])
+            id1, id2, _ = parse_edge_id(rest)
             ext1 = idMap[id1]
             ext2 = idMap[id2]
-            if not suf:
-                if ext1[0] == ext2[0]:
-                    # edge is an adjacency
-                    if ext1[0] not in adjacenciesList:
-                        adjacenciesList[ext1[0]] = list()
-                    adj = (ext1[1:], ext2[1:])
-                    adjacenciesList[ext1[0]].append(adj)
-                    weightsDict[adj] = 0.0
-                else:
-                    # edge is an extremity edge (matching edge) 
-#                    for ext in (ext1, ext2):
-#                        if ext in matchingDict:
-#                            print(f'Fatal: extremity {ext} already matched to ' + \
-#                                    f'some other extremity ({matchingDict[ext]})',
-#                                    file = stderr)
-#                            exit(1)
-                    e = ext1 < ext2 and (ext1[:2], ext2[:2]) or (ext2[:2],
+            if ext1[0] not in adjacenciesList:
+                adjacenciesList[ext1[0]] = list()
+            adj = (ext1[1:], ext2[1:])
+            adjacenciesList[ext1[0]].append(adj)
+        elif var_.split(SEP)[0]=='x' and not var_.split('_')[-1]=='adj':
+            #edge is either indel or match
+            entries = var_.split(SEP)
+            #format xSEPteSEPedge
+            rest = SEP.join(entries[2::])
+            id1, id2, etype = parse_edge_id(rest)
+            rest = var_[len('a')+len(SEP)::]
+            ext1 = idMap[id1]
+            ext2 = idMap[id2]
+            if etype=='ext':
+                e = ext1 < ext2 and (ext1[:2], ext2[:2]) or (ext2[:2],
                             ext1[:2])
-                    matchingList.add(e)
-                    matchingDict[ext1] = ext2
-                    matchingDict[ext1] = ext1
-            elif suf.startswith('_'):
+                matchingList.add(e)
+                matchingDict[ext1] = ext2
+                matchingDict[ext1] = ext1
+            elif etype=='ind':
                 if ext1[0] not in indelList:
                     indelList[ext1[0]] = list()
                 indelList[ext1[0]].append((ext1[1:], ext2[1:]))
-    if isEmpty:
-        print('Fatal: data is empty', file=stderr)
-        exit(1)
-
-    # check if each extremity of a gene has a match
-#    for matching in matchingDict.items():
-#        for ext1 in matching:
-#            if not ext1[1].startswith('t'):
-#                ext2 = ext1[:2] + (ext1[2] == EXTR_HEAD and EXTR_TAIL or
-#                        EXTR_HEAD,)
-#                if ext2 not in matchingDict:
-#                    print(f'Fatal: missing matching of {ext2}', file = stderr)
-#                    exit(1)
-#    for gName, adjs in in adjacenciesList:
-#        for g, _ in adjs:
-#            if (gName, g) not in matchingDict:
-#                    print(f'Fatal: missing matching for gene {ext2}', file = stderr)
-#                    exit(1)
     return adjacenciesList, indelList, weightsDict, sorted(matchingList), \
             obj_value, vars_
 
@@ -515,21 +512,17 @@ def mapFamiliesToGenes(genes, sep=DEFAULT_GENE_FAM_SEP):
 
 
 def _constructRDAdjacencyEdges(G, gName, adjacencies, candidateWeights,
-        candidatePenalities, extremityIdManager):
+        extremityIdManager):
     ''' create adjacencies of the genome named <gName>'''
     for ext1, ext2 in adjacencies:
         id1 = extremityIdManager.getId((gName, ext1))
         id2 = extremityIdManager.getId((gName, ext2))
 
         # ensure that each edge has a unique identifier
-        edge_id = '{}_{}'.format(*sorted((id1, id2)))
+        edge_id = '{}_{}_adj'.format(*sorted((G.nodes[id1]['anc'], G.nodes[id2]['anc'])))
+        anc = '{}_{}_adj'.format(*sorted((G.nodes[id1]['anc'],G.nodes[id2]['anc'])))
         weight = candidateWeights.get((ext1, ext2), 0)
-        penality = candidatePenalities.get((ext1, ext2), None)
-        if penality is None:
-            G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight)
-        else:
-            G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight,
-                    penality=penality)
+        G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight,anc=anc)
 
 
 def _constructNaiveRDCapping(G, gName1, gName2, extremityIdManager):
@@ -707,8 +700,9 @@ def _find_end_pairs(G, gName1, gName2):
     return {(u, v, Arun, Brun) for (u, v), (Arun, Brun) in res.items()}
 
 
-def checkGraph(G):
-
+def checkGraph(G,cf=False,checkForAllTels=False):
+    #for v,data in G.nodes(data=True):
+    #    print(v,",".join(["{}={}".format(k,x) for k,x in data.items()]),file=sys.stderr)
     for u, v, in G.edges():
         if u == v:
             raise Exception(f'node {v} is connected to itself')
@@ -729,7 +723,12 @@ def checkGraph(G):
         if vdata['id'][1][1] not in {EXTR_HEAD, EXTR_TAIL, EXTR_CAP}:
             raise Exception(f'node {v} {G.nodes[v]["id"]} has malformed ' + \
                     'extremity')
-
+        # if vdata['id'][1][1] != EXTR_CAP and checkForAllTels:
+        #     has_cap=False
+        #     for u in G.neighbors(v):
+        #         has_cap=has_cap or G.nodes[u]['type']==EXTR_CAP
+        #     if not has_cap:
+        #         raise Exception("Looked for caps, but node {} ({}) is lacking one.".format(v,vdata))
         for u in G.neighbors(v):
             for data in G[u][v].values():
                 hasAdj |= data['type'] == ETYPE_ADJ
@@ -737,12 +736,15 @@ def checkGraph(G):
         if not hasAdj:
             raise Exception(f'node {v} {G.nodes[v]["id"]} is not incident ' + \
                     'to an adjacency edge')
-        if not hasExtrOrId:
+        if not hasExtrOrId and (not vdata['type']==VTYPE_CAP or not cf):
             raise Exception(f'node {v} {G.nodes[v]["id"]} is not incident ' + \
                     'to an extremity or indel edge')
 
 
-def identifyCircularSingletonCandidates(G):
+class TooManyCSException(Exception):
+    pass
+
+def identifyCircularSingletonCandidates(G,max_number=None):
     """ finds all components that can be circular singletons """
 
     res = dict()
@@ -772,16 +774,52 @@ def identifyCircularSingletonCandidates(G):
                             ppath = rotateToMin(path + (data, ))
                             vpath = tuple((ppath[i] for i in range(0,
                                 len(ppath), 2)))
+                            #TODO: Tell dany I found a bug here!
+                            vpath=canonicizePath(vpath)
                             epath = tuple((ppath[i] for i in range(1,
                                 len(ppath), 2)))
                             res[vpath] = epath
+                            if max_number is not None:
+                                if len(res)>max_number:
+                                    raise TooManyCSException("Number of CS is over maximum {}.".format(max_number))
     return res
+
+
+def annotate_v_circ_sing(G):
+    #Find all vertices that could be in a circular singleton
+    F = G.copy()
+    rmedges= [(u,v,k) for u,v,k,etype in G.edges(keys=True,data='type') if etype==ETYPE_EXTR]
+    #print("rmedge: {}".format(rmedges),file=sys.stderr)
+    F.remove_edges_from(rmedges)
+
+    for c in nx.connected_components(F):
+        S=F.subgraph(c)
+        try:
+            nx.find_cycle(S)
+            #print("CS candidate: {}".format(c),file=sys.stderr)
+            for v in c:
+                G.nodes[v]['cscandidate']=True
+        except nx.NetworkXNoCycle:
+            pass
 
 
 def rotateToMin(path):
     m = min((path[i] for i in range(0, len(path), 2)))
     i = path.index(m)
     return path[i:] + path[:i]
+
+def canonicizePath(path):
+    m = min(path)
+    i = path.index(m)
+    path = path[i:] + path[:i]
+    if len(path) > 2:
+        if path[1] <= path[-1]:
+            return path
+        else:
+            return (path[0],) + path[-1:0:-1]
+    return path
+        
+
 
 
 def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
@@ -810,8 +848,9 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
             id2h = extremityIdManager.getId((gName2, (gene2, EXTR_HEAD)))
             id2t = extremityIdManager.getId((gName2, (gene2, EXTR_TAIL)))
 
-            edge_idh = '{}_{}'.format(*sorted((id1h, id2h)))
-            edge_idt = '{}_{}'.format(*sorted((id1t, id2t)))
+            edge_idh = '{}_{}_ext'.format(*sorted((G.nodes[id1h]['anc'], G.nodes[id2h]['anc'])))
+            edge_idt = '{}_{}_ext'.format(*sorted((G.nodes[id1t]['anc'], G.nodes[id2t]['anc'])))
+
 
             G.add_edge(id1h, id2h, type=ETYPE_EXTR, id=edge_idh)
             G.add_edge(id1t, id2t, type=ETYPE_EXTR, id=edge_idt)
@@ -823,30 +862,33 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
         for i, gName in enumerate((gName1, gName2)):
             if len(fam2genes[i].get(fam, ())) > len(fam2genes[i-1].get(fam, \
                     ())):
+                #print("Fam {} in genome {} overrepresented. Adding indel edges...".format(fam,gName),file=sys.stderr)
                 for gene in fam2genes[i][fam]:
                     idh = extremityIdManager.getId((gName, (gene, EXTR_HEAD)))
                     idt = extremityIdManager.getId((gName, (gene, EXTR_TAIL)))
+
                     # ensure that each edge has a unique identifier
-                    edge_id = '{}_{}'.format(*sorted((idh, idt), reverse=True))
-                    if G.has_edge(idh, idt):
-                        edge_id = '{}_{}'.format(*sorted((idh, idt),
-                            reverse=True))
+                    edge_id = '{}_{}_ind'.format(*sorted((G.nodes[idh]['anc'], G.nodes[idt]['anc'])))
+                    #if G.has_edge(idh, idt):
+                    #    edge_id = '{}_{}'.format(*sorted((idh, idt),
+                    #        reverse=True))
                     G.add_edge(idh, idt, type=ETYPE_ID, id=edge_id)
 
     return siblings
 
-
-def _constructRDNodes(G, gName, genes, extremityIdManager):
+TELOMERE_GENE='t'
+def _constructRDNodes(G, gName, genes, globalIdManager,localIdManager):
     ''' create gene extremity nodes for the genome named <gName> '''
+    
     for extr in (EXTR_HEAD, EXTR_TAIL):
-        G.add_nodes_from(((extremityIdManager.getId((gName, (g, extr))),
-            dict(id=((gName, (g, extr))), type=VTYPE_EXTR)) for g in genes))
+        G.add_nodes_from(((localIdManager.getId((gName, (g, extr))),
+            dict(id=((gName, (g, extr))), type=VTYPE_EXTR,anc=globalIdManager.getId((gName, (g, extr))))) for g in genes)) #if g!=TELOMERE_GENE))
 
 
-def _constructRDTelomeres(G, gName, telomeres, extremityIdManager):
+def _constructRDTelomeres(G, gName, telomeres, extremityIdManager,localIdManager):
     ''' create telomereic extremity nodes for the genome named <gName> '''
-    G.add_nodes_from(((extremityIdManager.getId((gName, (t, 'o'))),
-        dict(id=((gName, (t, 'o'))), type=VTYPE_CAP)) for t in telomeres))
+    G.add_nodes_from(((localIdManager.getId((gName, (t, 'o'))),
+        dict(id=((gName, (t, 'o'))), type=VTYPE_CAP,anc=extremityIdManager.getId((gName, (t, 'o'))))) for t in telomeres))
 
 
 def hasIncidentAdjacencyEdges(G, v):
@@ -869,7 +911,7 @@ def getIncidentAdjacencyEdges(G, v):
 
 
 def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
-        candidateWeights, candidatePenalities, genes, extremityIdManager,
+        candidateWeights, genes, extremityIdManager,
         sep=DEFAULT_GENE_FAM_SEP):
     ''' constructs for each edge of the tree a relational diagram of the
     adjacent genomes'''
@@ -878,27 +920,29 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
 
     for child, parent in tree:
         G = nx.MultiGraph()
-
+        max_tels = len(candidateTelomeres[child]) + len(candidateTelomeres[parent]) +2 #2*sum([len(genes[gnm]) for gnm in [child,parent]])
+        localIdManager = IdManager(max_tels)
         for gName in (child, parent):
-            _constructRDNodes(G, gName, genes[gName], extremityIdManager)
+            _constructRDNodes(G, gName, genes[gName], extremityIdManager,localIdManager)
             _constructRDTelomeres(G, gName, candidateTelomeres[gName],
-                                  extremityIdManager)
+                                  extremityIdManager,localIdManager)
             _constructRDAdjacencyEdges(G, gName, candidateAdjacencies[gName],
-                    candidateWeights, candidatePenalities, extremityIdManager)
+                    candidateWeights[gName], localIdManager)
 
         fam2genes1 = mapFamiliesToGenes(genes[child], sep=sep)
         fam2genes2 = mapFamiliesToGenes(genes[parent], sep=sep)
         siblings   = _constructRDExtremityEdges(G, child, parent, genes,
-                fam2genes1, fam2genes2, extremityIdManager)
-
+                fam2genes1, fam2genes2, localIdManager)
+        
         res['graphs'][(child, parent)] = G
         res['siblings'][(child, parent)] = siblings
+        annotate_v_circ_sing(G)
 
 
     # create caps at last, assigning them the highest IDs
-    for child, parent in tree:
-        G = res['graphs'][(child, parent)]
-        _constructRDCapping(G, child, parent, extremityIdManager)
+    #for child, parent in tree:
+    #    G = res['graphs'][(child, parent)]
+    #    _constructRDCapping(G, child, parent, extremityIdManager)
 #        _constructNaiveRDCapping(G, child, parent, extremityIdManager)
         # remove caps from the graph that are not saturated by two edges
 #        for v, d in tuple(G.degree()):
@@ -924,7 +968,7 @@ def writeAdjacencies(adjacenciesList, weightsDict, out):
                 species,
                 gene2,
                 ext2,
-                str(weightsDict[(gene1,ext1), (gene2,ext2)])])+'\n')
+                str(weightsDict[species][(gene1,ext1), (gene2,ext2)])])+'\n')
 
 
 #
@@ -933,20 +977,30 @@ def writeAdjacencies(adjacenciesList, weightsDict, out):
 
 class IdManager(object):
 
-    def __init__(self):
-        self.__count = 1
+    def __init__(self,cap_limit,is_cap = lambda x : x[1][1]=='o'):
+        self.__count_caps = 1
+        self.__count_ext = cap_limit+1
+        self.__cap_limit = cap_limit
         self.__table = dict()
-        self.__ary = list()
+        self.__reverse = dict()
+        self.__is_cap = is_cap
 
     def getId(self, obj):
         if obj not in self.__table:
-            self.__table[obj] = self.__count
-            self.__ary.append(obj)
-            self.__count += 1
+            if self.__is_cap(obj):
+                if self.__count_caps + 1 > self.__cap_limit:
+                    raise AssertionError("Caps have overflowed.")
+                self.__table[obj] = self.__count_caps
+                self.__reverse[self.__count_caps] = obj
+                self.__count_caps += 1
+            else:
+                self.__table[obj] = self.__count_ext
+                self.__reverse[self.__count_ext] = obj
+                self.__count_ext += 1
         return self.__table[obj]
 
     def getObj(self, id_):
-        return self.__ary[id_-1]
+        return self.__reverse[id_-1]
 
     def getMap(self):
         return dict(self.__table.items())

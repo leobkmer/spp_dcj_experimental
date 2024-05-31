@@ -16,19 +16,21 @@ recphyloxml_dir:        ../../tools/recPhyloXML
 # ZOMBI TREE EVOLUTION PARAMETERS -------------------------------------------
 
 tree:                   ../../data/N10.nwk
-tree_scales:            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+tree_scales:            [5,6,7,8,9,10,11,12,13,14,15] #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] # benchmark mainly for tree scale
+n_reps: 10
 
 # ZOMBI GENOME EVOLUTION PARAMETERS -----------------------------------------
 
 zombi_bin:              python3 ../../tools/ZOMBI_01042020/Zombi.py
-zombi_dupl_rates:       ['f:2']
-zombi_dupl_exts:        ['g:0.8', 'g:0.5']
-zombi_genome_sizes:     [1_000]
+zombi_dupl_rates:       ['f:2'] #benchmark possibly for duprates
+zombi_dupl_exts:        ['g:0.8'] #, 'g:0.5']
+zombi_genome_sizes:     [100] # previously 1000
 zombi_loss_rates:       ['f:2']
-zombi_loss_exts:        ['g:0.8', 'g:0.5']
+zombi_loss_exts:        ['g:0.8'] #, 'g:0.5']
 zombi_origin_rates:     ['f:0']
 zombi_rearr_rates:      ['f:2']
-zombi_rearr_exts:       ['g:0.5', 'g:0.05']
+zombi_rearr_exts:       ['g:0.5'] #, 'g:0.05']
 
 # DECO PARAMETERS ------------------------------------------------------------
 
@@ -38,8 +40,10 @@ deco_boltzmann_temperature: 1
 
 # NOISY ADJACENCIES PARAMETERS -----------------------------------------------
 
-adjacency_noise:        [200, 400, 600, 800, 1_000, 2_000]
-adjacency_adversarial_noise: [0, 0.5, 1]
+adjacency_noise:        [0] #[200, 400, 600, 800, 1_000, 2_000]
+adjacency_adversarial_noise: [0] #[0, 0.5, 1]
+
+old_scripts : /prj/gsp/urm/leonardsplayground/spp_dcj/scripts
 
 #
 # DON'T TOUCH UNLESS YOU KNOW WHAT YOU'RE DOING -------------------------------

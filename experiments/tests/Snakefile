@@ -1,0 +1,46 @@
+
+SCRIPT_DIR = '../../scripts'
+
+TESTS = ['test%02d'%d for d in range(1,17)]
+
+rule all_test:
+    input:
+        expand('test/{test}.log',test=TESTS)
+
+rule create_adjacencies:
+    input:
+        'genomes/{test}.txt'
+    output:
+        'adjacencies/{test}.txt'
+    shell:
+        '%s/unimog2adjacencies.py {input} > {output}'%SCRIPT_DIR
+
+rule spp_ilp:
+    input:
+        'adjacencies/{test}.txt'
+    output:
+        'ilp/{test}.ilp'
+    shell:
+        '%s/spp_dcj.py -m ilp/{wildcards.test}.idmap -a 1 -l topology.txt \
+    {input} > {output} 2> ilp/{wildcards.test}.spp_dcj.log'%SCRIPT_DIR
+
+rule solve_ilp:
+    input:
+        'ilp/{test}.ilp'
+    output:
+        'sol/{test}.sol'
+    log:
+        'sol/{test}.log'
+    shell:
+        'gurobi_cl ResultFile={output} {input} > {log}'
+
+rule check_sol:
+    input:
+        sol='sol/{test}.sol',
+        arg='genomes/{test}.args'
+    log:
+        'test/{test}.log'
+    shell:
+        '%s/sol_tester.py {input.sol} $(cat {input.arg}) > {log}'%SCRIPT_DIR
+
+    

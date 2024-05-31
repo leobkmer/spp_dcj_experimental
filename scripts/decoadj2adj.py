@@ -4,7 +4,7 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter as ADHF, FileType
 from sys import stdout, stderr, exit
 from itertools import chain, product, combinations
-from collections import deque
+from collections import deque, defaultdict
 import csv
 import re
 
@@ -58,7 +58,7 @@ def readDecoRecGeneTrees(data):
 def getAdjacenciesFromDeCo(data, deco2zombi):
 
     adjacencies = dict()
-    weights = dict()
+    weights = defaultdict(dict)
     for line in csv.reader(data, delimiter = ' '):
         if line[1].find('|') >= 0:
             fam_id1 = int(PAT_ANC_GENE.match(line[1]).group(1))
@@ -84,7 +84,7 @@ def getAdjacenciesFromDeCo(data, deco2zombi):
         if species not in adjacencies:
             adjacencies[species] = set()
         adjacencies[species].add((ext1, ext2))
-        weights[(ext1, ext2)] = float(line[-1])
+        weights[species][(ext1, ext2)] = float(line[-1])
 
     return adjacencies, weights
 
