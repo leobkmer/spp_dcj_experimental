@@ -396,7 +396,7 @@ rule run_ilp:
     output:
         f'{ILP_DIR}/rep{{r}}/{{experiment,[^/]+}}/SPP_DCJ_{{params1}}/l{{l}}.sol',
     params:
-        time_limit = 5* 60,
+        time_limit = 60 * 60,
         threads = 1
     threads:
         1
