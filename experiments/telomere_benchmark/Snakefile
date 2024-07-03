@@ -90,7 +90,7 @@ rule ilp_new:
     log:
         'ilp/new/{noiseparams}/{params}/{name}.log'
     shell:
-        '%s/spp_dcj.py -a0.5 -m {output.idMap} tree.txt {input} > {output.ilp} 2> {log}'%SCRIPT_DIR
+        '%s/spp_dcj.py -a0.5 -b0.25 -m {output.idMap} tree.txt {input} > {output.ilp} 2> {log}'%SCRIPT_DIR
 
 rule ilp_old:
     input:
@@ -101,7 +101,7 @@ rule ilp_old:
     log:
         'ilp/old/{noiseparams}/{params}/{name}.log'
     shell:
-        '%s/spp_dcj.py -a0.5 -m {output.idMap} tree.txt {input} > {output.ilp} 2> {log}'%OLD_SCRIPT_DIR
+        '%s/spp_dcj.py -a0.5 -b0.25 -m {output.idMap} tree.txt {input} > {output.ilp} 2> {log}'%OLD_SCRIPT_DIR
 
 rule solve_ilp:
     input:

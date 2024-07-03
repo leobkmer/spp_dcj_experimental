@@ -533,6 +533,12 @@ def variables(graphs,circ_sings, out):
     print('\n')
 
 
+def add_weight_tels(G,add_telweight):
+    for u,v,k,data in G.edges(keys=True,data=True):
+        if data['type']==du.ETYPE_ADJ and du.VTYPE_CAP in [G.nodes[x]['type'] for x in [u,v]]:
+            G[u][v][k]['weight']=G[u][v][k]['weight']+add_telweight
+
+
 def identifyCandidateTelomeres(candidateAdjacencies, telomere_default_weight,leaves, dont_add=False,addToAll=False):
 
     res = dict()
@@ -625,9 +631,9 @@ if __name__ == '__main__':
             help='linear weighting factor for adjacency weights vs DCJ ' + \
                     'indel distance (alpha = 1 => maximize only DCJ indel ' + \
                     'distance)')
-    #parser.add_argument('-b', '--beta', default = -1, type=float,
-    #        help='Default weight for added telomeres. Has no effect if -t is used.')
-    parser.add_argument('--def-telomere-weight', '-w', default = -1, type=float,
+    parser.add_argument('-b', '--beta', type=float,
+            help='Backwards compatible beta parameter from v1. Telomeres will be re-weighted and the ILP scaled to be equivalent to v1.')
+    parser.add_argument('--def-telomere-weight', '-w', default = 0, type=float,
             help='Default weight for added telomeres. Has no effect if -t is used. For most use cases this should be <= 0.')
     parser.add_argument('--set-circ-sing-handling',choices=['adaptive','enumerate','barbershop'],default='adaptive')
     parser.add_argument('-s', '--separator', default = du.DEFAULT_GENE_FAM_SEP, \
@@ -733,9 +739,23 @@ if __name__ == '__main__':
     #caps = getAllCaps(graphs)
     # construct & output ILP
     out = stdout
+    if args.beta:
+        scale_factor = 1-args.beta
+        our_alpha = args.alpha/scale_factor
+        our_beta_add_telweight=args.beta/(scale_factor*(our_alpha-1))
+    else:
+        scale_factor=1
+        our_alpha=args.alpha
+        our_beta_add_telweight=0
+    
+    if args.beta:
+        #rescale the edge weights for the telomeres
+        LOG.info('Re-weighting telomeres: s={s},add_tel_weight={adt},recalculated_alpha={recalph}'.format(s=scale_factor,adt=our_beta_add_telweight,recalph=our_alpha))
+        for ident,G in graphs.items():
+            add_weight_tels(G,our_beta_add_telweight)
 
     LOG.info('writing objective over all graphs')
-    objective(graphs, args.alpha, out)
+    objective(graphs, our_alpha, out)
 
     LOG.info('writing constraints...')
     constraints(graphs, siblings,circ_singletons, out)
