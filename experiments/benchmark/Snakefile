@@ -371,7 +371,7 @@ rule construct_ilp:
     log:
         f'{LOG_DIR}/{{experiment}}_new_{{params}}_spp_dcj.log',
     shell:
-        f'{SCRIPT_DIR}/spp_dcj.py -a0.5 -m {{output.idMap}} {{input.tree}} '+
+        f'{SCRIPT_DIR}/spp_dcj.py -a0.5 -b0.25 -m {{output.idMap}} {{input.tree}} '+
         '{input.candAdj} > {output.ilp} 2> {log}'
 
 rule construct_old_ilp:
@@ -384,7 +384,7 @@ rule construct_old_ilp:
     log:
         f'{LOG_DIR}/{{experiment}}_old_{{params}}_spp_dcj.log',
     shell:
-        f'{OLD_SCRIPTS}/spp_dcj.py -a0.5 -m {{output.idMap}} {{input.tree}} '+
+        f'{OLD_SCRIPTS}/spp_dcj.py -a0.5 -b0.25 -m {{output.idMap}} {{input.tree}} '+
         '{input.candAdj} > {output.ilp} 2> {log}'
 
 
