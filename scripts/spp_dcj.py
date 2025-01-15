@@ -465,6 +465,244 @@ def domains(graphs, out):
         
 
 
+def create_sibmap(G,siblings):
+    id_to_edges = []
+    sibmap=dict()
+    for u,v,data in G.edges(data=True):
+        if data['etype']==du.ETYPE_EXTR:
+            id_to_edges[data['id']]=(u,v)
+    for siba,sibb in siblings:
+        if not siba in id_to_edges or not sibb in id_to_edges:
+            continue
+        x,y=id_to_edges[siba]
+        w,z =id_to_edges[sibb]
+        for u,v in [(x,y),(y,x)]:
+            sibmap[(u,v)]=(w,z)
+        for u,v in [(w,z),(z,w)]:
+            sibmap[(u,v)]=(x,y)
+    return sibmap
+
+
+            
+
+def warm_start_decomposition(graphs,siblings):
+    create_max_weight(graphs)
+    for tree_edge, ((child, parent), G) in enumerate(sorted(graphs.items())):
+        sibmap=create_sibmap(G,siblings)
+        heuristic_partial_matching(G,sibmap)
+        fill_matching_greedy(G,sibmap)
+
+
+def create_max_weight(graphs):
+    root_candidates = dict()
+    matchings = dict()
+    for tree_edge, ((child, parent), G) in enumerate(sorted(graphs.items())):
+        root_candidates[parent]=child
+        root_candidates.pop(child,None)
+        matchings[child]=get_max_match(child, G)
+    assert(len(root_candidates)==1)
+    parent,child = root_candidates.items()[0]
+    G=graphs[child]
+    matchings[parent]=get_max_match(parent,G)
+    for tree_edge, ((child, parent), G) in enumerate(sorted(graphs.items())):
+        set_based_on_matching(G,matchings[child],child)
+        set_based_on_matching(G,matchings[parent],parent)
+    
+
+def get_anc_map(g):
+    return dict(((anc,v) for v,anc in g.nodes(data='anc')))
+
+
+def set_based_on_matching(G,mtch,genome):
+    local = extract_local_graph(genome, G)
+    ancmap = get_anc_map(local)
+    for u_,v_ in mtch:
+        u,v = ancmap[u_],ancmap[v_]
+        G[u][v]['is_set']=True
+    for u,v in local.edges():
+        if not 'is_set' in G[u][v]:
+            G[u][v]=False
+
+def get_max_match(genome, G):
+    local = extract_local_graph(genome, G)
+    for u,v,tp in list(local.edges(data='type')):
+        if tp!=du.ETYPE_ADJ:
+            local.remove_edge(u,v)
+    return [(G[x]['anc'],G[y]['anc']) for x,y in nx.max_weight_matching(local,weight='weight')]
+
+def extract_local_graph(genome, G):
+    local = G.copy()
+    for v in G.nodes():
+        if get_genome(G,v) != genome:
+            local.remove_node(v)
+    return local
+    
+
+def fill_matching_greedy(G,sibmap):
+    for v in G.nodes():
+        adjen = [u for u in G[v] if G[v][u]['type']==du.ETYPE_ADJ and G[v][u].get('is_set',False)]
+        exten = [u for u in G[v] if G[v][u]['type']==du.ETYPE_EXTR and G[v][u].get('is_set',False)]
+        iden = [u for u in G[v] if G[v][u]['type']==du.ETYPE_ID and G[v][u].get('is_set',False)]
+        if G[v]['type']==du.VTYPE_CAP and len(adjen) == 0:
+            #non-active telomere, skip
+            continue
+        assert(len(adjen)==1)
+        assert(len(exten)<=1)
+        assert(len(iden)<=1)
+        if len(exten) == 0 and len(iden)==0:
+            #not matched yet
+            if G[v]['type']==du.VTYPE_CAP:
+                continue
+            success=False
+            for u in G[v]:
+                if G[v][u]['type']==du.ETYPE_EXTR and G[v][u].get('is_set',True):
+                    G[v][u]['is_set']=True
+                    v_,u_ = sibmap((v,u))
+                    G[v_][u_]['is_set']=True
+                    success=True
+                    break
+            if not success:
+                iden = [u for u in G[v] if G[v][u]['type']==du.ETYPE_ID]
+                assert(len(iden)==1)
+                #set the indel edge
+                G[v][iden[0]]['is_set']=True
+        
+
+
+
+
+def heuristic_partial_matching(G,sibmap,max_iter=None):
+    #TODO: Implement max_iter
+    trees = dict()
+    frontiers = dict()
+    adjacencies = set(((u,v) for u,v,etype in G.edges(data='type') if etype == du.ETYPE_ADJ and G[u][v].get('is_set',True)))
+    for v in G.nodes():
+        tree = {du.ETYPE_ADJ : dict(), du.ETYPE_EXTR : dict()}
+        frontier = [v]
+        trees[v]=tree
+        frontiers[v]=frontier
+    #bfs for each node starting with extremity edge until end of a path is reached or connection to neighboring adjacency found
+    changed = True
+    etype = du.ETYPE_ADJ
+    while changed:
+        etype = invert_etype(etype)
+        changed = False
+        for u,v in adjacencies:
+            changed = changed or bfs_step(G, trees, frontiers, etype, u)
+            changed = changed or bfs_step(G, trees, frontiers, etype, v)
+            #check whether anything special happened at the frontiers, i.e. telomere, indel, cycle
+            for x in frontiers[u]:
+                if x in trees[v][invert_etype(etype)]:
+                    #cycle detected
+                    x,aedges=try_fix_cycle(G,sibmap,u,v,trees,x,etype)
+                    if x:
+                        #remove the adjacency edges now dealt with
+                        adjacencies.difference_update(aedges)
+                        break
+                
+
+def try_fix_cycle(G,sibmap,u,v,trees,x,etype):
+    edges = []
+    aedges = []
+    curr = x
+    curr_etype=etype
+    success = True
+    while curr != u:
+        x_=trees[u][curr_etype][curr]
+        if curr_etype==du.ETYPE_EXTR:
+            if G[curr][x_].get('is_set',True):
+                edges.append((curr,x_))
+            else:
+                #cycle cannot be used
+                remove_from_tree(trees,u,x,x_,etype)
+                success=False
+                break
+        else:
+            aedges.append((curr,x_))
+        curr_etype=invert_etype(curr_etype)
+        curr = x_
+    curr_etype=invert_etype(etype)
+    while curr != v:
+        x_=trees[v][curr_etype][curr]
+        if curr_etype==du.ETYPE_EXTR:
+            if G[curr][x_].get('is_set',True):
+                edges.append((curr,x_))
+            else:
+                #cycle cannot be used
+                remove_from_tree(trees,v,x,x_)
+                success=False
+                break
+        else:
+            aedges.append((curr,x_))
+        curr_etype=invert_etype(curr_etype)
+        curr = x_
+    if not success:
+        #stop here and do not fix any edges
+        return success,[]
+    success = try_fix_edges(G,edges,sibmap)
+    if not success:
+        #TODO: cycle is bad, remove it from tree
+        return success,[]
+    return success, aedges
+    
+
+def try_fix_edges(G,edges,sibmap):
+    to_set = set()
+    to_remove = set()
+    for x,y in edges:
+        to_set.add((x,y))
+        x_,y_ = sibmap[(x,y)]
+        to_set.add((x_,y_))
+        #Remove other edges
+        rm = [(w,z) for w in [x,y,x_,y_] for z in G[w] if G[w][z]['type']==du.ETYPE_EXTR and z not in [x,y,x_,y_]]
+        rm_sib = [sibmap[e] for e in rm]
+        to_remove.update(rm)
+        to_remove.update(rm_sib)
+    if len(to_set.intersection(to_remove))>0:
+        #bad, conflicting edges :/
+        return False
+    for x,y in to_set:
+        G[x][y]['is_set']=True
+    for x,y in to_remove:
+        G[x][y]['is_set']=False
+    
+
+def remove_from_tree(trees,u,x,x_,etype):
+    curr = x
+    curr_etype=etype
+    while curr != x_:
+        curr=trees[u][curr_etype].pop(curr)
+        curr_etype=invert_etype(curr_etype)
+
+def invert_etype(etype):
+    return du.ETYPE_EXTR if etype==du.ETYPE_ADJ else du.ETYPE_EXTR
+            
+
+def bfs_step(G, trees, frontiers, etype, u):
+    newfrontieru = []
+    changed = False
+    for x in frontiers[u]:
+        for x_ in G[x]:
+            if G[x][x_]['type']==etype and G[x][x_].get('is_set',True):
+                newfrontieru.append(x_)
+                trees[u][etype][x_]=x
+                changed=True
+    frontiers[u]=newfrontieru
+    return changed
+
+            
+
+        
+
+
+def sol_from_decomposition(graphs,out):
+    #TODO: Implement
+    for tree_edge, ((child, parent), G) in enumerate(sorted(graphs.items())):
+        local = G.copy()
+        for e in local.edges(data='is_set'):
+            pass
+
+
 #
 # ILP VARIABLES
 #
@@ -639,6 +877,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--separator', default = du.DEFAULT_GENE_FAM_SEP, \
             help='Separator of in gene names to split <family ID> and ' +
                     '<uniquifying identifier> in adjacencies file')
+    parser.add_argument('-ws','--warm-start-sol')
     args = parser.parse_args()
 
     # setup logging
@@ -779,4 +1018,9 @@ if __name__ == '__main__':
 
     LOG.info('DONE')
     out.write('end\n')
+    if args.warm_start_sol:
+        LOG.info('run warm start')
+        warm_start_decomposition(graphs,siblings)
+        LOG.info('DONE')
+    
 
