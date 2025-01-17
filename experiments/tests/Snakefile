@@ -22,7 +22,7 @@ rule spp_ilp:
         'ilp/{test}.ilp'
     shell:
         '%s/spp_dcj.py -m ilp/{wildcards.test}.idmap -a 1 topology.txt \
-    {input} --no_telomeres > {output} 2> ilp/{wildcards.test}.spp_dcj.log'%SCRIPT_DIR
+    {input} --no_telomeres -ws /dev/null  > {output} 2> ilp/{wildcards.test}.spp_dcj.log'%SCRIPT_DIR
 
 rule solve_ilp:
     input:
