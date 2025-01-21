@@ -55,6 +55,9 @@ PAT_ADJ = re.compile(r'^(\w+)@([0-9_]+)$')
 PAT_MATCHED_EDGE = re.compile(r'^x(\d+)_(\d+)([^0-9 \t]*) 1\s*$')
 
 
+def get_genome(G, v):
+    return G.nodes[v]['id'][0]
+
 def complement_id(v):
     (gName, (g, extr)) = v
     return (gName,(g,EXT_COMPLEMENT[extr]))
@@ -703,6 +706,18 @@ def _find_end_pairs(G, gName1, gName2):
 def checkGraph(G,cf=False,checkForAllTels=False):
     #for v,data in G.nodes(data=True):
     #    print(v,",".join(["{}={}".format(k,x) for k,x in data.items()]),file=sys.stderr)
+    gnm_min = dict()
+    gnm_max = dict()
+    for v in G.nodes():
+        gnm = get_genome(G,v)
+        if not gnm in gnm_min:
+            gnm_min[gnm]=v
+            gnm_max[gnm]=v
+        gnm_min[gnm]= min(gnm_min[gnm],v)
+        gnm_max[gnm]= max(gnm_min[gnm],v)
+    gnms = list(gnm_min.keys())
+    assert(len(gnms)==2)
+    assert(gnm_min[gnms[0]]>gnm_max[gnms[1]] or gnm_min[gnms[1]]>gnm_max[gnms[0]])
     for u, v, in G.edges():
         if u == v:
             raise Exception(f'node {v} is connected to itself')

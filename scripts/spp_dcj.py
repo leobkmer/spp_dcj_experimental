@@ -219,7 +219,7 @@ def crv29(G,tree_edge,genomes,out):
 
         for u,v in [(x,y),(y,x)]:
             if get_genome(G,v) == genomes[0]  and data['type'] == du.ETYPE_ADJ:
-                print("l{sep}{te}{sep}{v} - l{sep}{te}{sep}{u} + x{sep}{te}{sep}{e} - rab{sep}{te}{sep}{v} <= 1".format(
+                print("l{sep}{te}{sep}{v} - l{sep}{te}{sep}{u} + x{sep}{te}{sep}{e} - rab{sep}{te}{sep}{v} - rab{sep}{te}{sep}{u} <= 1".format(
                     sep=du.SEP,
                     te=tree_edge,
                     e=data['id'],
@@ -490,8 +490,9 @@ def warm_start_decomposition(graphs,siblings):
     create_max_weight(graphs)
     for tree_edge, ((child, parent), G) in enumerate(sorted(graphs.items())):
         sibmap=create_sibmap(G,siblings[(child,parent)])
+        #cycle_greedy_partial_matching(G,sibmap)
         heuristic_partial_matching(G,sibmap)
-        fill_matching_greedy(G,sibmap)
+        greedy_matching_completion(G,sibmap)
 
 
 def create_max_weight(graphs):
@@ -499,9 +500,13 @@ def create_max_weight(graphs):
     matchings = dict()
     
     for tree_edge, ((child, parent), G) in enumerate(sorted(graphs.items())):
+        print(parent,child, file=stderr)
         root_candidates[parent]=child
+        print(root_candidates,file=stderr)
         root_candidates.pop(child,None)
+        print(root_candidates,file=stderr)
         matchings[child]=get_max_match(child, G)
+    print(root_candidates,file=stderr)
     assert(len(root_candidates)==1)
     parent,child = list(root_candidates.items())[0]
     G=graphs[(child,parent)]
@@ -560,9 +565,10 @@ def greedy_extend_max_match(local,mwmtch):
         #print("Not in Map",file=stderr)
         candidates = [(local[v][u]['weight'],u) for u in local[v] if u not in mwmap]
         assert(len(candidates)>0)
-        u = max(candidates,key=lambda x:x[0])
+        u = max(candidates,key=lambda x:x[0])[1]
         mwmap[v]=u
         mwmap[u]=v
+    #print(mwmap,file=stderr)
     return list(set((tuple(sorted(x)) for x in mwmap.items())))
 
 def extract_local_graph(genome, G):
@@ -571,22 +577,62 @@ def extract_local_graph(genome, G):
         if get_genome(G,v) != genome:
             local.remove_node(v)
     return local
-    
+
+
+
+def greedy_matching_completion(G,sibmap):
+    for v in G.nodes():
+        extren = [(v,u,k) for u in G[v] for k in G[v][u] if G[v][u][k]['type']==du.ETYPE_EXTR]
+        iden = [(v,u,k) for u in G[v] for k in G[v][u] if G[v][u][k]['type']==du.ETYPE_ID]
+        set_extren = [(x,y,z) for x,y,z in extren if G[x][y][z].get('is_set',False)]
+        set_iden = [(x,y,z) for x,y,z in iden if G[x][y][z].get('is_set',False)]
+        assert(len(set_extren)<=1)
+        assert(len(set_iden)<=1)
+        assert(len(set_iden)+len(set_extren)<=1)
+        if G.nodes[v]['type']==du.VTYPE_CAP:
+            #skip caps, they dont need matching
+            continue
+        if len(set_extren)==1 or len(set_iden)==1:
+            continue
+        possibilities = [(x,y,z) for x,y,z in extren if G[x][y][z].get('is_set',True)]
+        if len(possibilities)==0:
+            #needs deletion
+            assert(len(iden)==1)
+            x,y,z = iden.pop()
+            G[x][y][z]['is_set']=True
+        else:
+            v,u,k = possibilities.pop()
+            #get the sibling
+            v_,u_ = sibmap[(v,u)]
+            k__candidates = [k_ for k_ in G[v_][u_] if G[u_][v_][k_]['type']==du.ETYPE_EXTR]
+            assert(len(k__candidates)==1)
+            k_ = k__candidates.pop()
+            corr_at = {u:v,v:u,v_:u_,u_:v_}
+            wrongs = set()
+            for x,y in corr_at.items():
+                wrong = set([(min(w,x),max(w,x),k) for w in G[x] for k in G[x][w] if G[x][w][k]['type']==du.ETYPE_EXTR and w!=y])
+                wrongs.update(wrong)
+            for x,y,z in wrongs:
+                assert(not G[x][y][z].get('is_set',False))
+                G[x][y][z]['is_set']=False
+            G[u][v][k]['is_set']=True
+            G[u_][v_][k_]['is_set']=True
+
+
 
 def fill_matching_greedy(G,sibmap):
     for v in G.nodes():
-        adjen = [(u,k) for u in G[v] for k in G[v][u] if G[v][u][k]['type']==du.ETYPE_ADJ and G[v][u][k].get('is_set',False)]
         exten = [(u,k) for u in G[v] for k in G[v][u] if G[v][u][k]['type']==du.ETYPE_EXTR and G[v][u][k].get('is_set',False)]
+        assert(len(exten)<=1)
+        adjen = [(u,k) for u in G[v] for k in G[v][u] if G[v][u][k]['type']==du.ETYPE_ADJ and G[v][u][k].get('is_set',False)]
+        
         iden = [(u,k) for u in G[v] for k in G[v][u] if G[v][u][k]['type']==du.ETYPE_ID and G[v][u][k].get('is_set',False)]
+        
+        assert(len(adjen)==1)
+        assert(len(iden)<=1)
         if G.nodes[v]['type']==du.VTYPE_CAP and len(adjen) == 0:
             #non-active telomere, skip
             continue
-        #print(v,G.nodes[v],file=stderr)
-        assert(len(adjen)==1)
-        assert(len(exten)<=1)
-        assert(len(iden)<=1)
-        #print(G.edges(data=True),file=stderr)
-        #print(sibmap,file=stderr)
         if len(exten) == 0 and len(iden)==0:
             #not matched yet
             if G.nodes[v]['type']==du.VTYPE_CAP:
@@ -594,7 +640,8 @@ def fill_matching_greedy(G,sibmap):
             success=False
             for u in G[v]:
                 for k in G[v][u]:
-                    if G[v][u][k]['type']==du.ETYPE_EXTR and G[v][u][k].get('is_set',True):
+                    xt_cands_u = [(x,k) for x in G[u] for k in G[u][x] if G[u][x][k]['type']==du.ETYPE_EXTR and G[u][x][k].get('is_set',False)]
+                    if G[v][u][k]['type']==du.ETYPE_EXTR and G[v][u][k].get('is_set',True) and len(xt_cands_u)==0:
                         G[v][u][k]['is_set']=True
                         v_,u_ = sibmap[(v,u)]
                         candidates = [k for k in G[v_][u_]]
@@ -605,19 +652,149 @@ def fill_matching_greedy(G,sibmap):
                         break
             if not success:
                 iden = [(u,k) for u in G[v] for k in G[v][u] if G[v][u][k]['type']==du.ETYPE_ID]
-                assert(len(iden)==1)
+                try:
+                    assert(len(iden)==1)
+                except AssertionError:
+                    check_connectedness(G,v)
+                    print(v,file=stderr)
+                    raise AssertionError("Well ok, at least it's my own problem.")
                 #set the indel edge
                 u,k=iden[0]
                 G[v][u][k]['is_set']=True
         
 
+def check_connectedness(G,v_):
+    #check the family of a node and determine if it obeys MMM and is in the smaller family
+    gnma = {v_}
+    gnmb = set()
+    changed = True
+    while changed:
+        changed = False
+        for v in gnma:
+            for u in G[v]:
+                for k in G[v][u]:
+                    if G[v][u][k]['type']==du.ETYPE_EXTR and u not in gnmb:
+                        gnmb.add(u)
+                        changed=True
+        for v in gnmb:
+            for u in G[v]:
+                for k in G[v][u]:
+                    if G[v][u][k]['type']==du.ETYPE_EXTR and u not in gnma:
+                        gnma.add(u)
+                        changed=True
+    assert(len(gnma)<=len(gnmb))
+    for x in gnma:
+        for y in gnmb:
+            xte_candidates = [k for k in G[x][y] if G[x][y][k]['type']==du.ETYPE_EXTR]
+            assert(len(xte_candidates)==1)
 
+
+
+
+def cycle_greedy_partial_matching(G,sibmap,max_depth=None):
+    trees = dict()
+    frontiers = dict()
+    depths = dict()
+    adjacencies = set(((u,v) for u,v,etype in G.edges(data='type') if etype == du.ETYPE_ADJ and G[u][v].get('is_set',True)))
+    for v in G.nodes():
+        tree = {du.ETYPE_ADJ : dict(), du.ETYPE_EXTR : dict()}
+        frontier = [v]
+        trees[v]=tree
+        frontiers[v]=frontier
+        depths[v]=dict()
+    changed = True
+    etype = du.ETYPE_ADJ
+    depth = 0
+    cycles = []
+    while changed:
+        depth+=1
+        etype=invert_etype(etype)
+        rm_adj = set()
+        changed = False
+        for u,v in adjacencies:
+            if (u,v) in rm_adj:
+                continue
+            c=bfs_step(G,trees,frontiers,etype,u,forbidden=[u,v])
+            changed=changed or c
+            c=bfs_step(G,trees,frontiers,etype,u,forbidden=[u,v])
+            changed = changed or c
+            for x in frontiers[u]:
+                if x in trees[v][invert_etype(etype)]:
+                    aedges, xedges = trace_cycle(G,u,v,x,trees,etype)
+                    rm_adj.update(aedges)
+                    cycles.append(xedges)
+        adjacencies.difference_update(rm_adj)
+    set_cycles(G,sibmap,cycles)
+
+
+
+def set_cycles(G,sibmap,cycles):
+    for cyc in cycles:
+        to_set = set()
+        to_remove = set()
+        for u,v,k in cyc:
+            if v < u:
+                u,v=v,u
+            u_,v_ = sibmap[(u,v)]
+            if v_ < u_:
+                u_,v_ = v_,u_
+            cand = [k_ for k_ in G[u_][v_] if G[u_][v_][k_]['type']==du.ETYPE_EXTR]
+            assert(len(cand)==1)
+            k_ = cand[0]
+            if G[u][v][k].get('is_set',True) and G[u_][v_][k_].get('is_set',True):
+                to_set.add((u,v,k))
+                to_set.add((u_,v_,k_))
+            else:
+                #bad cycle
+                break
+            corr_at = {u:v,v:u,v_:u_,u_:v_}
+            for x,y in corr_at.items():
+                wrong = set([(min(w,x),max(w,x),k) for w in G[x] for k in G[x][w][k] if G[x][w][k]['type']==du.ETYPE_EXTR and w!=y])
+                to_remove.update(wrong)
+        if len(to_set.intersection(to_remove))>0:
+            #failed cycle
+            continue
+        violated = [(x,y,z) for x,y,z in to_remove if G[x][y][z].get('is_set',False)]
+        if len(violated) > 0:
+            continue
+        for u,v,k in to_set:
+            G[u][v][k]['is_set']=True
+            
+
+
+
+
+    
+def trace_cycle(G,u,v,x,trees,etype):
+    xedges = []
+    aedges = []
+    ae,xe=traceback_single_vertex(G, u, trees,x, etype)
+    aedges.extend(ae)
+    xedges.extend(xe)
+    ae,xe=traceback_single_vertex(G, v, trees,x, invert_etype(etype))
+    return aedges,xedges
+
+def traceback_single_vertex(G, u, trees, x, etype):
+    xedges=[]
+    aedges=[]
+    curr = x
+    curr_etype = etype
+    while curr != u:
+        next = trees[u][curr_etype][curr]
+        candidates = [(curr,next,k) for k in G[curr][next] if G[curr][next][k]==curr_etype]
+        assert(len(candidates)==1)
+        if curr_etype==du.ETYPE_ADJ:
+            aedges.extend(candidates)
+        else:
+            xedges.extend(candidates)
+    return aedges,xedges
 
 
 def heuristic_partial_matching(G,sibmap,max_iter=None):
     #TODO: Implement max_iter
     trees = dict()
     frontiers = dict()
+    #TODO: Filter out useless adjacencies, i.e. those that don't have extremity-edges
     adjacencies = set(((u,v) for u,v,etype in G.edges(data='type') if etype == du.ETYPE_ADJ and G[u][v].get('is_set',True)))
     for v in G.nodes():
         tree = {du.ETYPE_ADJ : dict(), du.ETYPE_EXTR : dict()}
@@ -627,49 +804,77 @@ def heuristic_partial_matching(G,sibmap,max_iter=None):
     #bfs for each node starting with extremity edge until end of a path is reached or connection to neighboring adjacency found
     changed = True
     etype = du.ETYPE_ADJ
-    #print(frontiers)
-    #print(trees)
+    
     while changed:
         etype = invert_etype(etype)
+        rm_adj = set()
         changed = False
         print('-----',file=stderr)
+        for v in G.nodes():
+            extren = [(u,k) for u in G[v] for k in G[v][u] if G[v][u][k]['type']==du.ETYPE_EXTR and G[v][u][k].get('is_set',False)]
+            print(v,extren,file=stderr)
+            assert(len(extren)<=1)
         for u,v in adjacencies:
-            bf = changed
+            bad=False
             bfs = bfs_step(G, trees, frontiers, etype, u)
             changed = changed or bfs
             bfs = bfs_step(G, trees, frontiers, etype, v)
             changed = changed or bfs
+            if len(trees[u][du.ETYPE_EXTR])==0 or len(trees[v][du.ETYPE_EXTR]) == 0:
+                rm_adj.add((u,v))
+                bad=True
+            else:
+                #TODO: comment out
+                for x in (u,v):
+                    print(x,trees[x],file=stderr)
+                    assert(x in trees[x][du.ETYPE_EXTR].values())
             #if bf != changed:
             #    print(frontiers[u],file=stderr)
             #    print(trees[v][invert_etype(etype)],file=stderr)
             #    print("-------------",file=stderr)
             #check whether anything special happened at the frontiers, i.e. telomere, indel, cycle
-            
-            for x in frontiers[u]:
-                if x in trees[v][invert_etype(etype)]:
-                    #cycle detected
-                    print("Found cycle!",file=stderr)
-                    x,aedges=try_fix_cycle(G,sibmap,u,v,trees,x,etype)
-                    if x:
-                        #remove the adjacency edges now dealt with
-                        adjacencies.difference_update(aedges)
-                        break
-                
+            if not bad:
+                for x in frontiers[u]:
+                    if x in trees[v][invert_etype(etype)]:
+                        #cycle detected
+                        for x in (u,v):
+                            assert(x in trees[x][du.ETYPE_EXTR].values())
+                        x,aedges=try_fix_cycle(G,sibmap,u,v,trees,frontiers,x,etype)
+                        if x:
+                            #remove the adjacency edges now dealt with
+                            rm_adj.update(aedges)
+                            break
+                        for x in (u,v):
+                            assert(x in trees[x][du.ETYPE_EXTR].values() or len(trees[x][du.ETYPE_EXTR])==0)
+        adjacencies.difference_update(rm_adj)
+    for v in G.nodes():
+            extren = [(u,k) for u in G[v] for k in G[v][u] if G[v][u][k]['type']==du.ETYPE_EXTR and G[v][u][k].get('is_set',False)]
+            print(v,extren,file=stderr)
+            assert(len(extren)<=1)
 
-def try_fix_cycle(G,sibmap,u,v,trees,x,etype):
+def try_fix_cycle(G,sibmap,u,v,trees,frontiers,x,etype):
     edges = []
     aedges = []
     curr = x
     curr_etype=etype
     success = True
+    count=0
     while curr != u:
-        x_=trees[u][curr_etype][curr]
+        count+=1
+        try:
+            x_=trees[u][curr_etype][curr]
+        except KeyError:
+            success=False
+            break
         if curr_etype==du.ETYPE_EXTR:
-            if G[curr][x_].get('is_set',True):
+            candidates = [k for k in G[curr][x_] if G[curr][x_][k]['type']==du.ETYPE_EXTR]
+            assert(len(candidates)==1)
+            if G[curr][x_][candidates[0]].get('is_set',True):
                 edges.append((curr,x_))
             else:
                 #cycle cannot be used
-                remove_from_tree(trees,u,x,x_,etype)
+                cleanup_tree(G,trees,frontiers,u)
+                #remove_from_tree(trees,u,x,x_,etype)
                 success=False
                 break
         else:
@@ -678,14 +883,26 @@ def try_fix_cycle(G,sibmap,u,v,trees,x,etype):
         curr = x_
     curr_etype=invert_etype(etype)
     curr=x
+    count=0
     while curr != v:
-        x_=trees[v][curr_etype][curr]
+        count+=1
+        print("Tf cycle loop B {} curr {}".format(count,curr),file=stderr)
+        print(v,file=stderr)
+        print(trees[v],file=stderr)
+        try:
+            x_=trees[v][curr_etype][curr]
+        except KeyError:
+            success=False
+            break
         if curr_etype==du.ETYPE_EXTR:
-            if G[curr][x_].get('is_set',True):
+            candidates = [k for k in G[curr][x_] if G[curr][x_][k]['type']==du.ETYPE_EXTR]
+            assert(len(candidates)==1)
+            if G[curr][x_][candidates[0]].get('is_set',True):
                 edges.append((curr,x_))
             else:
                 #cycle cannot be used
-                remove_from_tree(trees,v,x,x_)
+                cleanup_tree(G,trees,frontiers,u)
+                #remove_from_tree(trees,v,x,x_,invert_etype(etype))
                 success=False
                 break
         else:
@@ -705,18 +922,32 @@ def try_fix_cycle(G,sibmap,u,v,trees,x,etype):
 def try_fix_edges(G,edges,sibmap):
     to_set = set()
     to_remove = set()
+    all_edges=set()
     for x,y in edges:
-        to_set.add((x,y))
+        to_set.add(tuple(sorted((x,y))))
         x_,y_ = sibmap[(x,y)]
-        to_set.add((x_,y_))
+        to_set.add(tuple(sorted((x_,y_))))
         #Remove other edges
-        rm = [(w,z) for w in [x,y,x_,y_] for z in G[w] for k in G[w][z] if G[w][z][k]['type']==du.ETYPE_EXTR and z not in [x,y,x_,y_]]
-        rm_sib = [sibmap[e] for e in rm]
+        rm = [tuple(sorted((w,z))) for w in [x,y,x_,y_] for z in G[w] for k in G[w][z] if G[w][z][k]['type']==du.ETYPE_EXTR and z not in [x,y,x_,y_]]
+        rm_sib = [tuple(sorted(sibmap[e])) for e in rm]
         to_remove.update(rm)
         to_remove.update(rm_sib)
+        all_edges.update([tuple(sorted((w,z))) for w in [x,y,x_,y_] for z in G[w] for k in G[w][z] if G[w][z][k]['type']==du.ETYPE_EXTR])
+    try:
+        assert(len(to_remove.union(to_set).symmetric_difference(all_edges))==0)
+    except AssertionError:
+        print("To remove: ",to_remove,file=stderr)
+        print("To set: ",to_set,file=stderr)
+        print("All: ",all_edges,file=stderr)
+        raise AssertionError("Did not consider all edges for all vertices :/")
     if len(to_set.intersection(to_remove))>0:
         #bad, conflicting edges :/
         return False
+    for x,y in to_remove:
+        candidates = [k for k in G[x][y] if G[x][y][k]['type']==du.ETYPE_EXTR]
+        assert(len(candidates)==1)
+        if  G[x][y][candidates[0]].get('is_set',False):
+            return False
     for x,y in to_set:
         candidates = [k for k in G[x][y] if G[x][y][k]['type']==du.ETYPE_EXTR]
         assert(len(candidates)==1)
@@ -725,6 +956,7 @@ def try_fix_edges(G,edges,sibmap):
         candidates = [k for k in G[x][y] if G[x][y][k]['type']==du.ETYPE_EXTR]
         assert(len(candidates)==1)
         G[x][y][candidates[0]]['is_set']=False
+        #print("Removed" , x,y,"because of",to_set,file=stderr)
     
 
 def remove_from_tree(trees,u,x,x_,etype):
@@ -734,24 +966,97 @@ def remove_from_tree(trees,u,x,x_,etype):
         curr=trees[u][curr_etype].pop(curr)
         curr_etype=invert_etype(curr_etype)
 
+
+def cleanup_tree(G,trees,frontiers,u):
+    return
+    print("Change no",u,"cleanup",trees[u],file=stderr)
+    #convert to a parent -> children tree
+    pc = {du.ETYPE_ADJ:dict(),du.ETYPE_EXTR:dict()}
+    if len(trees[u][du.ETYPE_EXTR])==0:
+        #nothing to be done, reset adjacencies and frontiers
+        trees[u][du.ETYPE_ADJ]=dict()
+        frontiers[u]=[]
+        return
+    for etype in [du.ETYPE_ADJ,du.ETYPE_EXTR]:
+        for child,parent in trees[u][etype].items():
+            if not parent in pc[etype]:
+                pc[etype][parent]=[]
+            pc[etype][parent].append(child)
+    print('ä'*20,file=stderr)
+    print(u,trees[u],file=stderr)
+    print(u,pc,file=stderr)
+    print(u,trees[u][du.ETYPE_EXTR].values(),file=stderr)
+    print('ä'*20,file=stderr)
+    assert(u in trees[u][du.ETYPE_EXTR].values())
+    assert(u in pc[du.ETYPE_EXTR])
+    stack = [(u,du.ETYPE_EXTR)]
+    while len(stack)>0:
+        x,etype = stack.pop()
+        for child in pc[etype].get(x,[]):
+            candidates = [k for k in G[x][child] if G[x][child][k]['type']==etype and G[x][child][k].get('is_set',True)]
+            if len(candidates) == 0:
+                #dead edge, remove
+                remove_dead_branch(trees,frontiers,u,pc,child,invert_etype(etype))
+            else:
+                stack.append((child,invert_etype(etype)))
+    print("Change no ",u,"cleanup done",trees[u],file=stderr)
+
+
+
+def remove_dead_branch(trees,frontiers,u,pc,start,petype):
+    dead = {du.ETYPE_ADJ : [], du.ETYPE_EXTR : []}
+    stack = [(start,petype)]
+    print('*'*20,file=stderr)
+    print("Before",file=stderr)
+    print(start,petype,file=stderr)
+    print(trees[u],file=stderr)
+    print(pc,file=stderr)
+    print('*'*20,file=stderr)
+    while len(stack)>0:
+        x,etype = stack.pop()
+        #print("Stacklen", len(stack),file=stderr)
+        dead[invert_etype(etype)].append(x)
+        for child in pc[etype].get(x,[]):
+            stack.append((child,invert_etype(etype)))
+    for etype, deads in dead.items():
+        frontiers_new = set(frontiers[u]).difference(set(deads))
+        frontiers[u]=frontiers_new
+        for d in deads:
+            print(u,etype,d,file=stderr)
+            trees[u][etype].pop(d)
+    print('*'*20,file=stderr)
+    print("After",file=stderr)
+    print(start,petype,file=stderr)
+    print(trees[u],file=stderr)
+    print(pc,file=stderr)
+    print('*'*20,file=stderr)
+
+
+
+
 def invert_etype(etype):
     return du.ETYPE_EXTR if etype==du.ETYPE_ADJ else du.ETYPE_ADJ
             
 
-def bfs_step(G, trees, frontiers, etype, u):
+def bfs_step(G, trees, frontiers, etype, u,forbidden=None):
+    if forbidden is None:
+        forbidden=[u]
     newfrontieru = []
     changed = False
     #print(etype,file=stderr)
     for x in frontiers[u]:
         for x_ in G[x]:
             for k in G[x][x_]:
-                if G[x][x_][k]['type']==etype and G[x][x_][k].get('is_set',True) and x_ not in trees[u][etype]:
-                    #print("Found new edge! {} -> {}".format(x,x_),file=stderr)
+                if G[x][x_][k]['type']==etype and G[x][x_][k].get('is_set',True) and x_ not in trees[u][du.ETYPE_ADJ] and x_ not in trees[u][du.ETYPE_EXTR] and x_ not in forbidden:
+                    print("Found new edge! {} -> {}".format(x,x_),file=stderr)
+                    print("Change",u,trees[u],file=stderr)
                     newfrontieru.append(x_)
                     trees[u][etype][x_]=x
                     changed=True
+    oldfrontiers = frontiers[u]
     frontiers[u]=newfrontieru
-    #print(u,frontiers[u],file=stderr)
+    if changed:
+        assert(u in trees[u][du.ETYPE_EXTR].values())
     return changed
 
 
@@ -786,6 +1091,7 @@ def sol_from_decomposition(graphs,alpha,out):
                     counts['w']+=d['weight']
             if d['type']==du.ETYPE_EXTR and d.get('is_set',False): 
                 counts['2n']+=1
+            assert(local.has_edge(u,v,key=k)==(var_map[xvar]==1) or d['type']==du.ETYPE_ID)
         print('*'*20,file=stderr)
         print('\n'.join([str(d) for d in local.edges(data=True)]),file=stderr)
         print('*'*20,file=stderr)
@@ -798,9 +1104,12 @@ def sol_from_decomposition(graphs,alpha,out):
                     path_ends.append(v)
                 min_id = v if min_id is None else min(min_id,v)
             #TODO: single telomeres
+            if len(path_ends)==1:
+                assert(G.nodes[path_ends[0]]['type']==du.VTYPE_CAP)
+                continue
             assert(len(path_ends)==2 or len(path_ends)==0)
             is_positive=True
-            print(path_ends,file=stderr)
+            print("path ends",tree_edge,path_ends,file=stderr)
             for v in path_ends:
                 if G.nodes[v]['type']!=du.VTYPE_CAP:
                     is_positive=False
@@ -823,15 +1132,14 @@ def sol_from_decomposition(graphs,alpha,out):
             else:
                 mn = min(path_ends)
                 mx = max(path_ends)
-                assert(min_id==mn)
                 if get_genome(G,mn) == get_genome(G,mx):
                 #same end, so can just pick this as the genome
                     for v in comp:
                         var_map["l{sep}{te}{sep}{v}".format(v=v,sep=du.SEP,te=tree_edge)]= 0 if get_genome(G,mx) == genomes[0] else 1
                 else:
-                    for v in comp:
-                        mxg = 0 if get_genome(G,mx)==genomes[0] else 1
-                        mng = 0 if get_genome(G,mn)==genomes[0] else 1
+                    mxg = 0 if get_genome(G,mx)==genomes[0] else 1
+                    mng = 0 if get_genome(G,mn)==genomes[0] else 1
+                    for v in comp:    
                         var_map["l{sep}{te}{sep}{v}".format(v=v,sep=du.SEP,te=tree_edge)]= mxg if v!=mn else mng
                 print(comp,file=stderr)
                 for v in comp:
@@ -842,11 +1150,19 @@ def sol_from_decomposition(graphs,alpha,out):
                 #TODO: What about even paths?
                 if G.nodes[mn]['type']!=du.VTYPE_CAP:
                     #must be type ab, because caps generally have lower ids
-                    var_map["rab{sep}{te}{sep}{v}".format(sep=du.SEP,v=mn,te=tree_edge)]=1
-                    counts['ab']+=1
                     assert(G.nodes[mx]['type']!=du.VTYPE_CAP)
+                    assert(get_genome(G,mn)==genomes[0] or get_genome(G,mn)==get_genome(G,mx))
+                    print(path_ends,'potentially pab')
+                    if get_genome(G,mn)==genomes[0]:
+                        if get_genome(G,mn)!=get_genome(G,mx):
+                            print("mn",mn,"mx",mx,file=stderr)
+                            var_map["rab{sep}{te}{sep}{v}".format(sep=du.SEP,v=mn,te=tree_edge)]=1
+                            counts['ab']+=1
+                        else:
+                            var_map["rab{sep}{te}{sep}{v}".format(sep=du.SEP,v=mn,te=tree_edge)]=0
                     #do not uncomment this var_map["rab{sep}{te}{sep}{v}".format(sep=du.SEP,v=mx,te=tree_edge)]=0
                 else:
+                    assert(min_id==mn)
                     if G.nodes[mx]['type']!=du.VTYPE_CAP:
                         #only one var to set
                         if get_genome(G,mx)==genomes[0]:
@@ -862,10 +1178,16 @@ def sol_from_decomposition(graphs,alpha,out):
                         reps = ["Ab","Aa","AB"]
                     else:
                         reps = ["Ba","Bb"]
-                    
                     for r in reps:
                         var_map["r{r}{sep}{te}{sep}{v}".format(r=r,sep=du.SEP,v=mn,te=tree_edge)]=1 if fits_ptype(G,genomes,mx,r[1]) else 0
                         counts[r]+=var_map["r{r}{sep}{te}{sep}{v}".format(r=r,sep=du.SEP,v=mn,te=tree_edge)]
+            if len(path_ends)>0:
+                mnreportv = ["r{tp}{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=mn,tp=tp) for tp in ['AB','Aa','Ab','Ba','Bb','ab']]
+                mnreportvl = [var_map.get(rv,None) for rv in mnreportv]
+                mnl = var_map["l{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=mn)]
+                mxl = var_map["l{sep}{te}{sep}{v}".format(sep=du.SEP,te=tree_edge,v=mx)]
+                print("path ends reported",tree_edge,path_ends,mnreportvl,file=stderr)
+                assert(1 in mnreportvl or (mxl == mnl and (G.nodes[mn]['type'],get_genome(G,mn)) == (G.nodes[mx]['type'],get_genome(G,mx))))
         n = int(ceil(counts['2n']/2))
         var_map['n{sep}{te}'.format(sep=du.SEP,te=tree_edge)]=n
         var_map['c{sep}{te}'.format(sep=du.SEP,te=tree_edge)]=counts['c']
