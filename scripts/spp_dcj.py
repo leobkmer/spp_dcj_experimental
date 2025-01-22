@@ -41,11 +41,46 @@ def objective(graphs, alpha, out):
 
 
 
+def child_parent_tree(graphs):
+    cp_tree = dict()
+    for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
+        assert(child not in cp_tree)
+        cp_tree[child]=(parent,i)
+    return cp_tree
+
+
+def trace_to_root(cp_tree,x):
+    trace = dict()
+    curr=x
+    while curr in cp_tree:
+        next, tree_edge = cp_tree[curr]
+        trace[curr]=(next,tree_edge)
+        curr = next
+    trace[curr]=(None,None)
+    return trace
+
+def lca_treeedges_cp_tree(cp_tree,a,b):
+    #trace a to root
+    trace_a = trace_to_root(cp_tree,a)
+    curr = b
+    edges = []
+    while curr not in trace_a:
+        next,tree_edge = cp_tree[curr]
+        edges.append(tree_edge)
+        curr = next
+    end = curr
+    curr = a
+    while curr!=end:
+        next,tree_edge = trace_a[curr]
+        edges.append(tree_edge)
+        curr=next
+    return edges
+
 #
 # ILP CONSTRAINTS
 #
 
-def constraints(graphs, siblings,circ_singletons, out):
+def constraints(graphs, siblings,circ_singletons, out,lower_bound_mat={}):
     out.write('subject to\n')
     for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
 
@@ -63,6 +98,19 @@ def constraints(graphs, siblings,circ_singletons, out):
         else:
             c18(G,i,out)
             cs_constraints(G,i,out,max_circ_len=len(G.nodes())/2)
+    LOG.info("Writing lower bound constraints.")
+    cp_tree=child_parent_tree(graphs)
+    print(cp_tree,file=stderr)
+    for a in lower_bound_mat:
+        for b in lower_bound_mat[a]:
+            lb = lower_bound_mat[a][b]
+            tree_edges=lca_treeedges_cp_tree(cp_tree,a,b)
+            if len(tree_edges)==0:
+                continue
+            fvars = ['f{sep}{te}'.format(sep=du.SEP,te=te) for te in tree_edges]
+            fsum = ' + '.join(fvars)
+            print("{fsum} >= {lb}".format(fsum=fsum,lb=lb))
+
 
     out.write('\n')
 
@@ -1393,6 +1441,7 @@ if __name__ == '__main__':
             help='Separator of in gene names to split <family ID> and ' +
                     '<uniquifying identifier> in adjacencies file')
     parser.add_argument('-ws','--warm-start-sol')
+    parser.add_argument('-plb','--pairwise-lower-bnds')
     args = parser.parse_args()
 
     # setup logging
@@ -1507,12 +1556,17 @@ if __name__ == '__main__':
         LOG.info('Re-weighting telomeres: s={s},add_tel_weight={adt},recalculated_alpha={recalph}'.format(s=scale_factor,adt=our_beta_add_telweight,recalph=our_alpha))
         for ident,G in graphs.items():
             add_weight_tels(G,our_beta_add_telweight)
+    lbounds = {}
+    if args.pairwise_lower_bnds:
+        LOG.info("Reading Lower bound matrix")
+        lbounds = du.parse_lower_bound_file(args.pairwise_lower_bnds)
+
 
     LOG.info('writing objective over all graphs')
     objective(graphs, our_alpha, out)
 
     LOG.info('writing constraints...')
-    constraints(graphs, siblings,circ_singletons, out)
+    constraints(graphs, siblings,circ_singletons, out,lower_bound_mat=lbounds)
 
     LOG.info('writing domains...')
     domains(graphs, out)

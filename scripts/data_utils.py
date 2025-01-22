@@ -1053,3 +1053,111 @@ if __name__ == '__main__':
 #         resAdjacencies[species] = combinedAdjacenciesList
 
 #     return (resAdjacencies,resWeights)
+
+
+def parse_lower_bound_file(lbf):
+    lb_map = {}
+    with open(lbf) as f:
+        for line in f:
+            entries = line.strip().split()
+            if len(entries)==0:
+                continue
+            assert(len(entries)==3)
+            a,b,lb=entries
+            if not a in lb_map:
+                lb_map[a]=dict()
+            try:
+                lb_map[a][b]=float(lb)
+            except ValueError:
+                pass
+    return lb_map
+
+
+def create_adjacency_map(adjacency_list):
+    a_map=dict()
+    for x,y in adjacency_list:
+        assert(x not in a_map)
+        assert(y not in a_map)
+        a_map[x]=y
+        a_map[y]=x
+    return a_map
+
+
+def invert_extremity(yx):
+    y,x = yx
+    x_ = EXTR_HEAD if x==EXTR_TAIL else EXTR_TAIL
+    return y,x_
+
+def get_family_map(families):
+    f_map = dict()
+    for f,gs in families.items():
+        for g in gs:
+            assert(g not in f_map)
+        f_map[g]=f
+    return f_map
+
+def get_unimog(genome,genes,adjacencies,sep):
+    a_map=create_adjacency_map(adjacencies[genome])
+    telomeres = []
+    visited = dict()
+    for gene in genes[genome]:
+        for xt in [EXTR_HEAD,EXTR_TAIL]:
+            extremity = (gene,xt)
+            visited[extremity]=False
+            if extremity not in a_map:
+                telomeres.append(extremity)
+    assert(len(telomeres)%2==0)
+    lin_chroms = []
+    for t in telomeres:
+        curr_chrom=[]
+        if visited[t]:
+            continue
+        curr = t
+        
+        while True:
+            assert(not visited[curr])
+            visited[curr]=True
+            gene,xt = invert_extremity(curr)
+            assert(not visited[(gene,xt)])
+            visited[(gene,xt)]=True
+            if xt==EXTR_HEAD:
+                curr_chrom.append(getFamily(gene,sep))
+            else:
+                curr_chrom.append('-'+getFamily(gene,sep))
+            if (gene,xt) in a_map:
+                curr = a_map[(gene,xt)]
+            else:
+                break
+        lin_chroms.append(curr_chrom)
+    circ_chroms = []
+    for xtr in visited:
+        if visited[xtr]:
+            continue
+        curr = xtr
+        curr_chrom=[]
+        while True:
+            assert(not visited[curr])
+            visited[curr]=True
+            gene,xt = invert_extremity(curr)
+            assert(not visited[(gene,xt)])
+            visited[(gene,xt)]=True
+            if xt==EXTR_HEAD:
+                curr_chrom.append(getFamily(gene,sep))
+            else:
+                curr_chrom.append('-'+getFamily(gene,sep))
+            assert((gene,xt) in a_map)
+            curr = a_map[(gene,xt)]
+            if visited[curr]:
+                break
+        circ_chroms.append(curr_chrom)
+    unimog_str = ">{}".format(genome)
+    for l in lin_chroms:
+        unimog_str+='\n'
+        unimog_str+=(' '.join(l))
+        unimog_str+=" |"
+    for c in circ_chroms:
+        unimog_str+='\n'
+        unimog_str+=(' '.join(l))
+        unimog_str+=" )"
+    return unimog_str
+            
