@@ -3,11 +3,12 @@ from argparse import ArgumentParser
 import random as r
 import os
 import subprocess as sp
+import sys
 
 
-DING_HOME="/home/leob/Documents/ding/ding-cf"
+DING_HOME=os.path.join(os.path.dirname(os.path.dirname(sys.argv[0])),"tools","ding-cf-main")
 
-RUN_DING=os.path.join(DING_HOME,'ding_cf.py')
+
 GUROBI_CMD = 'gurobi_cl'
 
 def pairs_for_mode(mode,n,leaves):
@@ -78,11 +79,14 @@ parser.add_argument('candidateAdjacencies', type=open,
 parser.add_argument('--mode',choices=MODES,default='all')
 parser.add_argument('--total-timelimit',type=int,default=10*60)
 parser.add_argument('-n',type=int,default=1)
+parser.add_argument("--ding",help="Path to the ding home directory",default=DING_HOME)
+parser.add_argument("--gurobi",default=GUROBI_CMD)
 parser.add_argument("outfile")
 args = parser.parse_args()
 
 
 
+run_ding=os.path.join(args.ding,'ding_cf.py')
 
 candidateAdjacencies = du.parseAdjacencies(args.candidateAdjacencies,
     sep=args.separator)
@@ -142,11 +146,11 @@ for a,b in pairs:
     ilpfilename=os.path.join(args.workdir,file_prefix+'.ilp')
     ilplog = os.path.join(args.workdir,file_prefix+'.ilp.log')
     with open(ilplog,'w') as log:
-        sp.run(["python3",RUN_DING,unimogfilename,"-c",modelfilename,"--writeilp",ilpfilename],stderr=log)
+        sp.run(["python3",run_ding,unimogfilename,"-c",modelfilename,"--writeilp",ilpfilename],stderr=log)
     #call gurobi
     gurobilog = os.path.join(args.workdir,file_prefix+'.gurobi.log')
     with open(gurobilog,"w") as log:
-        sp.run([GUROBI_CMD,"Threads=1","TimeLimit={}".format(timelim),ilpfilename],stdout=log)
+        sp.run([args.gurobi,"Threads=1","TimeLimit={}".format(timelim),ilpfilename],stdout=log)
     #parse gurobi logfile
     with open(gurobilog) as log:
         lastline = log.readlines()[-1]
