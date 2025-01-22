@@ -19,6 +19,8 @@ RECPHYLOXML_PATH    = config.get('recphyloxml_dir')
 RESULT_DIR          = config.get('result_dir', 'results')
 SIMULATION_DIR      = config.get('simulated_evolution_dir', 'simulated_evolution')
 TREE_DIR            = config.get('tree_dir', 'trees')
+BOUND_DIR           = config.get('bound_dir','bounds')
+
 N_REPS = config.get('n_reps',10)
 REPLICATES = list(range(1,N_REPS+1))
 
@@ -53,6 +55,9 @@ ADJ_ADVNOISE        = config.get('adjacency_adversarial_noise', [50])
 
 from os.path import basename
 
+
+variants = ['cold_old','cold_new','warm_new','warm_bound']
+
 rule all_benchmark:
     input:
         expand(f'{BENCHMARK_DIR}/rep{{replicate}}_dr{{dupl}}_de{{dupl_ext}}' +
@@ -61,7 +66,7 @@ rule all_benchmark:
             dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
             ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
             ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
-            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,no=['new','old'],replicate=REPLICATES) #,noise=ADJ_NOISE,adv=ADJ_ADVNOISE)
+            rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES,no=variants,replicate=REPLICATES) #,noise=ADJ_NOISE,adv=ADJ_ADVNOISE)
 
 # INITIAL RULE ---------------------------------------------------------------
 rule all:
@@ -366,63 +371,122 @@ rule construct_ilp:
         tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
         candAdj = f'{RESULT_DIR}/{{experiment}}/Adjacencies{{params}}.txt',
     output:
-        ilp = temp(f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_new_{{params}}.ilp'),
-        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_new_{{params}}.txt',
+        ilp = temp(f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_cold_new_{{params}}.ilp'),
+        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_cold_new_{{params}}.txt',
     log:
-        f'{LOG_DIR}/{{experiment}}_new_{{params}}_spp_dcj.log',
+        f'{LOG_DIR}/{{experiment}}_cold_new_{{params}}_spp_dcj.log',
     shell:
         f'{SCRIPT_DIR}/spp_dcj.py -a0.5 -b0.25 -m {{output.idMap}} {{input.tree}} '+
         '{input.candAdj} > {output.ilp} 2> {log}'
+
+rule construct_warm_ilp:
+    input:
+        tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
+        candAdj = f'{RESULT_DIR}/{{experiment}}/Adjacencies{{params}}.txt',
+    output:
+        ilp = temp(f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_warm_new_{{params}}.ilp'),
+        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_warm_new_{{params}}.txt',
+        start = f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_warm_new_{{params}}_init.sol'
+    log:
+        f'{LOG_DIR}/{{experiment}}_warm_new_{{params}}_spp_dcj.log',
+    shell:
+        f'{SCRIPT_DIR}/spp_dcj.py -a0.5 -b0.25 -m {{output.idMap}} {{input.tree}} '+
+        '{input.candAdj} -ws {output.start} > {output.ilp} 2> {log}'
+
+rule construct_bound_ilp:
+    input:
+        tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
+        candAdj = f'{RESULT_DIR}/{{experiment}}/Adjacencies{{params}}.txt',
+        plb = f'{BOUND_DIR}/{{experiment}}/workdir{{params}}/bounds.txt'
+    output:
+        ilp = temp(f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_warm_bound_{{params}}.ilp'),
+        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_warm_bound_{{params}}.txt',
+        start = f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_warm_bound_{{params}}_init.sol'
+    log:
+        f'{LOG_DIR}/{{experiment}}_warm_bound_{{params}}_spp_dcj.log',
+    shell:
+        f'{SCRIPT_DIR}/spp_dcj.py -a0.5 -b0.25 -m {{output.idMap}} {{input.tree}} '+
+        '{input.candAdj} -ws {output.start} -plb {input.plb} > {output.ilp} 2> {log}'
+
+rule run_lower_bounds:
+    input:
+        tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
+        candAdj = f'{RESULT_DIR}/{{experiment}}/Adjacencies{{params}}.txt',
+    output:
+        f'{BOUND_DIR}/{{experiment}}/workdir{{params}}/bounds.txt'
+    shell:
+        f'python3 {SCRIPT_DIR}/spp_dcj.py {BOUND_DIR}/{{wildcards.experiment}}/workdir{{wildcards.params}}'+
+        '{input.tree} {input.candAdj} {output}'
 
 rule construct_old_ilp:
     input:
         tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
         candAdj = f'{RESULT_DIR}/{{experiment}}/Adjacencies{{params}}.txt',
     output:
-        ilp = temp(f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_old_{{params}}.ilp'),
-        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_old_{{params}}.txt',
+        ilp = temp(f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_cold_old_{{params}}.ilp'),
+        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_cold_old_{{params}}.txt',
     log:
-        f'{LOG_DIR}/{{experiment}}_old_{{params}}_spp_dcj.log',
+        f'{LOG_DIR}/{{experiment}}_cold_old_{{params}}_spp_dcj.log',
     shell:
         f'{OLD_SCRIPTS}/spp_dcj.py -a0.5 -b0.25 -m {{output.idMap}} {{input.tree}} '+
         '{input.candAdj} > {output.ilp} 2> {log}'
 
 
-rule run_ilp:
+rule run_ilp_cold:
     input:
-        ilp = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_{{params1}}.ilp',
+        ilp = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_cold_{{params1}}.ilp',
     output:
-        f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_{{params1}}.sol',
+        f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_cold_{{params1}}.sol',
     params:
         time_limit = 60 * 60,
         threads = 1
     threads:
         1
     log:
-        f'{LOG_DIR}/{{experiment}}_{{params1}}_gurobi.log',
+        f'{LOG_DIR}/{{experiment}}_cold_{{params1}}_gurobi.log',
     benchmark:
-        f'{BENCHMARK_DIR}/{{experiment}}.{{params1}}_gurobi.log'
+        f'{BENCHMARK_DIR}/{{experiment}}.cold_{{params1}}_gurobi.log'
     shell:
         f'{GUROBI_BIN} ResultFile={{output}} Threads={{params.threads}} ' +
         'TimeLimit={params.time_limit} {input} > {log}'
 
 
+rule run_ilp_warm:
+    input:
+        ilp = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_warm_{{params1}}.ilp',
+        start=f'{ILP_DIR}/{{experiment}}/SPP_DCJ_warm_{{params1}}_init.sol'
+    output:
+        f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_warm_{{params1}}.sol',
+    params:
+        time_limit = 60 * 60,
+        threads = 1
+    threads:
+        1
+    log:
+        f'{LOG_DIR}/{{experiment}}_warm_{{params1}}_gurobi.log',
+    benchmark:
+        f'{BENCHMARK_DIR}/{{experiment}}.warm_{{params1}}_gurobi.log'
+    shell:
+        f'{GUROBI_BIN} InputFile={{input.start}} ResultFile={{output}} Threads={{params.threads}} ' +
+        'TimeLimit={params.time_limit} {input.ilp} > {log}'
+
+
 rule sol_to_adjacencies:
     input:
-        sol = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_new_{{params}}.sol',
-        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_new_{{params}}.txt',
+        sol = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_cold_new_{{params}}.sol',
+        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_cold_new_{{params}}.txt',
     output:
-        f'{RESULT_DIR}/{{experiment,[^/]+}}/AdjacenciesPredicted_new_{{params}}.txt'
+        f'{RESULT_DIR}/{{experiment,[^/]+}}/AdjacenciesPredicted_cold_new_{{params}}.txt'
     shell:
         f'{SCRIPT_DIR}/sol2adjacencies.py {{input.sol}} ' +
         '{input.idMap} > {output}'
 
 rule old_sol_to_adjacencies:
     input:
-        sol = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_old_{{params}}.sol',
-        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_old_{{params}}.txt',
+        sol = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_cold_old_{{params}}.sol',
+        idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_cold_old_{{params}}.txt',
     output:
-        f'{RESULT_DIR}/{{experiment,[^/]+}}/AdjacenciesPredicted_old_{{params}}.txt'
+        f'{RESULT_DIR}/{{experiment,[^/]+}}/AdjacenciesPredicted_cold_old_{{params}}.txt'
     shell:
         f'{OLD_SCRIPTS}/sol2adjacencies.py {{input.sol}} ' +
         '{input.idMap} > {output}'
