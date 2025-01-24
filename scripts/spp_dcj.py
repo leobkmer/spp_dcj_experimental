@@ -546,16 +546,19 @@ def warm_start_decomposition(graphs,siblings):
 
 def create_max_weight(graphs):
     root_candidates = dict()
+    not_root = set()
     matchings = dict()
     
     for tree_edge, ((child, parent), G) in enumerate(sorted(graphs.items())):
         print(parent,child, file=stderr)
         root_candidates[parent]=child
         print(root_candidates,file=stderr)
-        root_candidates.pop(child,None)
+        not_root.add(child)
         print(root_candidates,file=stderr)
         matchings[child]=get_max_match(child, G)
     print(root_candidates,file=stderr)
+    for x in not_root:
+        root_candidates.pop(x,None)
     assert(len(root_candidates)==1)
     parent,child = list(root_candidates.items())[0]
     G=graphs[(child,parent)]
