@@ -1157,7 +1157,7 @@ def get_unimog(genome,genes,adjacencies,sep):
         unimog_str+=" |"
     for c in circ_chroms:
         unimog_str+='\n'
-        unimog_str+=(' '.join(l))
+        unimog_str+=(' '.join(c))
         unimog_str+=" )"
     return unimog_str
             

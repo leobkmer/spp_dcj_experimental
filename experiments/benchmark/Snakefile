@@ -415,7 +415,7 @@ rule run_lower_bounds:
     output:
         f'{BOUND_DIR}/{{experiment}}/workdir{{params}}/bounds.txt'
     shell:
-        f'python3 {SCRIPT_DIR}/spp_dcj.py {BOUND_DIR}/{{wildcards.experiment}}/workdir{{wildcards.params}}'+
+        f'python3 {SCRIPT_DIR}/precompute_ding.py {BOUND_DIR}/{{wildcards.experiment}}/workdir{{wildcards.params}} '+
         '{input.tree} {input.candAdj} {output}'
 
 rule construct_old_ilp:
