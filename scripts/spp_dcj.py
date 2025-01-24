@@ -1442,6 +1442,7 @@ if __name__ == '__main__':
                     '<uniquifying identifier> in adjacencies file')
     parser.add_argument('-ws','--warm-start-sol')
     parser.add_argument('-plb','--pairwise-lower-bnds')
+    parser.add_argument('--family-bounds','-fmb',type=open)
     args = parser.parse_args()
 
     # setup logging

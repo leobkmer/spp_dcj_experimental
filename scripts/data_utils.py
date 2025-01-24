@@ -873,7 +873,7 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
             # ensure sorted order of sibling edges
             siblings.append((edge_idh, edge_idt))
 
-        # create indel edges between genes of smaller family
+        # create indel edges between genes of smaller? (leobkmer says: do you mean larger?) family
         for i, gName in enumerate((gName1, gName2)):
             if len(fam2genes[i].get(fam, ())) > len(fam2genes[i-1].get(fam, \
                     ())):
@@ -1160,4 +1160,18 @@ def get_unimog(genome,genes,adjacencies,sep):
         unimog_str+=(' '.join(l))
         unimog_str+=" )"
     return unimog_str
-            
+
+def parseFamilyBounds(data):
+    bounds = dict()
+    delimiter = '\t'
+    for line in csv.reader(data, delimiter = delimiter):
+        genome,fam,low,high = line
+        if genome not in bounds:
+            bounds[genome]=dict()
+        if fam in bounds[genome]:
+            print("Warning: bound for family {} set twice for genome {}, will be overwritten.".format(fam,genome))
+        bounds[genome][fam]=(int(low),int(high))
+    return bounds
+
+def fillFamilyBounds(families,bounds):
+    pass
