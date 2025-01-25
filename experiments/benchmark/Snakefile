@@ -56,7 +56,7 @@ ADJ_ADVNOISE        = config.get('adjacency_adversarial_noise', [50])
 from os.path import basename
 
 
-variants = ['cold_old','cold_new','warm_new','warm_bound']
+variants = ['cold_new','warm_new','warm_bound']
 
 rule all_benchmark:
     input:
