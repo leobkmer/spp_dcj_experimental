@@ -10,6 +10,7 @@ SCRIPT_DIR          = config.get('script_dir', '../../scripts')
 OLD_SCRIPTS         = config.get('old_scripts', '../../oldscripts')
 
 BENCHMARK_DIR       = config.get('benchmark_dir', 'benchmarks')
+P_BENCHMARK_DIR     = config.get('p_benchmark_dir', 'preprocessing_benchmarks')
 DECO_DIR            = config.get('deco_dir', 'deco')
 GUROBI_BIN          = config.get('gurobi_bin', 'gurobi_cl')
 ILP_DIR             = config.get('ilp_dir', 'ilp')
@@ -375,6 +376,8 @@ rule construct_ilp:
         idMap = f'{ILP_DIR}/{{experiment}}/IdToExtremity_cold_new_{{params}}.txt',
     log:
         f'{LOG_DIR}/{{experiment}}_cold_new_{{params}}_spp_dcj.log',
+    benchmark:
+        f'{P_BENCHMARK_DIR}/{{experiment}}.cold_new_{{params}}_spp.log'
     shell:
         f'{SCRIPT_DIR}/spp_dcj.py -a0.5 -b0.25 -m {{output.idMap}} {{input.tree}} '+
         '{input.candAdj} > {output.ilp} 2> {log}'
@@ -389,6 +392,8 @@ rule construct_warm_ilp:
         start = f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_warm_new_{{params}}_init.sol'
     log:
         f'{LOG_DIR}/{{experiment}}_warm_new_{{params}}_spp_dcj.log',
+    benchmark:
+        f'{P_BENCHMARK_DIR}/{{experiment}}.warm_new_{{params}}_spp.log'
     shell:
         f'{SCRIPT_DIR}/spp_dcj.py -a0.5 -b0.25 -m {{output.idMap}} {{input.tree}} '+
         '{input.candAdj} -ws {output.start} > {output.ilp} 2> {log}'
@@ -404,6 +409,8 @@ rule construct_bound_ilp:
         start = f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_warm_bound_{{params}}_init.sol'
     log:
         f'{LOG_DIR}/{{experiment}}_warm_bound_{{params}}_spp_dcj.log',
+    benchmark:
+        f'{P_BENCHMARK_DIR}/{{experiment}}.warm_bound_{{params}}_spp.log'
     shell:
         f'{SCRIPT_DIR}/spp_dcj.py -a0.5 -b0.25 -m {{output.idMap}} {{input.tree}} '+
         '{input.candAdj} -ws {output.start} -plb {input.plb} > {output.ilp} 2> {log}'
@@ -414,6 +421,8 @@ rule run_lower_bounds:
         candAdj = f'{RESULT_DIR}/{{experiment}}/Adjacencies{{params}}.txt',
     output:
         f'{BOUND_DIR}/{{experiment}}/workdir{{params}}/bounds.txt'
+    benchmark:
+        f'{P_BENCHMARK_DIR}/{{experiment}}.warm_bound_{{params}}_bounds.log'
     shell:
         f'python3 {SCRIPT_DIR}/precompute_ding.py {BOUND_DIR}/{{wildcards.experiment}}/workdir{{wildcards.params}} '+
         '{input.tree} {input.candAdj} {output}'
