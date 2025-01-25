@@ -10,6 +10,7 @@ from collections import defaultdict
 from math import ceil
 import logging
 import csv
+from math import exp
 
 # import from third-party packages
 import networkx as nx
@@ -545,16 +546,19 @@ def warm_start_decomposition(graphs,siblings):
 
 def create_max_weight(graphs):
     root_candidates = dict()
+    not_root = set()
     matchings = dict()
     
     for tree_edge, ((child, parent), G) in enumerate(sorted(graphs.items())):
         print(parent,child, file=stderr)
         root_candidates[parent]=child
         print(root_candidates,file=stderr)
-        root_candidates.pop(child,None)
+        not_root.add(child)
         print(root_candidates,file=stderr)
         matchings[child]=get_max_match(child, G)
     print(root_candidates,file=stderr)
+    for x in not_root:
+        root_candidates.pop(x,None)
     assert(len(root_candidates)==1)
     parent,child = list(root_candidates.items())[0]
     G=graphs[(child,parent)]
@@ -584,17 +588,42 @@ def set_based_on_matching(G,mtch,genome):
         if not 'is_set' in G[u][v][k]:
             G[u][v][k]['is_set']=False
 
+
 def get_max_match(genome, G):
+    medges = []
     local = extract_local_graph(genome, G)
     for u,v,tp in list(local.edges(data='type')):
         if tp!=du.ETYPE_ADJ:
             local.remove_edge(u,v)
+    telomeres = [u for u,data in G.nodes(data=True) if data['type']==du.VTYPE_CAP]
+    telomeres = set(telomeres)
+    #set every edge next to a regular vertex to more than weight 1
+    weights = [w for u,v,w in local.edges(data='weight')]
+    max_weight = max(weights)
+    min_weight = min(weights)
+    number_es = len(local.nodes())
+    for u,v,k in local.edges(keys=True):
+        w=(local[u][v][k]['weight']-min_weight)/(max_weight+1)
+        if u in telomeres or v in telomeres:
+            mw = number_es+w
+        else:
+            mw = 2*number_es+w
+        
+        local[u][v][k]['mod_weight']=mw
     #this works since adjacency edges generally do not double
     local = nx.Graph(local)
     #print('\n'.join([str(k) for k in sorted(G.nodes(data=True))]),file=stderr)
-    mwmtch = list(nx.max_weight_matching(local,weight='weight'))
+    print("Calculating maximum weight matching",file=stderr)
+    mwmtch = list(nx.max_weight_matching(local,weight='mod_weight'))
+    print("Maximum weight matching done",file=stderr)
     #print(mwmtch,file=stderr)
-    mwmtch=greedy_extend_max_match(local,mwmtch)
+    #check matching
+    matched = set([v for v,_ in mwmtch]+[v for _,v in mwmtch])
+    for v,tp in local.nodes(data='type'):
+        if tp == du.VTYPE_CAP:
+            continue
+        assert(v in matched)
+    #mwmtch=greedy_extend_max_match(local,mwmtch)
     #print(mwmtch,file=stderr)
     return [(G.nodes[x]['anc'],G.nodes[y]['anc']) for x,y in mwmtch]
 
@@ -1153,6 +1182,9 @@ def sol_from_decomposition(graphs,alpha,out):
                 min_id = v if min_id is None else min(min_id,v)
             #TODO: single telomeres
             if len(path_ends)==1:
+                print(comp)
+                v=list(comp)[0]
+                print(v,G.nodes[v]['type'])
                 assert(G.nodes[path_ends[0]]['type']==du.VTYPE_CAP)
                 continue
             assert(len(path_ends)==2 or len(path_ends)==0)

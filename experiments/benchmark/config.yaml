@@ -17,8 +17,8 @@ recphyloxml_dir:        ../../tools/recPhyloXML
 
 tree:                   ../../data/N10.nwk
 
-tree_scales:            [5,6,7,8,9,10,11,12,13,14,15] #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] # benchmark mainly for tree scale
-n_reps: 10
+tree_scales:            [10,11,12,13,14,15,16,17,18,19,20] #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] # benchmark mainly for tree scale
+n_reps: 50
 
 # ZOMBI GENOME EVOLUTION PARAMETERS -----------------------------------------
 
