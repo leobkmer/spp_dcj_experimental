@@ -81,14 +81,14 @@ def lca_treeedges_cp_tree(cp_tree,a,b):
 # ILP CONSTRAINTS
 #
 
-def constraints(graphs, siblings,circ_singletons, out,lower_bound_mat={}):
+def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_bound_mat={}):
     out.write('subject to\n')
     for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
 
         LOG.info(('writing constraints for relational diagram of {} and ' + \
                 '{}').format(child, parent))
         genomes = [child,parent]
-        global_constraints(G,out)
+        global_constraints(G,families,fam_bounds,out)
         loose_constraints(G,i,genomes,out)
         slm_constraints(G,i,siblings,out)
         regular_reporting(G,i,genomes,out)
@@ -125,12 +125,56 @@ def get_gene_extremities(G):
     return l
 
 
+
+
 #TODO: Integrate multiplicities!
-def c01(G,out):
+def c01(G,families,fam_bounds,out):
+    id_to_v = dict()
+    ht_pairs = []
     for v,data in G.nodes(data=True):
         if data['type']==du.VTYPE_CAP:
             continue
-        print("g{sep}{v} = 1".format(sep=du.SEP,v=data['anc']),file=out)
+        vid = data['id']
+        ovid = du.complement_id(vid)
+        if ovid in id_to_v:
+            ht_pairs.append((v,id_to_v.pop(ovid)))
+        else:
+            id_to_v[vid]=v
+    assert(len(id_to_v)==0)
+    for u,v in ht_pairs:
+        f=du.nodeGetFamily(G,u)
+        print(f,file=stderr)
+        assert(f==du.nodeGetFamily(G,v))
+        gnm = get_genome(G,v)
+        if len(families[gnm][f])==fam_bounds[gnm][f][0]:
+            #lower bound is the same as the family size, everything has to be set
+            print("g{sep}{v} = 1".format(sep=du.SEP,v=G.nodes[v]['anc']),file=out)
+            print("g{sep}{u} = 1".format(sep=du.SEP,u=G.nodes[u]['anc']),file=out)
+        else:
+            print("g{sep}{v} -  g{sep}{u} = 0".format(sep=du.SEP,v=G.nodes[v]['anc'],u=G.nodes[u]['anc']),file=out)
+
+
+def c02_new(G,fam_bounds,out):
+    family_heads = dict()
+    for v, data in G.nodes(data=True):
+        if data['type']==du.VTYPE_CAP:
+            continue
+        vid = data['id']
+        if vid[1][1] == du.EXTR_HEAD:
+            gnm = du.get_genome(G,v)
+            if not gnm in family_heads:
+                family_heads[gnm] = dict()
+            fam = du.nodeGetFamily(G,v)
+            if not fam in family_heads[gnm]:
+                family_heads[gnm][fam]=[]
+            family_heads[gnm][fam].append(data['anc'])
+    for g, fhds in family_heads.items():
+        for f,hds in fhds.items():
+            sm = " + ".join(["g{sep}{v}".format(sep=du.SEP,v=v) for v in hds])
+            print("{sm} <= {hb}".format(sm=sm, hb=fam_bounds[g][f][1]),file=out)
+            print("{sm} >= {lb}".format(sm=sm, lb=fam_bounds[g][f][0]),file=out)
+    
+    #print("g{sep}{v} = 1".format(sep=du.SEP,v=data['anc']),file=out)
 
 #Old,removed
 #def c02(G,out):
@@ -144,9 +188,9 @@ def c02(G,out):
         print("{sm} - g{sep}{v} = 0".format(sm=sm,sep=du.SEP,v=G.nodes[v]['anc']),file=out)
 
 
-def global_constraints(G,out):
-    for c in [c01,c02]:
-        c(G,out)
+def global_constraints(G,families,fam_bounds,out):
+    c01(G,families,fam_bounds,out)
+    c02(G,out)
 
 def c03(G,tree_edge,out):
     ws = [ '{w} x{sep}{te}{sep}{e}'.format(w=data['weight'],te=tree_edge,e=data['id'],sep=du.SEP) for u,v,data in G.edges(data=True) if data['type']==du.ETYPE_ADJ]
@@ -217,6 +261,7 @@ def loose_constraints(G,tree_edge,genomes,out):
         c(G,tree_edge,out)
     for c in [c06,c08,c09,c10,c11,c12,c17]:
         c(G,tree_edge,genomes,out)
+    c23_new(G,genomes,tree_edge,out)
 
 def cslm25(sibs,tree_edge,out):
     for eid,did in sibs:
@@ -458,6 +503,32 @@ def csc23(G,tree_edge,out):
             v=v
         ),file=out)
 
+
+def check_b_necessary(G,u):
+    extr_cands = [(x,k) for x in G[u] for k in G[u][x] if G[u][x][k]['type']==du.ETYPE_EXTR]
+    if len(extr_cands)==0:
+            #other genome does not have this gene, mm is automatic
+            return False
+    x,_ = extr_cands.pop()
+    ide_cands = [(y,k) for y in G[x] for k in G[x][y] if G[x][y][k]['type']==du.ETYPE_ID]
+    if len(ide_cands)==0:
+            #other genome cannot delete, mm is automatic
+            return False
+    return True
+
+def c23_new(G,genomes,tree_edge,out):
+    for u,v,data in G.edges(data=True):
+        if data['type']!=du.ETYPE_ID:
+            continue
+        f = du.nodeGetFamily(G,u)
+        #check if we even have to set this
+        if not check_b_necessary(G,u):
+            continue
+        if du.get_genome(G,u)==genomes[0]:
+            print("x{sep}{te}{sep}{e} - b{sep}{te}{sep}{f} <= 0".format(sep=du.SEP,te=tree_edge,e=data['id'],f=f),file=out)
+        else:
+            print("x{sep}{te}{sep}{e} + b{sep}{te}{sep}{f} <= 1".format(sep=du.SEP,te=tree_edge,e=data['id'],f=f),file=out)
+
 def csc24(G,tree_edge,out,max_circ_len):
     for u_,v_,data in G.edges(data=True):
         if data['type']!=du.ETYPE_ADJ or du.VTYPE_CAP in [G.nodes[x]['type'] for x in [u_,v_]] or not G.nodes[u_].get('cscandidate',False):
@@ -533,10 +604,13 @@ def create_sibmap(G,siblings):
     return sibmap
 
 
-            
 
-def warm_start_decomposition(graphs,siblings):
-    create_max_weight(graphs)
+
+
+def warm_start_decomposition(graphs,fam_bounds,families,siblings):
+    not_full_fams = du.getNotFullFamilies(fam_bounds,families)
+    print(not_full_fams,file=stderr)
+    create_max_weight(graphs,not_full_fams,siblings)
     for tree_edge, ((child, parent), G) in enumerate(sorted(graphs.items())):
         sibmap=create_sibmap(G,siblings[(child,parent)])
         #cycle_greedy_partial_matching(G,sibmap)
@@ -544,17 +618,68 @@ def warm_start_decomposition(graphs,siblings):
         greedy_matching_completion(G,sibmap)
 
 
-def create_max_weight(graphs):
+def get_sup_families(G,not_full_fams,gnm):
+    nff_markers = dict()
+    #if the matching does not allow for a good node
+    for v,data in G.nodes(data=True):
+        f = du.nodeGetFamily(G,v)
+        if data['type']==du.VTYPE_CAP or du.get_genome(G,v)!=gnm:
+            continue
+        if data['id'][1][1]!=du.EXTR_TAIL:
+            continue
+        if f in not_full_fams[gnm]:
+            if f not in nff_markers:
+                nff_markers[f]=set()
+            nff_markers[f].add(v)
+    return nff_markers
+
+
+def find_other(G,sibmap,v):
+    idec = [u for u in G[v] for k in G[v][u] if G[v][u][k]['type']==du.ETYPE_ID]
+    assert(len(idec)<=1)
+    if len(idec)==1:
+        return idec[0]
+    extc = [u for u in G[v] for k in G[v][u] if G[v][u][k]['type']==du.ETYPE_EXTR]
+    assert(len(extc)>=1)
+    u=extc[0]
+    x,y=sibmap[(v,u)]
+    if du.get_genome(G,x)==du.get_genome(G,v):
+        return x
+    else:
+        return y
+
+def get_superfluous_ancs(G,sibmap,not_full_fams,gnm):
+    sups = get_sup_families(G,not_full_fams,gnm)
+    max_weights = dict()
+    ancs = set()
+    for f,heads in sups.items():
+        for h in heads:
+            t = find_other(G,sibmap,h)
+            mt = max([G[t][u][k]['weight'] for u in G[t] for k in G[t][u] if G[t][u][k]['type']==du.ETYPE_ADJ])
+            mh = max([G[h][u][k]['weight'] for u in G[h] for k in G[h][u] if G[h][u][k]['type']==du.ETYPE_ADJ])
+            max_weights[(t,h)]=mt+mh
+        worst=sorted(list(max_weights.keys()),key=lambda x: max_weights[x])
+        to_remove=not_full_fams[gnm][f]
+        for t,h in worst[:to_remove]:
+            ancs.add(G.nodes[t]['anc'])
+            ancs.add(G.nodes[h]['anc'])
+    return ancs
+
+
+def create_max_weight(graphs,not_full_fams,siblings):
     root_candidates = dict()
     not_root = set()
     matchings = dict()
-    
+    superfluous_anc = dict()
     for tree_edge, ((child, parent), G) in enumerate(sorted(graphs.items())):
+        sibmap=create_sibmap(G,siblings[(child,parent)])
         print(parent,child, file=stderr)
         root_candidates[parent]=child
         print(root_candidates,file=stderr)
         not_root.add(child)
         print(root_candidates,file=stderr)
+        superfluous_anc[child] = get_superfluous_ancs(G,sibmap,not_full_fams,child)
+        annotate_superfluous(G,superfluous_anc[child])
         matchings[child]=get_max_match(child, G)
     print(root_candidates,file=stderr)
     for x in not_root:
@@ -562,12 +687,25 @@ def create_max_weight(graphs):
     assert(len(root_candidates)==1)
     parent,child = list(root_candidates.items())[0]
     G=graphs[(child,parent)]
+    sibmap=create_sibmap(G,siblings[(child,parent)])
+    superfluous_anc[parent] = get_superfluous_ancs(G,sibmap,not_full_fams,parent)
+    annotate_superfluous(G,superfluous_anc[parent])
     matchings[parent]=get_max_match(parent,G)
     for tree_edge, ((child, parent), G) in enumerate(sorted(graphs.items())):
+        annotate_superfluous(G,superfluous_anc[child])
         set_based_on_matching(G,matchings[child],child)
+        annotate_superfluous(G,superfluous_anc[parent])
         set_based_on_matching(G,matchings[parent],parent)
         #print(G.edges(data=True),file=stderr)
     
+
+def annotate_superfluous(G,sup_ancs):
+    anc_to_v = dict()
+    for v,anc in G.nodes(data='anc'):
+        anc_to_v[anc]=v
+    for anc in sup_ancs:
+        v=anc_to_v[anc]
+        G.nodes[v]['is_set']=False
 
 def get_anc_map(g):
     return dict(((anc,v) for v,anc in g.nodes(data='anc')))
@@ -595,6 +733,9 @@ def get_max_match(genome, G):
     for u,v,tp in list(local.edges(data='type')):
         if tp!=du.ETYPE_ADJ:
             local.remove_edge(u,v)
+    for v in list(G.nodes()):
+        if not G.nodes[v].get('is_set',True):
+            G.remove_node(v)
     telomeres = [u for u,data in G.nodes(data=True) if data['type']==du.VTYPE_CAP]
     telomeres = set(telomeres)
     #set every edge next to a regular vertex to more than weight 1
@@ -1185,7 +1326,7 @@ def sol_from_decomposition(graphs,alpha,out):
                 print(comp)
                 v=list(comp)[0]
                 print(v,G.nodes[v]['type'])
-                assert(G.nodes[path_ends[0]]['type']==du.VTYPE_CAP)
+                assert(G.nodes[path_ends[0]]['type']==du.VTYPE_CAP or G.nodes[path_ends[0]]['is_set']==False)
                 continue
             assert(len(path_ends)==2 or len(path_ends)==0)
             is_positive=True
@@ -1359,8 +1500,15 @@ def variables(graphs,circ_sings, out):
                 else:
                     print("rBa{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
                     print("rBb{sep}{te}{sep}{v}".format(sep=du.SEP,v=v,te=tree_edge),file=out)
+        bmvars = set()
         for u,v,data in G.edges(data=True):
             print("x{sep}{te}{sep}{e}".format(sep=du.SEP,te=tree_edge,e=data['id']),file=out)
+            if data['type']==du.ETYPE_ID:
+                if check_b_necessary(G,u):
+                    f=du.nodeGetFamily(G,u)
+                    bmvars.add("b{sep}{te}{sep}{f}".format(sep=du.SEP,te=tree_edge,f=f))
+        for b in bmvars:
+            print(b,file=out)
 
     print('\n'.join(global_binaries), file = out)
     print('\n')
@@ -1502,12 +1650,17 @@ if __name__ == '__main__':
     genes = candidateAdjacencies['genes']
     adjacencies = candidateAdjacencies['adjacencies']
     weights = candidateAdjacencies['weights']
+    fam_bounds = dict()
+    if args.family_bounds:
+        fam_bounds=du.parseFamilyBounds(args.family_bounds)
+    families = candidateAdjacencies['families']
+    du.fillFamilyBounds(families,fam_bounds)
 
     global_ext2id = du.IdManager(0,is_cap=lambda x: False)
     LOG.info(('constructing relational diagrams for all {} branches of ' + \
             'the tree').format(len(speciesTree)))
     relationalDiagrams = du.constructRelationalDiagrams(speciesTree,
-            adjacencies, telomeres, weights, genes, global_ext2id,
+            adjacencies, telomeres, weights, genes, global_ext2id,fam_bounds=fam_bounds,
             sep=args.separator)
 
     graphs = relationalDiagrams['graphs']
@@ -1599,7 +1752,7 @@ if __name__ == '__main__':
     objective(graphs, our_alpha, out)
 
     LOG.info('writing constraints...')
-    constraints(graphs, siblings,circ_singletons, out,lower_bound_mat=lbounds)
+    constraints(graphs, families,fam_bounds,siblings,circ_singletons, out,lower_bound_mat=lbounds)
 
     LOG.info('writing domains...')
     domains(graphs, out)
@@ -1622,7 +1775,7 @@ if __name__ == '__main__':
     out.write('end\n')
     if args.warm_start_sol:
         LOG.info('run warm start')
-        warm_start_decomposition(graphs,siblings)
+        warm_start_decomposition(graphs,fam_bounds,families,siblings)
         with open(args.warm_start_sol,'w') as f:
             sol_from_decomposition(graphs,our_alpha,f)
         LOG.info('DONE')

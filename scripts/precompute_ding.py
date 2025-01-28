@@ -53,7 +53,7 @@ def lca_trace_cp_tree(tree,a,b):
     while curr in tree:
         curr = tree[curr]
         a_trace_.append(curr)
-
+    
     b_trace = [b]
     curr = b
     a_seen = set(a_trace_)
@@ -75,6 +75,7 @@ parser.add_argument('tree', type=open,
             help='phylogenetic tree as parent-child relation table')
 parser.add_argument('candidateAdjacencies', type=open,
             help='candidate adjacencies of the genomes in the phylogeny')
+parser.add_argument('--family-bounds','-fmb',type=open)
 
 parser.add_argument('--mode',choices=MODES,default='all')
 parser.add_argument('--total-timelimit',type=int,default=10*60)
@@ -106,7 +107,11 @@ tree = cp_tree(speciesTree)
 
 print(tree)
 
-
+if args.family_bounds:
+    fam_bounds = du.parseFamilyBounds(args.family_bounds)
+else:
+    fam_bounds = dict()
+du.fillFamilyBounds(candidateAdjacencies['families'],fam_bounds)
 
 unimogs = dict()
 for l in leaves:
@@ -117,21 +122,18 @@ best_bounds = {}
 timelim = int(args.total_timelimit/len(pairs))
 for a,b in pairs:
     fam_max = dict()
+    fam_min = dict()
     file_prefix = "{a}_{b}".format(a=a,b=b)
-    for f in families[a]:
-        if f not in families[b]:
-            fam_max[f]=0
-        fam_max[f]=len(families[a][f])
-    for f in families[b]:
-        if f not in families[a]:
-            fam_max[f]=0
-        fam_max[f]=min(len(families[b][f]),fam_max[f])
     genomes = lca_trace_cp_tree(tree,a,b)
-    fam_min = fam_max.copy()
     for g in genomes:
-        for f in fam_max:
-            fam_min[f]=min(fam_min[f],len(families[g].get(f,[])))
-
+        for f in fam_bounds[g]:
+            if f not in fam_max:
+                fam_max[f]=fam_bounds[g][f][1]
+                fam_min[f]=fam_bounds[g][f][0]
+            fam_min[f]=min(fam_min[f],fam_bounds[g][f][0])
+            #use minimum here because we will have to sort via a genome with
+            #this number of markers
+            fam_max[f]=min(fam_max[f],fam_bounds[g][f][1])
     modelfilename = os.path.join(args.workdir,file_prefix+".mmodel")
     unimogfilename = os.path.join(args.workdir,file_prefix+'.unimog')
     #write dict to model file

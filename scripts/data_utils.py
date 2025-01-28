@@ -491,6 +491,9 @@ def getLeaves(branches):
     return leavesDict
 
 
+def nodeGetFamily(G,v):
+    return getFamily(G.nodes[v]['id'][1][0])
+
 def getFamily(gene_extr, sep=DEFAULT_GENE_FAM_SEP):
     ''' @returns the family identifier of a gene or gene extremity'''
     assert type(gene_extr) is tuple or type(gene_extr) is str
@@ -838,7 +841,7 @@ def canonicizePath(path):
 
 
 def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
-        fam2genes2, extremityIdManager):
+        fam2genes2, extremityIdManager,fam_bounds):
 
     genes1 = genes[gName1]
     genes2 = genes[gName2]
@@ -873,10 +876,12 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
             # ensure sorted order of sibling edges
             siblings.append((edge_idh, edge_idt))
 
+        if not fam in fam_bounds[gName1] and not fam in fam_bounds[gName2]:
+            raise AssertionError("WTF")
         # create indel edges between genes of smaller? (leobkmer says: do you mean larger?) family
         for i, gName in enumerate((gName1, gName2)):
-            if len(fam2genes[i].get(fam, ())) > len(fam2genes[i-1].get(fam, \
-                    ())):
+            oName = [oName for oName in (gName1,gName2) if oName!=gName].pop()
+            if fam_bounds[gName].get(fam,(0,0))[1] > fam_bounds[oName].get(fam,(0,0))[0]:
                 #print("Fam {} in genome {} overrepresented. Adding indel edges...".format(fam,gName),file=sys.stderr)
                 for gene in fam2genes[i][fam]:
                     idh = extremityIdManager.getId((gName, (gene, EXTR_HEAD)))
@@ -926,19 +931,19 @@ def getIncidentAdjacencyEdges(G, v):
 
 
 def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
-        candidateWeights, genes, extremityIdManager,
+        candidateWeights, genes, extremityIdManager,fam_bounds=dict(),
         sep=DEFAULT_GENE_FAM_SEP):
     ''' constructs for each edge of the tree a relational diagram of the
     adjacent genomes'''
 
     res = dict((('graphs', dict()), ('siblings', dict())))
-
     for child, parent in tree:
         G = nx.MultiGraph()
         max_tels = len(candidateTelomeres[child]) + len(candidateTelomeres[parent]) +2 #2*sum([len(genes[gnm]) for gnm in [child,parent]])
         localIdManager = IdManager(max_tels)
         for gName in (child, parent):
             _constructRDNodes(G, gName, genes[gName], extremityIdManager,localIdManager)
+                
             _constructRDTelomeres(G, gName, candidateTelomeres[gName],
                                   extremityIdManager,localIdManager)
             _constructRDAdjacencyEdges(G, gName, candidateAdjacencies[gName],
@@ -947,7 +952,7 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
         fam2genes1 = mapFamiliesToGenes(genes[child], sep=sep)
         fam2genes2 = mapFamiliesToGenes(genes[parent], sep=sep)
         siblings   = _constructRDExtremityEdges(G, child, parent, genes,
-                fam2genes1, fam2genes2, localIdManager)
+                fam2genes1, fam2genes2, localIdManager,fam_bounds)
         
         res['graphs'][(child, parent)] = G
         res['siblings'][(child, parent)] = siblings
@@ -985,6 +990,18 @@ def writeAdjacencies(adjacenciesList, weightsDict, out):
                 ext2,
                 str(weightsDict[species][(gene1,ext1), (gene2,ext2)])])+'\n')
 
+
+def getNotFullFamilies(fam_bounds,families):
+    not_full_fams = dict()
+    for g in fam_bounds:
+        if not g in not_full_fams:
+            not_full_fams[g] = dict()
+        for f in fam_bounds[g]:
+            if len(families[g][f]) > fam_bounds[g][f][1]:
+                not_full_fams[g][f]=len(families[g][f]) - fam_bounds[g][f][1]
+    return not_full_fams
+
+    
 
 #
 # DATA CLASSES
@@ -1174,4 +1191,11 @@ def parseFamilyBounds(data):
     return bounds
 
 def fillFamilyBounds(families,bounds):
-    pass
+    for genome in families:
+        if not genome in bounds:
+            bounds[genome]=dict()
+        for f in families[genome]:
+            if not f in bounds[genome]:
+                #set both to maximum
+                fsize = len(families[genome][f])
+                bounds[genome][f]=(fsize,fsize)
