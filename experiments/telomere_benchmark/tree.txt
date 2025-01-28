@@ -1,6 +1,0 @@
-A	F
-B	F
-C	G
-D	G
-F	Root
-G	Root
