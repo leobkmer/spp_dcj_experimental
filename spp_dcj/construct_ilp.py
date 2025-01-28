@@ -1,15 +1,8 @@
-#!/usr/bin/env python
-
 # import from built-in packages
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter as ADHF, \
-        FileType
-from sys import stdout, stderr, exit
-from itertools import product, combinations, chain, repeat
+from sys import stdout
+from itertools import chain
 from functools import reduce
-from collections import defaultdict
-from math import ceil
 import logging
-import csv
 
 # import from third-party packages
 import networkx as nx
@@ -590,24 +583,6 @@ def identifyCandidateTelomeres(candidateAdjacencies, telomere_default_weight,lea
                         adjs.append(((g, extr), (t, 'o')))
                         candidateAdjacencies['weights'][((g, extr), (t, 'o'))]=telomere_default_weight
 
-#        genes_edg = [((g, du.EXTR_HEAD), (g, du.EXTR_TAIL)) for g in genes]
-#        if species == 'n3':
-#            C = nx.connected.node_connected_component(G, ('69_6', 'h'))
-#            G = G.subgraph(C).copy()
-##            G.add_edges_from(genes_edg)
-#            pos = nx.spring_layout(G)
-#            #nx.draw_networkx_nodes(G, pos=pos, node_size=8)
-#            nx.draw(G, pos=pos, node_size=10)
-#            #nx.draw_networkx_labels(G, pos=pos, font_size=12)
-#            nx.draw_networkx_edges(G, pos, set(map(tuple,
-#                adjs)).intersection(G.edges()), edge_color='black')
-##            nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=dict(((x[0], \
-##                    x[1]), G[x[0]][x[1]][0]['type']) for x in G.edges(data = \
-##                    True)))
-##            nx.draw_networkx_edges(G, pos, set(genes_edg).intersection(G.edges()),
-##                edge_color='red')
-#            import matplotlib.pylab as plt
-#            import pdb; pdb.set_trace()
         res[species] = telomeres
         LOG.info('identified %s candidate telomeres in genome %s' %(
             len(telomeres), species))
@@ -665,40 +640,6 @@ def main(args):
             sep=args.separator)
 
     graphs = relationalDiagrams['graphs']
-
-#    for gNames, G in graphs.items():
-#            genes_edg = list()
-#            for gName in gNames:
-#                genes = candidateAdjacencies['genes'][gName]
-#                genes_edg.extend(((ext2id.getId((gName, (g, du.EXTR_HEAD))),
-#                    ext2id.getId((gName, (g, du.EXTR_TAIL))))for g in genes))
-##            Gp = nx.Graph()
-##            Gp.add_edges_from(genes_edg)
-##            Gp.add_edges_from((u, v) for u, v, data in G.edges(data=True) if
-##                    data['type'] == du.ETYPE_ADJ)
-#            G = G.subgraph(nx.node_connected_component(G, ext2id.getId(('n10',
-#                ('23_7', 'h')))))
-#            pos = nx.spring_layout(G)
-##            nx.draw_networkx_edges(G, pos, set(genes_edg).intersection(G.edges()),
-##                edge_color='red')
-#            nx.draw_networkx_edges(G, pos, [(u, v) for u, v, data in
-#                G.edges(data=True) if data['type'] == du.ETYPE_EXTR],
-#                edge_color='green')
-#            nx.draw_networkx_nodes(G, pos=pos, node_size=8)
-#            #nx.draw(G, pos=pos, node_size=10)
-#            nx.draw_networkx_labels(G, pos=pos, font_size=10, labels = dict((v,
-#                '{0}:{1[0]}{1[1]}'.format(*G.nodes[v]['id'])) for v in G.nodes()))
-#            nx.draw_networkx_edges(G, pos, [(u, v) for u, v, data in
-#                G.edges(data=True) if data['type'] == du.ETYPE_ID],
-#                edge_color='gray')
-#            nx.draw_networkx_edges(G, pos, [(u, v) for u, v, data in
-#                G.edges(data=True) if data['type'] == du.ETYPE_ADJ],
-#                edge_color='red')
-##            nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=dict(((x[0], \
-##                    x[1]), G[x[0]][x[1]][0]['type']) for x in G.edges(data = \
-##                    True)))
-#            import matplotlib.pylab as plt
-#            import pdb; pdb.set_trace()
 
     siblings = relationalDiagrams['siblings']
 

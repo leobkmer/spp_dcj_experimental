@@ -1,10 +1,9 @@
-
 from collections import deque
 from io import BytesIO, StringIO
 import re
 
-IS_FLOAT = re.compile('^\s*(?:-?((\d*\.)?\d+)|((\d*\.\d+|\d+)(e|E)(\+|-)?\d+))\s*$') 
-token_pat = re.compile('(?:\(|\)|,|\:|;|[^():;,]+)')
+IS_FLOAT = re.compile(r'^\s*(?:-?((\d*\.)?\d+)|((\d*\.\d+|\d+)(e|E)(\+|-)?\d+))\s*$')
+token_pat = re.compile(r'(?:\(|\)|,|\:|;|[^():;,]+)')
 
 class ParseType:
 

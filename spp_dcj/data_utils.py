@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # import from built-in packages
 from collections import defaultdict, deque
 from itertools import product

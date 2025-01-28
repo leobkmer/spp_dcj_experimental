@@ -1,19 +1,15 @@
-#!/usr/bin/env python3
-
 # import from built-in packages
 from argparse import ArgumentParser
-from sys import stdout, stderr, exit
+from sys import stdout
 
 # import from own packages
-import data_utils as du
+import spp_dcj.data_utils as du
 
-if __name__ == '__main__':
-
-    parser = ArgumentParser()
+def cmd_arguments(parser):
     parser.add_argument('unimog_file', type=open,
             help='genomes in UNIMOG format')
 
-    args = parser.parse_args()
+def main(args):
 
     out = stdout
     #

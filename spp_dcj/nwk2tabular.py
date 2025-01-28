@@ -1,22 +1,20 @@
-#!/usr/bin/env python3
-
 # import from built-in packages
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter as ADHF, FileType
-from sys import stdout, stderr, exit
+from sys import stdout
 
 # import from own packages
-from newick_parser import parse_tree, Branch
+from spp_dcj.newick_parser import parse_tree
 
 
-if __name__ == '__main__':
-    parser = ArgumentParser(formatter_class=ADHF)
+def cmd_arguments(parser):
     parser.add_argument('tree', type=open, help='tree in newick format')
-    args = parser.parse_args()
 
+
+def main(args):
+
+    # load data
     tree = parse_tree(args.tree)
 
     out = stdout
-
     print('#Node\tParent', file = out)
     for v in tree.getNodes():
         u = v.getAncestor()
