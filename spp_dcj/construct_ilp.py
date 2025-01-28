@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # import from built-in packages
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter as ADHF, \
@@ -15,7 +15,7 @@ import csv
 import networkx as nx
 
 # import from own packages
-import data_utils as du
+import spp_dcj.data_utils as du
 
 
 #
@@ -37,7 +37,7 @@ def objective(graphs, alpha, out):
         alph=alpha,ialph=alpha-1,sep=du.SEP,te=tree_edge)
         for tree_edge, _ in enumerate(sorted(graphs.items()))]
     print(" + ".join(terms),file=out)
-        
+
 
 
 
@@ -124,10 +124,10 @@ def summary_constraint(pathtype,predicate,G,tree_edge,out):
     print("{s} - p{ptype}{sep}{te} = 0".format(s=' + '.join(sm),ptype=pathtype,sep=du.SEP,te=tree_edge),file=out)
 
 c08 = lambda G,tree_edge,genomes,out: summary_constraint('ab',lambda G,v: get_genome(G,v)==genomes[0] and G.nodes[v]['type']==du.VTYPE_EXTR,G,tree_edge,out)
-c09 = lambda G,tree_edge,genomes,out: summary_constraint('Ab',lambda G,v: get_genome(G,v)==genomes[0] and G.nodes[v]['type']==du.VTYPE_CAP,G,tree_edge,out)    
-c10 = lambda G,tree_edge,genomes,out: summary_constraint('Ba',lambda G,v: get_genome(G,v)==genomes[1] and G.nodes[v]['type']==du.VTYPE_CAP,G,tree_edge,out)    
-c11 = lambda G,tree_edge,genomes,out: summary_constraint('Aa',lambda G,v: get_genome(G,v)==genomes[0] and G.nodes[v]['type']==du.VTYPE_CAP,G,tree_edge,out)    
-c12 = lambda G,tree_edge,genomes,out: summary_constraint('Bb',lambda G,v: get_genome(G,v)==genomes[1] and G.nodes[v]['type']==du.VTYPE_CAP,G,tree_edge,out)    
+c09 = lambda G,tree_edge,genomes,out: summary_constraint('Ab',lambda G,v: get_genome(G,v)==genomes[0] and G.nodes[v]['type']==du.VTYPE_CAP,G,tree_edge,out)
+c10 = lambda G,tree_edge,genomes,out: summary_constraint('Ba',lambda G,v: get_genome(G,v)==genomes[1] and G.nodes[v]['type']==du.VTYPE_CAP,G,tree_edge,out)
+c11 = lambda G,tree_edge,genomes,out: summary_constraint('Aa',lambda G,v: get_genome(G,v)==genomes[0] and G.nodes[v]['type']==du.VTYPE_CAP,G,tree_edge,out)
+c12 = lambda G,tree_edge,genomes,out: summary_constraint('Bb',lambda G,v: get_genome(G,v)==genomes[1] and G.nodes[v]['type']==du.VTYPE_CAP,G,tree_edge,out)
 
 def c13toc16(G,tree_edge,out):
     for indel in "ab":
@@ -138,7 +138,7 @@ c17 = lambda G,tree_edge,genomes,out: summary_constraint('AB',lambda G,v: get_ge
 def c18(G,tree_edge,out,candidates=None):
     if candidates is None:
         sm = ['rs{sep}{te}{sep}{v}'.format(te=tree_edge,sep=du.SEP,v=v) for v,data in G.nodes(data=True) if data['type'] != du.VTYPE_CAP and data.get('cscandidate',False)]
-        
+
     else:
         LOG.info("manual candidates: {}".format(candidates))
         sm = ['rms{sep}{te}{sep}{j}'.format(sep=du.SEP,te=tree_edge,j=j) for j in range(len(candidates))]
@@ -234,7 +234,7 @@ def crv29(G,tree_edge,genomes,out):
                     u=u,
                     v=v
                 ), file=out)
-            
+
 def crv30(G,tree_edge,genomes,out):
     for v,data in G.nodes(data=True):
         if data['type']==du.VTYPE_CAP or get_genome(G,v)!=genomes[0]:
@@ -371,7 +371,7 @@ def crt37(G,tree_edge,genomes,out):
                     u=u,
                     e=data['id']
                 ),file=out)
-            
+
 def pcap_reporting(G,tree_edge,genomes,out):
     for c in [crt32,crt33,crt34,crt35,crt36,crt37]:
         c(G,tree_edge,genomes,out)
@@ -462,7 +462,7 @@ def domains(graphs, out):
             if data['type']==du.VTYPE_CAP:
                 continue
             print("0 <= y{sep}{te}{sep}{v} <= {v}".format(sep=du.SEP,te=te,v=v))
-        
+
 
 
 #
@@ -488,7 +488,7 @@ def variables(graphs,circ_sings, out):
                 continue
             if (child, parent) not in circ_sings:
                 print("w{sep}{te}{sep}{v}".format(sep=du.SEP,te=te,v=v),file=out)
-            
+
 
     for gg in global_generals:
         print(gg,file=out)
@@ -613,10 +613,7 @@ def identifyCandidateTelomeres(candidateAdjacencies, telomere_default_weight,lea
             len(telomeres), species))
     return res
 
-
-if __name__ == '__main__':
-
-    parser = ArgumentParser(formatter_class=ADHF)
+def cmd_arguments(parser):
     parser.add_argument('tree', type=open,
             help='phylogenetic tree as parent-child relation table')
     parser.add_argument('candidateAdjacencies', type=open,
@@ -639,15 +636,8 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--separator', default = du.DEFAULT_GENE_FAM_SEP, \
             help='Separator of in gene names to split <family ID> and ' +
                     '<uniquifying identifier> in adjacencies file')
-    args = parser.parse_args()
 
-    # setup logging
-    ch = logging.StreamHandler(stderr)
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(logging.Formatter('%(levelname)s\t%(asctime)s\t%(message)s'))
-    LOG.addHandler(ch)
-
-
+def main(args):
     # load & process input data
     LOG.info('loading species tree from {}'.format(args.tree.name))
     speciesTree = du.parseTree(args.tree)
@@ -734,7 +724,7 @@ if __name__ == '__main__':
                 LOG.info(f'identified {len(circ_singletons[ident])} circular singleton candidates')
             except du.TooManyCSException:
                 pass
-        
+
 
     #caps = getAllCaps(graphs)
     # construct & output ILP
@@ -747,7 +737,7 @@ if __name__ == '__main__':
         scale_factor=1
         our_alpha=args.alpha
         our_beta_add_telweight=0
-    
+
     if args.beta:
         #rescale the edge weights for the telomeres
         LOG.info('Re-weighting telomeres: s={s},add_tel_weight={adt},recalculated_alpha={recalph}'.format(s=scale_factor,adt=our_beta_add_telweight,recalph=our_alpha))

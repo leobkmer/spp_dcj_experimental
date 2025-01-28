@@ -1,29 +1,22 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # import from built-in packages
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter as ADHF, FileType
-from sys import stdout, stderr, exit
+from sys import stdout
 import csv
-import re
 
 # import from own packages
-import data_utils as du
+import spp_dcj.data_utils as du
 
 
-if __name__ == '__main__':
-
-    parser = ArgumentParser(formatter_class=ADHF)
+def cmd_arguments(parser):
     parser.add_argument('sol_file', type=open,
             help='solution file of GUROBI optimizer')
     parser.add_argument('id_to_extremity_map', type=open,
             help='mapping between node IDs and extremities')
 
-    args = parser.parse_args()
 
-    #
+def main(args):
     # load data
-    #
-
     # id-to-extremity mapping
     id2ext = dict()
     for line in csv.reader(args.id_to_extremity_map, delimiter = '\t'):

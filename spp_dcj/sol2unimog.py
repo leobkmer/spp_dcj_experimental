@@ -1,16 +1,17 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # import from built-in packages
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter as ADHF, FileType
-from itertools import chain
-from sys import stdout, stderr, exit
+from sys import stdout
+import logging
 import csv
 
 # import from own packages
-import data_utils as du
+import spp_dcj.data_utils as du
 
 import networkx as nx
 
+LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.DEBUG)
 
 def calculateDCJindelDistance(vars_, n_star):
 
@@ -115,15 +116,15 @@ def constructGraph(vars_):
 
     return G
 
-if __name__ == '__main__':
 
-    parser = ArgumentParser(formatter_class=ADHF)
+def cmd_arguments(parser):
     parser.add_argument('sol_file', type=open,
             help='solution file of GUROBI optimizer')
     parser.add_argument('id_to_extremity_map', type=open,
             help='mapping between node IDs and extremities')
 
-    args = parser.parse_args()
+
+def main(args):
 
     out = stdout
     #
@@ -141,30 +142,14 @@ if __name__ == '__main__':
 
     G = constructGraph(vars_)
     annotateGraph(G, id2ext)
-#    checkConsistency(G)
-
-
-#    from matplotlib import pylab as plt
-#    G = nx.Graph()
-#    for gName, adjs in chain(adjacenciesList.items(), indelList.items()):
-#        for (g1, ext1), (g2, ext2) in adjs:
-#            G.add_edge((gName, g1, ext1), (gName, g2, ext2))
-#    G.add_edges_from(map(lambda x: (x[0] + (du.EXTR_HEAD, ), x[1] +
-#        (du.EXTR_HEAD, )), matchingList))
-#    G.add_edges_from(map(lambda x: (x[0] + (du.EXTR_TAIL, ), x[1] +
-#        (du.EXTR_TAIL, )), matchingList))
-#    nx.draw(G)
-#    plt.show()
-#    import pdb; pdb.set_trace() 
 
     genomes = du.adjacencies2unimog(adjacenciesList, matchingList)
     genomes.sort()
     n_star = len([x for x in matchingList if not x[0][1].startswith('t')])
-    #p_star = len(matchingList) - n_star
     ddcj = calculateDCJindelDistance(vars_, n_star)
-    print(f'DCJ INDEL distance is {ddcj}', file=stderr)
+    LOG.info(f'DCJ INDEL distance is {ddcj}')
 
-    # write genomes in UniMoG format 
+    # write genomes in UniMoG format
     gene2str = lambda x: x[0] == du.ORIENT_NEGATIVE and f'-{x[1]}' or x[1]
     for gName, chrs in genomes:
         print(f'>{gName}', file = out)

@@ -1,21 +1,17 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # import from built-in packages
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter as ADHF, FileType
-from sys import stdout, stderr, exit
+from sys import stdout
 
 # import from third-party packages
 import os#, locale
-#locale.setlocale(locale.LC_ALL, 'en_US')
 if not os.environ.get('DISPLAY', None):
     import matplotlib; matplotlib.use('Agg')
 from matplotlib import pylab as plt
-from collections import defaultdict
 import networkx as nx
-import csv
 
 # import from own packages
-import data_utils as du
+import spp_dcj.data_utils as du
 
 COLOR_MAP = {du.ETYPE_ADJ: 'black', du.ETYPE_ID: 'gray' }
 LINESTYLE_MAP = {du.ETYPE_ADJ: 'solid', du.ETYPE_ID: 'dotted' }
@@ -36,16 +32,13 @@ def constructGenomeGraph(adjacencies, genes):
                     type=du.ETYPE_ID)
     return G
 
-
-if __name__ == '__main__':
-
-    parser = ArgumentParser(formatter_class=ADHF)
+def cmd_arguments(parser):
     parser.add_argument('candidateAdjacencies', type=open,
             help='candidate adjacencies of the genomes in the phylogeny')
     parser.add_argument('-i', '--highlight', type=open,
             help='highlight adjacencies in visualization')
 
-    args = parser.parse_args()
+def main(args):
 
     # load data
     candidateAdjacencies = du.parseAdjacencies(args.candidateAdjacencies)
@@ -67,16 +60,12 @@ if __name__ == '__main__':
 
         # plot figure
         plt.subplot((n_species + 1) // 2, 2, i+1)
-#        layout = nx.spectral_layout(H)
         layout = nx.spring_layout(G, iterations=200)
 
         edges = list(G.edges(data = True))
 
         edge_color, edges = zip(*sorted(zip(list(map(lambda x: \
                 COLOR_MAP[x[2]['type']], edges)), edges)))
-
-#        line_style, edges = zip(*sorted(zip(list(map(lambda x: \
-#                LINESTYLE_MAP[x[2]['type']], edges)), edges)))
 
         if highlights and species in highlights:
             highlight_edges  = list(x for x in highlights[species] if
@@ -89,12 +78,6 @@ if __name__ == '__main__':
                 edge_color, with_labels=False, font_size=1, \
                 node_color='orange', node_size=2, width=list(map(lambda x: x \
                 == 'black' and 2 or 1, edge_color)))
-#        nx.draw_networkx(G, pos=layout, edgelist=edges, edge_color='black', \
-#                font_size=10, node_color='white', node_size=5, \
-#                width=list(map(lambda x: x == 'dotted' and 0.4 or 0.5, \
-#                line_style)), style=line_style, font_color='black', \
-#                font_family='serif', labels=dict(((v, '.') for v in G.nodes)),
-#                with_labels=True, verticalalignment='baseline',)
         plt.title(species)
         ax = plt.gca()
         ax.axis('off')
@@ -106,5 +89,4 @@ if __name__ == '__main__':
     with os.fdopen(stdout.fileno(), 'wb', closefd=False) as out:
         plt.savefig(out, format='pdf')
         out.flush()
-
 

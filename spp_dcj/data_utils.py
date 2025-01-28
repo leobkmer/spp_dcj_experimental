@@ -1,16 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # import from built-in packages
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter as ADHF, FileType
 from collections import defaultdict, deque
-from itertools import product, chain, combinations
-from sys import stderr
-import random
+from itertools import product
+import logging
 import csv
 import re
 import sys
-
-
 
 # import from third-party packages
 import networkx as nx
@@ -54,11 +50,13 @@ DEFAULT_GENE_FAM_SEP = '_'
 PAT_ADJ = re.compile(r'^(\w+)@([0-9_]+)$')
 PAT_MATCHED_EDGE = re.compile(r'^x(\d+)_(\d+)([^0-9 \t]*) 1\s*$')
 
+LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.DEBUG)
 
 def complement_id(v):
     (gName, (g, extr)) = v
     return (gName,(g,EXT_COMPLEMENT[extr]))
-    
+
 #
 # DATA ACQUISITION, PARSERS
 #
@@ -139,9 +137,8 @@ def parseAdjacencies(data, sep=DEFAULT_GENE_FAM_SEP):
             ext2     = (gene2,line[5])
             weight   = float(line[6])
             if (gene1, ext1) == (gene2, ext2):
-                print(f'WARNING: adjacency between the same extremity is not '
-                        f'feasible, skipping {line[1]}:{line[2]}-{line[4]}:{line[5]}',
-                        file=stderr)
+                LOG.warning(f'adjacency between the same extremity is not '
+                        f'feasible, skipping {line[1]}:{line[2]}-{line[4]}:{line[5]}')
             else:
                 addAdjacency(ext1,ext2,weight,resAdjacencies[species],resWeights[species],resGenes[species])
 
@@ -431,7 +428,6 @@ def parseSOL(data, idMap):
         if line.startswith(obj_txt):
             obj_value = float(line[len(obj_txt):])
             continue
-        #print(line,file=sys.stderr)
         var_, val = line.split()
         vars_[var_] = float(val)
         isEmpty = False
@@ -654,7 +650,7 @@ def _find_end_pairs(G, gName1, gName2):
     valid_ends = set((v for v, data in G.nodes(data=True) if data['type'] == VTYPE_CAP))
 
     # checks if edge v-u is ID and if so, sets ID label of corresponding genome
-    # to 1, and returns the label vector. 
+    # to 1, and returns the label vector.
     pID = lambda v, edata, l: G.nodes[v]['id'][0] == gName1 and \
             [l[2] or edata['type'] == ETYPE_ID, l[3]] or \
             [l[2], l[3] or edata['type'] == ETYPE_ID]
@@ -666,7 +662,7 @@ def _find_end_pairs(G, gName1, gName2):
         # encoding: state0, state1, has_A_run, has_B_run
         labels = dict(((v, [0, 0, 0, 0]) for v in G.nodes))
         # initialize labeling for root node: caps are connected by
-        # adjacency edges (0), so the initial state is 1. 
+        # adjacency edges (0), so the initial state is 1.
         labels[end][1] = 1
         queue = deque([end])
         while queue:
@@ -701,8 +697,6 @@ def _find_end_pairs(G, gName1, gName2):
 
 
 def checkGraph(G,cf=False,checkForAllTels=False):
-    #for v,data in G.nodes(data=True):
-    #    print(v,",".join(["{}={}".format(k,x) for k,x in data.items()]),file=sys.stderr)
     for u, v, in G.edges():
         if u == v:
             raise Exception(f'node {v} is connected to itself')
@@ -753,7 +747,7 @@ def identifyCircularSingletonCandidates(G,max_number=None):
         # orient the traversal: e_id[0] -> e_id[1] -> ...
         # each element of the queue is a tuple of <path, nodeset>
         # - path encoding: <vertex1> <data of edge> <vertex2> ...
-        # - node set: set of nodes of the path 
+        # - node set: set of nodes of the path
         queue = deque((((e_id[0], e_id[2], e_id[1]), set((e_id[0], e_id[1]))), ))
         while queue:
             path, nset = queue.pop()
@@ -770,7 +764,7 @@ def identifyCircularSingletonCandidates(G,max_number=None):
                         elif path[0] == u:
                             # no need to check parity, because path is *always*
                             # started with indel edge and no two indel edges
-                            # can be adjacent 
+                            # can be adjacent
                             ppath = rotateToMin(path + (data, ))
                             vpath = tuple((ppath[i] for i in range(0,
                                 len(ppath), 2)))
@@ -789,14 +783,12 @@ def annotate_v_circ_sing(G):
     #Find all vertices that could be in a circular singleton
     F = G.copy()
     rmedges= [(u,v,k) for u,v,k,etype in G.edges(keys=True,data='type') if etype==ETYPE_EXTR]
-    #print("rmedge: {}".format(rmedges),file=sys.stderr)
     F.remove_edges_from(rmedges)
 
     for c in nx.connected_components(F):
         S=F.subgraph(c)
         try:
             nx.find_cycle(S)
-            #print("CS candidate: {}".format(c),file=sys.stderr)
             for v in c:
                 G.nodes[v]['cscandidate']=True
         except nx.NetworkXNoCycle:
@@ -818,7 +810,7 @@ def canonicizePath(path):
         else:
             return (path[0],) + path[-1:0:-1]
     return path
-        
+
 
 
 
@@ -862,7 +854,6 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
         for i, gName in enumerate((gName1, gName2)):
             if len(fam2genes[i].get(fam, ())) > len(fam2genes[i-1].get(fam, \
                     ())):
-                #print("Fam {} in genome {} overrepresented. Adding indel edges...".format(fam,gName),file=sys.stderr)
                 for gene in fam2genes[i][fam]:
                     idh = extremityIdManager.getId((gName, (gene, EXTR_HEAD)))
                     idt = extremityIdManager.getId((gName, (gene, EXTR_TAIL)))
@@ -879,7 +870,7 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
 TELOMERE_GENE='t'
 def _constructRDNodes(G, gName, genes, globalIdManager,localIdManager):
     ''' create gene extremity nodes for the genome named <gName> '''
-    
+
     for extr in (EXTR_HEAD, EXTR_TAIL):
         G.add_nodes_from(((localIdManager.getId((gName, (g, extr))),
             dict(id=((gName, (g, extr))), type=VTYPE_EXTR,anc=globalIdManager.getId((gName, (g, extr))))) for g in genes)) #if g!=TELOMERE_GENE))
@@ -933,7 +924,7 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
         fam2genes2 = mapFamiliesToGenes(genes[parent], sep=sep)
         siblings   = _constructRDExtremityEdges(G, child, parent, genes,
                 fam2genes1, fam2genes2, localIdManager)
-        
+
         res['graphs'][(child, parent)] = G
         res['siblings'][(child, parent)] = siblings
         annotate_v_circ_sing(G)
@@ -1004,37 +995,3 @@ class IdManager(object):
 
     def getMap(self):
         return dict(self.__table.items())
-
-
-if __name__ == '__main__':
-    parser = ArgumentParser(formatter_class=ADHF)
-    parser.add_argument('trueGeneOrders', type=open,
-                        help='true gene orders of the genomes in the phylogeny')
-    parser.add_argument('outputName', type=FileType('w'),
-                        help='name for the output adjacencies file')
-    args = parser.parse_args()
-
-    trueGeneOrder  = parseTrueGeneOrders(args.trueGeneOrders,
-                                         close_linear=True)
-
-    writeAdjacencies(trueGeneOrder['adjacencies'], trueGeneOrder['weights'],
-                     args.outputName)
-
-# def completeCandidateAdjacencies(candidateAdjacencies, candidateWeights,
-#         trueAdjacencies, speciesList):
-#     ''' Complete a set of candidate adjacencies by adding another list of
-#     adjacencies (the true adjacencies)'''
-
-#     resAdjacencies = {}
-#     resWeights     = {}
-#     for species in speciesList:
-#         combinedAdjacenciesList = candidateAdjacencies[species].copy()
-#         for adjacencie in candidateAdjacencies[species]:
-#             resWeights[adjacencie] = candidateWeights[adjacencie]
-#         for adjacencie in trueAdjacencies[species]:
-#             if adjacencie not in combinedAdjacenciesList:
-#                 combinedAdjacenciesList.append(adjacencie)
-#                 resWeights[adjacencie[0],adjacencie[1]] = TRUE_ADJ_WEIGHT
-#         resAdjacencies[species] = combinedAdjacenciesList
-
-#     return (resAdjacencies,resWeights)
