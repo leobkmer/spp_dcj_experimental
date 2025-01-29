@@ -12,13 +12,6 @@ The Small Parsimony Problem (SPP) aims at finding the gene orders at internal no
 - Python 3 libraries:
     - Matplotlib
     - NetworkX
-    - Numpy
-    - Pandas
-    - Ete3
-
-## Optional Dependencies
-- Python 3 libraries
-    - Snakemake
 
 ## How to run 
 
@@ -30,7 +23,7 @@ The following steps show howto run `SPP_DCJ` with Gurobi.
 
 1. Generate ILP (`-a` and `-b` are parameters of the objective function, set here to 0.5 and 0.25, respectively):
     
-    ```scripts/spp_dcj.py -m experiments/example/Example1.idmap -a 0.5 -b 0.25 experiments/example/SpeciesTree.txt experiments/example/AdjacenciesExample1.txt > experiments/example/Example1.ilp 2> experiments/example/Example1.spp_dcj.log```
+    ```scripts/spp-dcj -m experiments/example/Example1.idmap -a 0.5 -b 0.25 experiments/example/SpeciesTree.txt experiments/example/AdjacenciesExample1.txt > experiments/example/Example1.ilp 2> experiments/example/Example1.spp_dcj.log```
 
 2. Run ILP
     
@@ -45,7 +38,7 @@ The following steps show howto run `SPP_DCJ` with Gurobi.
     ```scripts/visualize_genomes.py -i experiments/example/PredictedAdjacenciesExample1.txt experiments/example/AdjacenciesExample1.txt > experiments/example/PredictedAdjacenciesExample1.pdf```
 
 ## Example
-An the code above in included in the example in `experiments/example`.
+An the code above in included in the directory `example`.
 
 
 
