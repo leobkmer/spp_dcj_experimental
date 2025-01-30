@@ -1303,10 +1303,28 @@ def sol_from_decomposition(graphs,circ_singletons,alpha,out):
                 counts['s']+=is_set
         else:
             #TODO: implement other circ sing counting
-            for v,data in G.nodes(data=True):
+            for x, data in G.nodes(data=True):
                 if data.get('cscandidate',False):
                     counts['s']+=1
-            pass
+            #local=G.copy()
+            #for u,v,k,data in G.edges(keys=True,data=True):
+            #    if data['type']==du.ETYPE_EXTR or not data.get('is_set',False):
+            #        local.remove_edge(u,v,k)
+            #for comp in nx.connected_components(local):
+            #    p_ends = []
+            #    for v in comp:
+            #        dg = local.degree[v]
+            #        assert(dg <=2)
+            #        if dg==1:
+            #            p_ends.append(v)
+            #    assert(len(p_ends)<=2)
+            #    if len(p_ends)==1:
+            #        continue
+            #    if len(p_ends)==0:
+            #        for x in nx.edge_dfs(list(comp)[0]):
+            #            pass
+                    
+
         for u,data in G.nodes(data=True):
             ancvar = "g{sep}{anc}".format(sep=du.SEP,anc=data['anc'])
             acands = [v for v in G[u] for k in G[u][v] if G[u][v][k]['type']==du.ETYPE_ADJ and G[u][v][k].get('is_set',False)]
