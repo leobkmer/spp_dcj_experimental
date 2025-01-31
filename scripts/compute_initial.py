@@ -50,7 +50,7 @@ def main():
     du.fillFamilyBounds(families,fam_bounds)
     relationalDiagrams = du.constructRelationalDiagrams(speciesTree,
             adjacencies, telomeres, weights, genes, global_ext2id,fam_bounds=fam_bounds,
-            sep=args.separator)
+            sep=args.separator,loc_manager_tables=loc_tables)
     graphs = relationalDiagrams['graphs']
     siblings = relationalDiagrams['siblings']
     for G in graphs.values():
