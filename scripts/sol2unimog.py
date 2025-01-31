@@ -131,10 +131,10 @@ if __name__ == '__main__':
     #
 
     # id-to-extremity mapping
-    id2ext = dict()
-    for line in csv.reader(args.id_to_extremity_map, delimiter = '\t'):
-        if line:
-            id2ext[line[0]] = tuple(line[1:])
+    id2ext,_ = du.parse_id_file(args.id_to_extremity_map)
+    #for line in csv.reader(args.id_to_extremity_map, delimiter = '\t'):
+    #    if line:
+    #        id2ext[line[0]] = tuple(line[1:])
 
     adjacenciesList, indelList, _, matchingList, _, vars_ = \
             du.parseSOL(args.sol_file, id2ext)

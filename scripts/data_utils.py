@@ -421,7 +421,7 @@ def parse_edge_id(r):
 
 def parseSOL(data, idMap):
     """ SOL file parser """
-
+    raise NotImplementedError("Not implemented for this version of SPP-DCJ")
     obj_value = None
     adjacenciesList = dict()
     matchingList = set()
@@ -478,6 +478,41 @@ def parseSOL(data, idMap):
                 indelList[ext1[0]].append((ext1[1:], ext2[1:]))
     return adjacenciesList, indelList, weightsDict, sorted(matchingList), \
             obj_value, vars_
+
+def parseSOLAdj(data, idMap):
+    """ SOL file parser """
+    obj_value = None
+    adjacenciesList = dict()
+
+
+    vars_ = dict()
+
+    # objective value is stored in the following comment:
+    obj_txt = '# Objective value = '
+    for line in data:
+        if line.startswith(obj_txt):
+            obj_value = float(line[len(obj_txt):])
+            continue
+        #print(line,file=sys.stderr)
+        var_, val = line.split()
+        vars_[var_] = float(val)
+    #collect set adjacencies
+    for var_,val in vars_.items():
+        if abs(val - 1) > I_EPSILON:
+            continue
+        if var_.split(SEP)[0]=='a':
+            entries = var_.split(SEP)
+            #format aSEPedge
+            rest = SEP.join(entries[1::])
+            id1, id2, _ = parse_edge_id(rest)
+            ext1 = idMap[id1]
+            ext2 = idMap[id2]
+            if ext1[0] not in adjacenciesList:
+                adjacenciesList[ext1[0]] = list()
+            adj = (ext1[1], ext2[1])
+            adjacenciesList[ext1[0]].append(adj)
+    return adjacenciesList, obj_value
+
 
 #
 # CORE & CONVENIENCE FUNCTIONS

@@ -8,7 +8,7 @@ import re
 
 # import from own packages
 import data_utils as du
-
+from collections import defaultdict
 
 if __name__ == '__main__':
 
@@ -25,12 +25,12 @@ if __name__ == '__main__':
     #
 
     # id-to-extremity mapping
-    id2ext = dict()
-    for line in csv.reader(args.id_to_extremity_map, delimiter = '\t'):
-        if line:
-            id2ext[line[0]] = tuple(line[1:])
+    id2extr,_ = du.parse_id_file(args.id_to_extremity_map)#dict()
+    id2ext = dict([(str(v),k) for k,v in id2extr.items()])
+    #for line in csv.reader(args.id_to_extremity_map, delimiter = '\t'):
+    #    if line:
+    #        id2ext[line[0]] = tuple(line[1:])
 
-    adjacenciesList, _, weightsDict, _, _, _ = du.parseSOL(args.sol_file, id2ext)
-
+    adjacenciesList,_ = du.parseSOLAdj(args.sol_file, id2ext)
     # write adjacencies
-    du.writeAdjacencies(adjacenciesList, weightsDict, stdout)
+    du.writeAdjacencies(adjacenciesList,defaultdict(lambda: defaultdict(float)), stdout)
