@@ -21,8 +21,8 @@ rule spp_ilp:
     output:
         'ilp/{test}.ilp'
     shell:
-        '%s/spp_dcj.py -m ilp/{wildcards.test}.idmap -a 1 -l topology.txt \
-    {input} > {output} 2> ilp/{wildcards.test}.spp_dcj.log'%SCRIPT_DIR
+        '%s/spp_dcj.py -m ilp/{wildcards.test}.idmap -a 1 topology.txt \
+    {input} --no_telomeres -ws /dev/null  > {output} 2> ilp/{wildcards.test}.spp_dcj.log'%SCRIPT_DIR
 
 rule solve_ilp:
     input:

@@ -61,65 +61,97 @@ Institute for Medical Biometry and Bioinformatics, Medical Faculty, and Center f
 \section{Background}
 
 \subsection{Preliminaries}
-A \emph{(genomic) marker} $g := (g^\et, g^\eh)$ is a universally unique entity consisting of \emph{marker extremities} tail of $g$, denoted by $g^\et$, and head of $g$, denoted by $g^\eh$. 
-A \emph{telomere} $t^\circ$ is a universally unique entity encompassing a single telomeric extremity denoted by ``$\circ$''. 
-A genome is a triple $(M \cup \pseudocaps, A, \family)$, with $M$ being its marker set and $\pseudocaps$ its set of telomeres, $A \subset (M \cup \pseudocaps)^2$ the set of telomeres, and $\family: M \to \mathbb N$ a function indicating the family of each marker. 
-The set of adjacencies $A$ has the properties that \emph{(i)} for each extremity $\varepsilon \in \bigcup M \cup \pseudocaps$, there exists exactly one adjacency $a \in A$ that contains $\varepsilon$. 
-The adjacency set decomposes the set of markers and telomeres into linear or circular components, that we further call \emph{chromosomes}. 
-Moreover, \emph{(ii)} each linear chromosome, formed by ordering markers and telomeres based on their adjacencies in $A$, starts and ends with a telomere. 
+%A \emph{(genomic) marker} $g := (g^\et, g^\eh)$ is a universally unique entity consisting of \emph{marker extremities} tail of $g$, denoted by $g^\et$, and head of $g$, denoted by $g^\eh$. 
+%A \emph{telomere} $t^\circ$ is a universally unique entity encompassing a single telomeric extremity denoted by ``$\circ$''. 
+%A genome is a triple $(M \cup \pseudocaps, A, \family)$, with $M$ being its marker set and $\pseudocaps$ its set of telomeres, $A \subset (M \cup \pseudocaps)^2$ the set of telomeres, and $\family: M \to \mathbb N$ a function indicating the family of each marker. 
+%The set of adjacencies $A$ has the properties that \emph{(i)} for each extremity $\varepsilon \in \bigcup M \cup \pseudocaps$, there exists exactly one adjacency $a \in A$ that contains $\varepsilon$. 
+%The adjacency set decomposes the set of markers and telomeres into linear or circular components, that we further call \emph{chromosomes}. 
+%Moreover, \emph{(ii)} each linear chromosome, formed by ordering markers and telomeres based on their adjacencies in $A$, starts and ends with a telomere. 
+%
+%A \emph{(genome) scaffold} is a quintuple $(M \cup \pseudocaps, A, \family, \multi, \w)$ with 
+%\begin{itemize}
+%    \item $M$, $\pseudocaps$, and $\family$ as defined in a genome, 
+%    \item the set of adjacencies $A$ satisfying that for each $g^\et \in \bigcup A$, there exists also extremity $g^\eh \in \bigcup A$ and vice versa, and each telomeric extremity is used only once, i.e., $\forall \{X, X'\} \subseteq A$, $X \cap X' \cap \pseudocaps = \emptyset$,
+%    \item copy number function $\multi(i) = [a, b]$ reporting for each family $i$ the permitted range $0 \leq a \leq b$ of its copy number, such that each family, defined as $F_i := \{g \in M \mid f(g) = i\}$, satisfies $|F_i| = b$, and
+%    \item adjacency weight function $\w: A \to \mathbb R$. % [-1, 1]$.
+%\end{itemize}
+%
+%Observe that a genome can give rise to a scaffold, with copy number $\multi$ and weight $\w$ functions arbitrarily defined, but the reverse does not hold true in general.
+%% not sure we need this:
+%% However, in the following, we regard genomes as scaffolds with tight copy numbers, that is, the copy number range of each family $i$ corresponds to a point that coincides with the number of its associated markers.
+%A genome $S' = (M', A', \family')$ is \emph{derived} from a scaffold $S = (M, A, \family, \multi, \w)$, or simply ``$S$-derived'', if \emph{(i)} $M' \subseteq M$, \emph{(ii)} $A' \subseteq A$, \emph{(iii)} 
+%there exist no two markers $g, g' \in M'$ with $\family'(g) = \family'(g')$ and $\family(g) \neq \family(g')$, and \emph{(iv)} the original copy number constraints are satisfied, i.e., for each family $i$ and the set of markers associated with $i$ in scaffold $S$, i.e., $F_i = \{ g \in M' \mid \family(g) = i\}$, holds true that $|F_i| \in \multi(i)$.
+%We call a scaffold $S$ \emph{linearizable} if there exists an $S$-derived genome. 
+%In fact, many scaffolds are not linearizable. 
+%
+%A \emph{phylogeny} $\tree$ is a connected graph with nodes representing \emph{operational taxonomic units} (OTUs). 
+%Nodes with degree 1 are termed \emph{tips} of the phylogeny.
+%
+%General notation
+%\begin{itemize}
+%    \item 
+%    \item Weighted multigraph $G = (\vertices, \edges, \w)$ with edge weight function $\w: \edges \to \mathbb R$
+%\end{itemize}
+%
+%Paper-specific notation:
+%
+%\begin{itemize}
+%    \item Genomic marker 
+%    \item Furthermore, we use a function $\extf : \extremities \to \{\et, \eh, \circ\}$ to map extremities to their corresponding kind (tail, head or telomere). 
+%    \item 
+%We model family assignments of marker extremities as a function $\family: \extremities \to \mathbb N$ for which holds true that for any marker $g = \{g^\et, g^\eh\}$, $\family(g^\et) = \family(g^\eh)$.  
+%Function 
+%$\minmulti_\X : \mathbb N \to \mathbb N$ reports the minimum multiplicity of a gene family in a given genome $\X$, while $\maxmulti_\X: \mathbb N \to \mathbb N$ reports its maximum multiplicity. 
+%    \item Multirelational diagram $\mrd$ and \emph{capping-free multi-relational diagram} (CFMRD) $\pcmrd$
+%\end{itemize}
+%
+%\begin{itemize}
+%    \item SPP algoirthms such as 
+%\end{itemize}
+%
+%\begin{problem}[Weighted CN-constrained degenerate DCJ indel distance]\label{prb:wdeg_dcj}
+%    Given a weighting scheme $\w : \extremities \times \extremities \to \mathbb R$, some $\alpha \in [0, 1]$, two linearizable degenerate genomes $\A, \B$ with copy number constraints \hl{XX}\todoD{add data structure} and family assignment $\family$, find $\A$-derived genome $\A'$, $\B$-derived genome $\B'$, and $\family$-derived $\{\A',\B'\}$-resolved family assignment $\family'$ that minimize the linear combination
+%    $$
+%    (1-\alpha) \cdot \sum_{X \in \A' \cup \B'} -\w(X) + \alpha \cdot \dist_\DCJid(A', B')\,.
+%    $$
+%\end{problem}
+%
+%\begin{problem}[SPP-DCJ]\label{prb:spp_dcj}
+%    Given a phylogeny $\tree$ and a set of linearizable degenerate genomes $\A_1, \ldots, \A_k$ corresponding to the node set $V(\tree) = \{\A_1, \ldots, \A_k\}$, find genomes $\A'_1 \subseteq \A_1, \ldots, \A'_k \allowbreak \subseteq \A_k$ that minimize the sum of weighted degenerate DCJ indel distances along the edges of $\tree$. 
+%\end{problem}
 
-A \emph{(genome) scaffold} is a quintuple $(M \cup \pseudocaps, A, \family, \multi, \w)$ with 
-\begin{itemize}
-    \item $M$, $\pseudocaps$, and $\family$ as defined in a genome, 
-    \item the set of adjacencies $A$ satisfying that for each $g^\et \in \bigcup A$, there exists also extremity $g^\eh \in \bigcup A$ and vice versa, and each telomeric extremity is used only once, i.e., $\forall \{X, X'\} \subseteq A$, $X \cap X' \cap \pseudocaps = \emptyset$,
-    \item copy number function $\multi(i) = [a, b]$ reporting for each family $i$ the permitted range $0 \leq a \leq b$ of its copy number, such that each family, defined as $F_i := \{g \in M \mid f(g) = i\}$, satisfies $|F_i| = b$, and
-    \item adjacency weight function $\w: A \to \mathbb R$. % [-1, 1]$.
-\end{itemize}
+For the purposes of this work, we use the longstanding abstraction to describe genomes as sequences of oriented markers.
+A \emph{(genomic) marker} $g := (g^\et, g^\eh)$ is a universally unique entity consisting of \emph{marker extremities} tail of $g$, denoted by $g^\et$, and head of $g$, denoted by $g^\eh$.
 
-Observe that a genome can give rise to a scaffold, with copy number $\multi$ and weight $\w$ functions arbitrarily defined, but the reverse does not hold true in general.
-% not sure we need this:
-% However, in the following, we regard genomes as scaffolds with tight copy numbers, that is, the copy number range of each family $i$ corresponds to a point that coincides with the number of its associated markers.
-A genome $S' = (M', A', \family')$ is \emph{derived} from a scaffold $S = (M, A, \family, \multi, \w)$, or simply ``$S$-derived'', if \emph{(i)} $M' \subseteq M$, \emph{(ii)} $A' \subseteq A$, \emph{(iii)} 
-there exist no two markers $g, g' \in M'$ with $\family'(g) = \family'(g')$ and $\family(g) \neq \family(g')$, and \emph{(iv)} the original copy number constraints are satisfied, i.e., for each family $i$ and the set of markers associated with $i$ in scaffold $S$, i.e., $F_i = \{ g \in M' \mid \family(g) = i\}$, holds true that $|F_i| \in \multi(i)$.
-We call a scaffold $S$ \emph{linearizable} if there exists an $S$-derived genome. 
-In fact, many scaffolds are not linearizable. 
+The structure of a genome can be described via its adjacencies. An adjacency $\{m^x,n^y\}$ describes that markers $m,n$ are on the same chromosome oriented, such that extremities $m^x,n^y$ are directly neighboring. For ease of notation we also write $m^xn^y$ for an adjacency. Note that it may also be read in the other direction, i.e. $n^ym^x$ is equivalent to $m^xn^y$. 
 
-A \emph{phylogeny} $\tree$ is a connected graph with nodes representing \emph{operational taxonomic units} (OTUs). 
-Nodes with degree 1 are termed \emph{tips} of the phylogeny.
+For ease of notation, we aim for each extremity to be part of an adjacency. In order to accomplish this, we use additional extremities modeling the ends of linear chromosomes, called \emph{telomeres}.
+A \emph{telomere} $t^\circ$ is a universally unique entity encompassing a single telomeric extremity denoted by ``$\circ$''.
+A genome can then be described as a graph as follows.
 
-General notation
-\begin{itemize}
-    \item 
-    \item Weighted multigraph $G = (\vertices, \edges, \w)$ with edge weight function $\w: \edges \to \mathbb R$
-\end{itemize}
+\begin{definition}\label{def:genome}
+A genome $\A$ is a graph with vertices $\extremities(\A)\cup\telomeres (\A)$, namely its extremities $\extremities(\A)$ and  telomeres $\telomeres (\A)$. The set of edges is $\markers(\A)\cup\adjacencies(\A)$, namely its markers $\markers(\A)$ and adjacencies $\adjacencies(\A)$.
+This graph fulfills the following properties:
+\begin{enumerate}
+	\item\label{itm:markers} $\markers (\A)$ is a perfect matching on $\extremities(\A)$ and
+	\item $\adjacencies(\A)$ is a perfect matching on $\extremities(\A)\cup\telomeres (\A)$.
+\end{enumerate}
+\end{definition}
 
-Paper-specific notation:
+A degenerate genome $\D$ is a graph $(\extremities(\D)\cup\telomeres (\D),\markers(\D)\cup\adjacencies(\D))$ that fulfills Requirement~\ref{itm:markers} of Definition~\ref{def:genome}. A \emph{\gls*{linr}} of a degenerate genome $\D$ is a genome $\A$, such that $\extremities(\A)=\extremities(\D)$, $\telomeres (\A) \subset \telomeres (\D)$, $\markers(\A)=\markers(\D)$ and $\adjacencies(\A)\subset\adjacencies(\D)$. If such a linearization exists, we call $\D$ \emph{linearizable}.
 
-\begin{itemize}
-    \item Genomic marker 
-    \item Furthermore, we use a function $\extf : \extremities \to \{\et, \eh, \circ\}$ to map extremities to their corresponding kind (tail, head or telomere). 
-    \item 
-We model family assignments of marker extremities as a function $\family: \extremities \to \mathbb N$ for which holds true that for any marker $g = \{g^\et, g^\eh\}$, $\family(g^\et) = \family(g^\eh)$.  
-Function 
-$\minmulti_\X : \mathbb N \to \mathbb N$ reports the minimum multiplicity of a gene family in a given genome $\X$, while $\maxmulti_\X: \mathbb N \to \mathbb N$ reports its maximum multiplicity. 
-    \item Multirelational diagram $\mrd$ and \emph{capping-free multi-relational diagram} (CFMRD) $\pcmrd$
-\end{itemize}
 
-\begin{itemize}
-    \item SPP algoirthms such as 
-\end{itemize}
+\begin{definition}
+	DCJ-indel distance
+\end{definition}
 
-\begin{problem}[Weighted CN-constrained degenerate DCJ indel distance]\label{prb:wdeg_dcj}
-    Given a weighting scheme $\w : \extremities \times \extremities \to \mathbb R$, some $\alpha \in [0, 1]$, two linearizable degenerate genomes $\A, \B$ with copy number constraints \hl{XX}\todoD{add data structure} and family assignment $\family$, find $\A$-derived genome $\A'$, $\B$-derived genome $\B'$, and $\family$-derived $\{\A',\B'\}$-resolved family assignment $\family'$ that minimize the linear combination
-    $$
-    (1-\alpha) \cdot \sum_{X \in \A' \cup \B'} -\w(X) + \alpha \cdot \dist_\DCJid(A', B')\,.
-    $$
-\end{problem}
-
-\begin{problem}[SPP-DCJ]\label{prb:spp_dcj}
-    Given a phylogeny $\tree$ and a set of linearizable degenerate genomes $\A_1, \ldots, \A_k$ corresponding to the node set $V(\tree) = \{\A_1, \ldots, \A_k\}$, find genomes $\A'_1 \subseteq \A_1, \ldots, \A'_k \allowbreak \subseteq \A_k$ that minimize the sum of weighted degenerate DCJ indel distances along the edges of $\tree$. 
-\end{problem}
-
+\begin{definition}[Weighted Small Parsimony Linearization Problem]
+	Given a phylogeny $\Gamma$ and a weighting function for adjacencies $w$ find a linearization $\Lr_i$ for each (degenerate) genome $\D_i$ in $\Gamma$, such that
+	\begin{equation}
+		\alpha \sum_{(\D_i,\D_k)\in \Gamma} \ddcjid (\Lr_i,\Lr_k) + (\alpha -1) \sum_{\D_i\in \Gamma}\sum_{ab\in\adjacencies(\Lr_i)}w(ab).
+	\end{equation}
+	is minimized.
+\end{definition}
 \section{A new Method}
 \subsection{Pre-selecting Adjacencies}
 \todoD{Describe Process}\subsection{A New ILP Formulation}

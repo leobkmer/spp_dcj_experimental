@@ -16,6 +16,7 @@ import networkx as nx
 
 # import from own packages
 import data_utils as du
+import scripts.data_utils
 import spp_dcj as spp
 
 #
@@ -75,7 +76,7 @@ if __name__ == '__main__':
     candidateAdjacencies = du.parseAdjacencies(args.candidateAdjacencies)
 
     # add telomeres
-    telomeres = spp.identifyCandidateTelomeres(candidateAdjacencies,
+    telomeres = scripts.data_utils.identifyCandidateTelomeres(candidateAdjacencies,
             spp.ADJ_TRUST_THRESHOLD)
 
     # construct adjacency graphs
