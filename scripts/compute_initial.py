@@ -4,7 +4,7 @@ import data_utils as du
 def main():
     parser = ArgumentParser()
     parser.add_argument('tree', type=open,
-            help='phylogenetic tree as parent-child relation table')
+            help='phylogenetic tree as child->parent relation table (Important: children must be in first column.)')
     parser.add_argument('candidateAdjacencies', type=open,
             help='candidate adjacencies of the genomes in the phylogeny')
     parser.add_argument('idmap',help="Id map file (output of the main script)",type=open)
