@@ -2230,3 +2230,25 @@ def add_weight_tels(G,add_telweight):
         if data['type']==ETYPE_ADJ and VTYPE_CAP in [G.nodes[x]['type'] for x in [u,v]]:
             G[u][v][k]['weight']=G[u][v][k]['weight']+add_telweight
 
+def cp_tree(edges):
+    tree = {}
+    for child, parent in edges:
+        assert(child not in tree)
+        tree[child]=parent
+    return tree
+
+def cp_to_pc(tree):
+    #convert to parent -> child tree
+    pc_tree = {}
+    root_candidates = set()
+    not_root = set()
+    for child, parent in tree.items():
+        if not parent in pc_tree:
+            pc_tree[parent] = []
+        pc_tree[parent].append(child)
+        root_candidates.add(parent)
+        not_root.add(child)
+    root = root_candidates.difference(not_root)
+    assert(len(root)==1)
+    root = root.pop()
+    return root,pc_tree

@@ -442,7 +442,7 @@ rule construct_old_ilp:
 
 
 rule run_ilp_cold:
-    input:
+    input:-
         ilp = f'{ILP_DIR}/{{experiment}}/SPP_DCJ_cold_{{params1}}.ilp',
     output:
         f'{ILP_DIR}/{{experiment,[^/]+}}/SPP_DCJ_cold_{{params1}}.sol',
