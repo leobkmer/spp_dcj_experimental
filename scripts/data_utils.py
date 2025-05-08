@@ -1868,7 +1868,7 @@ def sol_from_decomposition(graphs,circ_singletons,alpha,out):
             #        for x in nx.edge_dfs(list(comp)[0]):
             #            pass
 
-
+        
         for u,data in G.nodes(data=True):
             ancvar = "g{sep}{anc}".format(sep=SEP,anc=data['anc'])
             acands = [v for v in G[u] for k in G[u][v] if G[u][v][k]['type']==ETYPE_ADJ and G[u][v][k].get('is_set',False)]
