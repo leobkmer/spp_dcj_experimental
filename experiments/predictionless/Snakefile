@@ -30,6 +30,8 @@ rule construct_ilp:
         ilp = 'ilp/{sample}.ilp',
         idMap = 'ilp/{sample}_ids.txt',
         start = 'ilp/{sample}_init.sol'
+    resources:
+        mem_mb=lambda wildcards, attempt: 10000*attempt
     log:
         'ilp/{sample}.log',
     shell:
@@ -69,6 +71,8 @@ rule run_ilp_warm:
         time_limit = 5 * 60,
     threads:
         20
+    resources:
+        mem_mb=lambda wildcards, attempt: 10000*attempt
     log:
         'sol/{sample}.log',
     shell:
