@@ -25,7 +25,7 @@ rule construct_ilp:
         tree = 'cptrees/{sample}.txt',
         candAdj = 'full_adj/{sample}.txt',
         plb = 'bounds/workdir_{sample}/bounds.txt',
-        mrange='mranges/{sample}.txt'
+        mrange='data/ranges/{sample}.txt'
     output:
         ilp = 'ilp/{sample}.ilp',
         idMap = 'ilp/{sample}_ids.txt',
@@ -37,20 +37,11 @@ rule construct_ilp:
         '{input.candAdj} -ws {output.start} -plb {input.plb} --no_telomeres > {output.ilp} 2> {log}'
 
 
-rule get_range:
-    input:
-        tree = 'cptrees/{sample}.txt',
-        candAdj = 'full_adj/{sample}.txt'
-    output:
-        'mranges/{sample}.txt'
-    shell:
-        'python3 %s/apply_full_range.py {input.tree} {input.candAdj} > {output}'%SCRIPT_DIR
-
 rule run_lower_bounds:
     input:
         tree = 'cptrees/{sample}.txt',
         candAdj = 'full_adj/{sample}.txt',
-        mrange='mranges/{sample}.txt'
+        mrange='data/ranges/{sample}.txt'
     output:
         'bounds/workdir_{sample}/bounds.txt'
 
@@ -76,18 +67,9 @@ rule run_ilp_warm:
         'TimeLimit={params.time_limit} {input.ilp} > {log}'
 
 
-rule newick_to_named:
-    input:
-        'trees/{sample}.nw'
-    output:
-        'named_trees/{sample}.nw'
-    shell:
-        '%s/nwk_name_ancestors.py {input}  {output}'%SCRIPT_DIR
-
-
 rule named_to_tab:
     input:
-        'named_trees/{sample}.nw'
+        'relabelled/trees/{sample}.nw'
     output:
         'cptrees/{sample}.txt'
     shell:
@@ -96,7 +78,7 @@ rule named_to_tab:
 
 rule clean_unimog:
     input:
-        'unimogs/{sample}.unimog'
+        'data/unimogs/{sample}.unimog'
     output:
         'unimogc/{sample}.unimog'
     shell:
