@@ -48,13 +48,14 @@ def infer_fam_adj_freqs(tree,candidateAdjacencies,leaves,sep):
             break
     #bottom up traversal
     traversal=traversal[::-1]
+    
     for v in traversal:
         if not v in pc_tree:
             continue
         fam_adj_freqs[v]={}
         for child in pc_tree[v]:
             assert(child in fam_adj_freqs)
-            for xtr,frq in fam_adj_freqs[l].items():
+            for xtr,frq in fam_adj_freqs[child].items():
                 if not xtr in fam_adj_freqs[v]:
                     fam_adj_freqs[v][xtr]=0
                 fam_adj_freqs[v][xtr]+=frq/len(pc_tree[v])
@@ -75,6 +76,8 @@ weights = candidateAdjacencies['weights']
 leaves=set([x for x, v in du.getLeaves(speciesTree).items() if v])
 
 freqs = infer_fam_adj_freqs(tree,candidateAdjacencies,leaves,args.separator)
+#for x in (freqs.values()):
+#    print(x.items())
 
 adj_inner = all_possible_circular_adjacencies(candidateAdjacencies['genes'])
 
