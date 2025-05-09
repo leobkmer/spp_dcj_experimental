@@ -32,10 +32,10 @@ LOG.setLevel(logging.DEBUG)
 
 def objective(graphs, alpha, out):
     out.write('minimize ')
-    terms = ["{ialph} w{sep}{te} + {alph} f{sep}{te}".format(
-        alph=alpha,ialph=alpha-1,sep=du.SEP,te=tree_edge)
-        for tree_edge, _ in enumerate(sorted(graphs.items()))]
-    print(" + ".join(terms),file=out)
+    #terms = ["{ialph} w{sep}{te} + {alph} f{sep}{te}".format(
+    #    alph=alpha,ialph=alpha-1,sep=du.SEP,te=tree_edge)
+    #    for tree_edge, _ in enumerate(sorted(graphs.items()))]
+    print("{ialph} w + {alph} f".format(alph=alpha,ialph=alpha-1),file=out)
         
 
 
@@ -81,6 +81,8 @@ def lca_treeedges_cp_tree(cp_tree,a,b):
 
 def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_bound_mat={}):
     out.write('subject to\n')
+    print(" + ".join(["w{sep}{te}".format(sep=du.SEP,te=tree_edge) for tree_edge, _ in enumerate(sorted(graphs.items()))])+" - w = 0",file=out)
+    print(" + ".join(["f{sep}{te}".format(sep=du.SEP,te=tree_edge) for tree_edge, _ in enumerate(sorted(graphs.items()))])+" - f = 0",file=out)
     for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
 
         LOG.info(('writing constraints for relational diagram of {} and ' + \
