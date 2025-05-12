@@ -6,8 +6,8 @@ configfile: "config.yaml"
 
 SAMPLES = config["samples"]
 SCRIPT_DIR          = config.get("script_dir", "../../scripts")
-INPUT = config.get("input", "")
-OUTPUT = config.get("output", "")
+INPUT = config.get("input", "input")
+OUTPUT = config.get("output", "output")
 
 def get_ranges(sample):
     if os.path.exists(INPUT+"/ranges"):
@@ -105,8 +105,9 @@ rule leaves_to_adj:
 rule add_all_adj:
     input:
         adj=OUTPUT+"/leaf_adj/{sample}.txt",
-        tree=OUTPUT+"/cptrees/{sample}.txt"
+        tree=OUTPUT+"/cptrees/{sample}.txt",
+        mranges=lambda wildcards: get_ranges(wildcards.sample)
     output:
         OUTPUT+"/full_adj/{sample}.txt"
     shell:
-        "%s/add_all_adjacencies_inner.py {input.tree} {input.adj} > {output}"%SCRIPT_DIR
+        "%s/add_all_adjacencies_inner.py {input.tree} {input.adj} {input.mranges} > {output}"%SCRIPT_DIR

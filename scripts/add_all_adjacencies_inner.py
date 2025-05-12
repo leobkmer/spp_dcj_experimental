@@ -2,18 +2,22 @@
 
 import data_utils as du
 from argparse import ArgumentParser
+import sys
 
 parser = ArgumentParser()
 parser.add_argument('tree', type=open,
             help='phylogenetic tree as child->parent relation table (Important: children must be in first column.)')
 parser.add_argument('candidateAdjacencies', type=open,
             help='candidate adjacencies of the genomes in the phylogeny')
+parser.add_argument('family_bounds',help="Marker ranges per a")
 parser.add_argument('-s', '--separator', default = du.DEFAULT_GENE_FAM_SEP, \
             help='Separator of in gene names to split <family ID> and ' +
                     '<uniquifying identifier> in adjacencies file')
 
 args = parser.parse_args()
 
+with open(args.family_bounds) as fmb:
+    fam_bounds=du.parseFamilyBounds(fmb)
 
 candidateAdjacencies = du.parseAdjacencies(args.candidateAdjacencies,
                                                sep=args.separator)
@@ -22,11 +26,13 @@ speciesTree = du.parseTree(args.tree)
 tree = du.cp_tree(speciesTree)
 
 
-def infer_fam_adj_freqs(tree,candidateAdjacencies,leaves,sep):
+def weighted_adj_freq_in_subtree(tree,candidateAdjacencies,fbounds,leaves,sep):
     fam_adj_freqs = {}
+    kill_adjacencies = {}
     for l in leaves:
         #print(candidateAdjacencies['adjacencies'])
         fam_adj_freqs[l]={}
+        kill_adjacencies[l]=set()
         for x in candidateAdjacencies['adjacencies'][l]:
             
             (a,x),(b,y)=x
@@ -35,6 +41,8 @@ def infer_fam_adj_freqs(tree,candidateAdjacencies,leaves,sep):
             adj = (a,x),(b,y)
             adj = tuple(sorted(adj))
             fam_adj_freqs[l][adj]=1
+            if len(candidateAdjacencies['families'][l][a])==1 and len(candidateAdjacencies['families'][l][b])==1:
+                kill_adjacencies[l].add(adj)
     root,pc_tree = du.cp_to_pc(tree)
     traversal = [root]
     curr_level = [root]
@@ -53,39 +61,67 @@ def infer_fam_adj_freqs(tree,candidateAdjacencies,leaves,sep):
         if not v in pc_tree:
             continue
         fam_adj_freqs[v]={}
+        kill_adjacencies[v] = set.intersection(*[set(((a,x),(b,y)) for ((a,x),(b,y)) in  kill_adjacencies[child] 
+                                                   if fbounds[v].get(a,None)==(1,1) and fbounds[v].get(b,None)==(1,1))
+                                                   for child in pc_tree[v]])
         for child in pc_tree[v]:
             assert(child in fam_adj_freqs)
             for xtr,frq in fam_adj_freqs[child].items():
                 if not xtr in fam_adj_freqs[v]:
                     fam_adj_freqs[v][xtr]=0
                 fam_adj_freqs[v][xtr]+=frq/len(pc_tree[v])
-    return fam_adj_freqs
+    return fam_adj_freqs,kill_adjacencies
 
-def all_possible_circular_adjacencies(gene_dict):
-    all_genes = set()
-    for genes in gene_dict.values():
-        for g in genes:
-            all_genes.add(g)
-    all_extremities = set([(g,du.EXTR_HEAD) for g in all_genes])
-    all_extremities=all_extremities.union(set([(g,du.EXTR_TAIL) for g in all_genes]))
-    all_adjacencies = [(x,y) for x in all_extremities for y in all_extremities if x < y]
-    return all_adjacencies
+#def all_possible_circular_adjacencies(gene_dict):
+#    all_genes = set()
+#    for genes in gene_dict.values():
+#        for g in genes:
+#            all_genes.add(g)
+#    all_extremities = set([(g,du.EXTR_HEAD) for g in all_genes])
+#    all_extremities=all_extremities.union(set([(g,du.EXTR_TAIL) for g in all_genes]))
+#    all_adjacencies = [(x,y) for x in all_extremities for y in all_extremities if x < y]
+#    return all_adjacencies
 
 
 weights = candidateAdjacencies['weights']
 leaves=set([x for x, v in du.getLeaves(speciesTree).items() if v])
 
-freqs = infer_fam_adj_freqs(tree,candidateAdjacencies,leaves,args.separator)
+freqs,kill_adjacencies = weighted_adj_freq_in_subtree(tree,candidateAdjacencies,fam_bounds,leaves,args.separator)
 #for x in (freqs.values()):
 #    print(x.items())
 
-adj_inner = all_possible_circular_adjacencies(candidateAdjacencies['genes'])
+#adj_inner = all_possible_circular_adjacencies(candidateAdjacencies['genes'])
+
+
+
+
+def all_adj_from_bound(fbounds,kill_adjacencies,separator):
+    poss_anc = dict()
+    
+    for genome, fams in fbounds.items():
+        all_genes = set()
+        kill_extremities = set()
+        for ((a,x),(b,y)) in kill_adjacencies[genome]:
+            kill_extremities.add(("{}{}1".format(a,separator),x))
+            kill_extremities.add(("{}{}1".format(b,separator),y))
+        for fname,(_,high) in fams.items():
+            all_genes.update(["{fname}{sep}{i}".format(fname=fname,i=i,sep=separator) for i in range(1,high+1)])
+        all_extremities = set([(g,du.EXTR_HEAD) for g in all_genes])
+        all_extremities.update([(g,du.EXTR_TAIL) for g in all_genes])
+
+        all_adjacencies = [(x,y) for x in all_extremities for y in all_extremities if x < y] #and (x in kill_extremities)==(y in kill_extremities)]
+        poss_anc[genome] = all_adjacencies
+    return poss_anc
+
 
 
 root,pc_tree = du.cp_to_pc(tree)
+
+possible_adjacencies = all_adj_from_bound(fam_bounds,kill_adjacencies,separator=args.separator)
+
 #add adjacencies for inner nodes
 for anc in pc_tree:
-    for x_,y_ in adj_inner:
+    for x_,y_ in possible_adjacencies[anc]:
         (a,x),(b,y)=x_,y_
         a=a.split(args.separator)[0]
         b=b.split(args.separator)[0]

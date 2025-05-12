@@ -760,6 +760,7 @@ def checkGraph(G,cf=False,checkForAllTels=False):
     gnms = list(gnm_min.keys())
     assert(len(gnms)==2)
     assert(gnm_min[gnms[0]]>gnm_max[gnms[1]] or gnm_min[gnms[1]]>gnm_max[gnms[0]])
+    print("Checking graph for genomes {}".format(gnms),file=sys.stderr)
     for u, v, in G.edges():
         if u == v:
             raise Exception(f'node {v} is connected to itself')
@@ -1234,7 +1235,7 @@ def parseFamilyBounds(data):
         if genome not in bounds:
             bounds[genome]=dict()
         if fam in bounds[genome]:
-            print("Warning: bound for family {} set twice for genome {}, will be overwritten.".format(fam,genome))
+            print("Warning: bound for family {} set twice for genome {}, will be overwritten.".format(fam,genome),file=sys.stderr)
         bounds[genome][fam]=(int(low),int(high))
     return bounds
 
@@ -2053,12 +2054,15 @@ def extract_local_graph(genome, G):
 def get_max_match(genome, G):
     medges = []
     local = extract_local_graph(genome, G)
+    for v,tp in local.nodes(data='type'):
+        print("Assert 1",file=sys.stderr)
+        assert(G.has_node(v))
     for u,v,tp in list(local.edges(data='type')):
         if tp!=ETYPE_ADJ:
             local.remove_edge(u,v)
-    for v in list(G.nodes()):
-        if not G.nodes[v].get('is_set',True):
-            G.remove_node(v)
+    #for v in list(G.nodes()):
+    #    if not G.nodes[v].get('is_set',True):
+    #        local.remove_node(v)
     telomeres = [u for u,data in G.nodes(data=True) if data['type']==VTYPE_CAP]
     telomeres = set(telomeres)
     #set every edge next to a regular vertex to more than weight 1
@@ -2084,11 +2088,11 @@ def get_max_match(genome, G):
     #check matching
     matched = set([v for v,_ in mwmtch]+[v for _,v in mwmtch])
     for v,tp in local.nodes(data='type'):
+        assert(G.has_node(v))
         if tp == VTYPE_CAP:
             continue
         assert(v in matched)
     #mwmtch=greedy_extend_max_match(local,mwmtch)
-    #print(mwmtch,file=stderr)
     return [(G.nodes[x]['anc'],G.nodes[y]['anc']) for x,y in mwmtch]
 
 
