@@ -68,7 +68,7 @@ rule run_ilp_warm:
     output:
         'sol/{sample}.sol',
     params:
-        time_limit = 5 * 60,
+        time_limit = 5,
     threads:
         20
     resources:
