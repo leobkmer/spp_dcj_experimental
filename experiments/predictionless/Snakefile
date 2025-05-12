@@ -18,15 +18,15 @@ def get_cat(sample):
 
 rule all_ilp_sol:
     input:
-        expand(f'{OUTPUT}/sol/{sample}.sol',sample=SAMPLES)
+        expand(OUTPUT+'/sol/{sample}.sol',sample=SAMPLES)
 
 rule all_adj:
     input:
-        expand(f'{OUTPUT}/full_adj/{sample}.txt',sample=SAMPLES)
+        expand(OUTPUT+'/full_adj/{sample}.txt',sample=SAMPLES)
 
 rule all_trees:
     input:
-        expand(f'{OUTPUT}/cptrees/{sample}.txt',sample=SAMPLES)
+        expand(OUTPUT+'/cptrees/{sample}.txt',sample=SAMPLES)
 
 
 
