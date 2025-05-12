@@ -1227,7 +1227,10 @@ def get_unimog(genome,genes,adjacencies,sep):
 def parseFamilyBounds(data):
     bounds = dict()
     delimiter = '\t'
-    for line in csv.reader(data, delimiter = delimiter):
+    reader = csv.reader(data, delimiter = delimiter)
+    if reader[0][0]=="genome":
+        next(reader)
+    for line in reader:
         genome,fam,low,high = line
         if genome not in bounds:
             bounds[genome]=dict()
