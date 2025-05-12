@@ -1228,8 +1228,7 @@ def parseFamilyBounds(data):
     bounds = dict()
     delimiter = '\t'
     reader = csv.reader(data, delimiter = delimiter)
-    if reader[0][0]=="genome":
-        next(reader)
+    next(reader)
     for line in reader:
         genome,fam,low,high = line
         if genome not in bounds:
