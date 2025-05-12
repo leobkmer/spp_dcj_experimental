@@ -11,7 +11,7 @@ OUTPUT = config.get("output", "")
 
 def get_ranges(sample):
     if os.path.exists(f"{INPUT}/ranges"):
-        return f"{INPUT}/ranges/{sample}.txt"
+        return f"{INPUT}/ranges/{sample}_range.tsv"
     else:
         return f"{OUTPUT}/mranges/{sample}.txt"
 
@@ -102,7 +102,7 @@ rule named_to_tab:
 
 rule clean_unimog:
     input:
-        f"{INPUT}//unimogs/{{sample}}.unimog"
+        f"{INPUT}/unimogs/{{sample}}.unimog"
     output:
         f"{OUTPUT}/unimogc/{{sample}}.unimog"
     shell:
