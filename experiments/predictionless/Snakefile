@@ -1,83 +1,83 @@
 import os
 
 # CONFIGURATION FILE ---------------------------------------------------------
-configfile: 'config.yaml'
+configfile: "config.yaml"
 # ----------------------------------------------------------------------------
 
-SAMPLES = config['samples']
-SCRIPT_DIR          = config.get('script_dir', '../../scripts')
-INPUT = config.get('input', '.')
-OUTPUT = config.get('output', '.')
+SAMPLES = config["samples"]
+SCRIPT_DIR          = config.get("script_dir", "../../scripts")
+INPUT = config.get("input", "")
+OUTPUT = config.get("output", "")
 
-def get_cat(sample):
-    if os.path.exists(f'{INPUT}/ranges'):
-        return f'{INPUT}/ranges/{sample}.txt'
+def get_ranges(sample):
+    if os.path.exists(f"{INPUT}/ranges"):
+        return f"{INPUT}/ranges/{sample}.txt"
     else:
-        return f'{OUTPUT}/mranges/{sample}.txt'
+        return f"{OUTPUT}/mranges/{sample}.txt"
 
 
 rule all_ilp_sol:
     input:
-        expand(OUTPUT+'/sol/{sample}.sol',sample=SAMPLES)
+        expand(OUTPUT+"/sol/{sample}.sol",sample=SAMPLES)
 
 rule all_adj:
     input:
-        expand(OUTPUT+'/full_adj/{sample}.txt',sample=SAMPLES)
+        expand(OUTPUT+"/full_adj/{sample}.txt",sample=SAMPLES)
 
 rule all_trees:
     input:
-        expand(OUTPUT+'/cptrees/{sample}.txt',sample=SAMPLES)
+        expand(OUTPUT+"/cptrees/{sample}.txt",sample=SAMPLES)
 
 
 
 rule construct_ilp:
     input:
-        tree = f'{OUTPUT}/cptrees/{{sample}}.txt',
-        candAdj = f'{OUTPUT}/full_adj/{{sample}}.txt',
-        plb = f'{OUTPUT}/bounds/workdir_{{sample}}/bounds.txt',
+        tree = f"{OUTPUT}/cptrees/{{sample}}.txt",
+        candAdj = f"{OUTPUT}/full_adj/{{sample}}.txt",
+        plb = f"{OUTPUT}/bounds/workdir_{{sample}}/bounds.txt",
         mrange= lambda wildcards: get_ranges(wildcards.sample)
     output:
-        ilp = f'{OUTPUT}/ilp/{{sample}}.ilp',
-        idMap = f'{OUTPUT}/ilp/{{sample}}_ids.txt',
-        start = f'{OUTPUT}/ilp/{{sample}}_init.sol'
+        ilp = f"{OUTPUT}/ilp/{{sample}}.ilp",
+        idMap = f"{OUTPUT}/ilp/{{sample}}_ids.txt",
+        start = f"{OUTPUT}/ilp/{{sample}}_init.sol"
     resources:
         mem_mb=lambda wildcards, attempt: 10000*attempt
     log:
-        f'{OUTPUT}/ilp/{{sample}}.log',
+        f"{OUTPUT}/ilp/{{sample}}.log",
     shell:
-        '%s/spp_dcj.py -a 1 -m {output.idMap} {input.tree} -fmb {input.mrange} '%SCRIPT_DIR+
-        '{input.candAdj} -ws {output.start} -plb {input.plb} --no_telomeres > {output.ilp} 2> {log}'
+        "%s/spp_dcj.py -a 1 -m {output.idMap} {input.tree} -fmb {input.mrange} "%SCRIPT_DIR+
+        "{input.candAdj} -ws {output.start} -plb {input.plb} --no_telomeres > {output.ilp} 2> {log}"
 
 
 rule get_range:
     input:
-        tree = f'{OUTPUT}/cptrees/{{sample}}.txt',
-        candAdj = f'{OUTPUT}/full_adj/{{sample}}.txt'
+        tree = f"{OUTPUT}/cptrees/{{sample}}.txt",
+        candAdj = f"{OUTPUT}/full_adj/{{sample}}.txt"
     output:
-        f'{OUTPUT}/mranges/{{sample}}.txt'
+        f"{OUTPUT}/mranges/{{sample}}.txt"
     shell:
-        'python3 %s/apply_full_range.py {input.tree} {input.candAdj} > {output}'%SCRIPT_DIR
+        "python3 %s/apply_full_range.py {input.tree} {input.candAdj} > {output}"%SCRIPT_DIR
 
 
 rule run_lower_bounds:
     input:
-        tree = f'{OUTPUT}/cptrees/{{sample}}.txt',
-        candAdj = f'{OUTPUT}/full_adj/{{sample}}.txt',
+        tree = f"{OUTPUT}/cptrees/{{sample}}.txt",
+        candAdj = f"{OUTPUT}/full_adj/{{sample}}.txt",
         mrange= lambda wildcards: get_ranges(wildcards.sample)
     output:
-        f'{OUTPUT}/bounds/workdir_{{sample}}/bounds.txt'
+        f"{OUTPUT}/bounds/workdir_{{sample}}/bounds.txt"
 
     shell:
-        'python3 %s/precompute_ding.py bounds/workdir_{wildcards.sample}/ -fmb {input.mrange} '%SCRIPT_DIR+
-        '{input.tree} {input.candAdj} {output} --mode linear --total-timelimit 3600'
+        "python3 %s/precompute_ding.py bounds/workdir_{wildcards.sample}/ -fmb {input.mrange} "%SCRIPT_DIR+
+        "{input.tree} {input.candAdj} {output} --mode linear --total-timelimit 3600"
 
 
 rule run_ilp_warm:
     input:
-        ilp = f'{OUTPUT}/ilp/{{sample}}.ilp',
-        start=f'{OUTPUT}/ilp/{{sample}}_init.sol'
+        ilp = f"{OUTPUT}/ilp/{{sample}}.ilp",
+        start=f"{OUTPUT}/ilp/{{sample}}_init.sol"
     output:
-        f'{OUTPUT}/sol/{{sample}}.sol',
+        f"{OUTPUT}/sol/{{sample}}.sol",
     params:
         time_limit = 5 * 60,
     threads:
@@ -85,42 +85,42 @@ rule run_ilp_warm:
     resources:
         mem_mb=lambda wildcards, attempt: 10000*attempt
     log:
-        f'{OUTPUT}/sol/{{sample}}.log',
+        f"{OUTPUT}/sol/{{sample}}.log",
     shell:
-        'gurobi_cl InputFile={input.start} ResultFile={output} Threads={threads} ' +
-        'TimeLimit={params.time_limit} {input.ilp} > {log}'
+        "gurobi_cl InputFile={input.start} ResultFile={output} Threads={threads} " +
+        "TimeLimit={params.time_limit} {input.ilp} > {log}"
 
 
 rule named_to_tab:
     input:
-        f'{INPUT}/relabelled_trees/{{sample}}.nw'
+        f"{INPUT}/relabelled_trees/{{sample}}.nw"
     output:
-        f'{OUTPUT}/cptrees/{{sample}}.txt'
+        f"{OUTPUT}/cptrees/{{sample}}.txt"
     shell:
-        '%s/nwk2tabular.py {input} > {output}'%SCRIPT_DIR
+        "%s/nwk2tabular.py {input} > {output}"%SCRIPT_DIR
 
 
 rule clean_unimog:
     input:
-        f'{INPUT}//unimogs/{{sample}}.unimog'
+        f"{INPUT}//unimogs/{{sample}}.unimog"
     output:
-        f'{OUTPUT}/unimogc/{{sample}}.unimog'
+        f"{OUTPUT}/unimogc/{{sample}}.unimog"
     shell:
-        'python3 %s/clean_plasmid_unimog.py {input} > {output}'%SCRIPT_DIR
+        "python3 %s/clean_plasmid_unimog.py {input} > {output}"%SCRIPT_DIR
 
 rule leaves_to_adj:
     input:
-        f'{OUTPUT}/unimogc/{{sample}}.unimog'
+        f"{OUTPUT}/unimogc/{{sample}}.unimog"
     output:
-        f'{OUTPUT}/leaf_adj/{{sample}}.txt'
+        f"{OUTPUT}/leaf_adj/{{sample}}.txt"
     shell:
-        '%s/unimog2adjacencies.py {input} > {output}'%SCRIPT_DIR
+        "%s/unimog2adjacencies.py {input} > {output}"%SCRIPT_DIR
 
 rule add_all_adj:
     input:
-        adj=f'{OUTPUT}/leaf_adj/{{sample}}.txt',
-        tree=f'{OUTPUT}/cptrees/{{sample}}.txt'
+        adj=f"{OUTPUT}/leaf_adj/{{sample}}.txt",
+        tree=f"{OUTPUT}/cptrees/{{sample}}.txt"
     output:
-        f'{OUTPUT}/full_adj/{{sample}}.txt'
+        f"{OUTPUT}/full_adj/{{sample}}.txt"
     shell:
-        '%s/add_all_adjacencies_inner.py {input.tree} {input.adj} > {output}'%SCRIPT_DIR
+        "%s/add_all_adjacencies_inner.py {input.tree} {input.adj} > {output}"%SCRIPT_DIR
