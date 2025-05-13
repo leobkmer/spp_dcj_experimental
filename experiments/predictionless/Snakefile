@@ -28,7 +28,9 @@ rule all_trees:
     input:
         expand(OUTPUT+"/cptrees/{sample}.txt",sample=SAMPLES)
 
-
+rule all_ilp:
+    input:
+        expand(OUTPUT+"/ilp/{sample}.ilp",sample=SAMPLES)
 
 rule construct_ilp:
     input:
