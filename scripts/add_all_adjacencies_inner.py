@@ -101,16 +101,22 @@ def all_adj_from_bound(fbounds,kill_adjacencies,separator):
     for genome, fams in fbounds.items():
         all_genes = set()
         kill_extremities = set()
+        rem_adj = []
         for ((a,x),(b,y)) in kill_adjacencies[genome]:
-            kill_extremities.add(("{}{}1".format(a,separator),x))
-            kill_extremities.add(("{}{}1".format(b,separator),y))
+            e1=("{}{}1".format(a,separator),x)
+            e2=("{}{}1".format(b,separator),y)
+            e1,e2 = (e1,e2) if e1 < e2 else (e2,e1)
+            rem_adj.append((e1,e2))
+            kill_extremities.add(e1)
+            kill_extremities.add(e2)
+        print("Kill adjacencies for  {}: {}".format(genome,kill_adjacencies[genome]),file=sys.stderr)
         for fname,(_,high) in fams.items():
             all_genes.update(["{fname}{sep}{i}".format(fname=fname,i=i,sep=separator) for i in range(1,high+1)])
         all_extremities = set([(g,du.EXTR_HEAD) for g in all_genes])
         all_extremities.update([(g,du.EXTR_TAIL) for g in all_genes])
-
-        all_adjacencies = [(x,y) for x in all_extremities for y in all_extremities if x < y] #and (x in kill_extremities)==(y in kill_extremities)]
-        poss_anc[genome] = all_adjacencies
+    
+        all_adjacencies = [(x,y) for x in all_extremities for y in all_extremities if x < y and (x not in kill_extremities) and (y not in kill_extremities)] 
+        poss_anc[genome] = all_adjacencies+rem_adj
     return poss_anc
 
 

@@ -1,4 +1,4 @@
 samples : ['st131_cl343_community_0_subcommunity_496','st131_cl416_community_0_subcommunity_503','st69_cl375_community_0_subcommunity_499','st73_cl455_community_0_subcommunity_494','st73_cl568_community_0_subcommunity_503','st73_cl703_community_0_subcommunity_493','st73_cl733_community_0_subcommunity_493','st95_cl477_community_0_subcommunity_500','st95_cl541_community_0_subcommunity_502','st95_cl605_community_0_subcommunity_498','st95_cl669_community_0_subcommunity_498']
 gurobipy : "~/gurobipy/bin/python3"
 ilp_threads : 5
-ilp_timelim : 600
+ilp_timelim : 300
