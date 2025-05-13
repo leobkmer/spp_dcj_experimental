@@ -9,6 +9,8 @@ SCRIPT_DIR          = config.get("script_dir", "../../scripts")
 INPUT = config.get("input", "input")
 OUTPUT = config.get("output", "output")
 GUROBI_PYTHON = config.get("gurobipy","python3")
+ILP_THREADS = config.get("ilp_threads",10)
+ILP_TIMELIM = config.get("ilp_timelim",3600)
 
 def get_ranges(sample):
     if os.path.exists(INPUT+"/ranges"):
@@ -68,9 +70,9 @@ rule run_ilp_warm:
     output:
         OUTPUT+"/sol/{sample}.sol",
     params:
-        time_limit = 600
+        time_limit = ILP_TIMELIM
     threads:
-        5
+        ILP_THREADS
     resources:
         mem_mb=lambda wildcards, attempt: 10000*attempt
     log:
