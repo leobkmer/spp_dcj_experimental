@@ -8,6 +8,7 @@ SAMPLES = config["samples"]
 SCRIPT_DIR          = config.get("script_dir", "../../scripts")
 INPUT = config.get("input", "input")
 OUTPUT = config.get("output", "output")
+GUROBI_PYTHON = config.get("gurobipy","python3")
 
 def get_ranges(sample):
     if os.path.exists(INPUT+"/ranges"):
@@ -67,16 +68,15 @@ rule run_ilp_warm:
     output:
         OUTPUT+"/sol/{sample}.sol",
     params:
-        time_limit = 5,
+        time_limit = 600
     threads:
-        20
+        5
     resources:
         mem_mb=lambda wildcards, attempt: 10000*attempt
     log:
         OUTPUT+"/sol/{sample}.log",
     shell:
-        "gurobi_cl InputFile={input.start} ResultFile={output} Threads={threads} " +
-        "TimeLimit={params.time_limit} {input.ilp} > {log}"
+        "%s %s/gurobi_sequential.py {input.ilp} {output} --warm-start {input.start} --timelim {params.time_limit} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
 
 
 rule named_to_tab:
