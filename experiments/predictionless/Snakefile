@@ -47,14 +47,15 @@ rule construct_ilp:
     output:
         ilp = OUTPUT+"/ilp/{sample}.ilp",
         idMap = OUTPUT+"/ilp/{sample}_ids.txt",
-        start = OUTPUT+"/ilp/{sample}_init.sol"
+        start = OUTPUT+"/ilp/{sample}_init.sol",
+        pei = OUTPUT+'/ilp/{sample}_pei.txt'
     resources:
         mem_mb=lambda wildcards, attempt: 10000*attempt
     log:
         OUTPUT+"/ilp/{sample}.log",
     shell:
         "%s/spp_dcj.py -a 1 -m {output.idMap} {input.tree} -fmb {input.mrange} "%SCRIPT_DIR+
-        "{input.candAdj} -ws {output.start} --no_telomeres > {output.ilp} 2> {log}"
+        "{input.candAdj} -ws {output.start} --no_telomeres > {output.ilp} --write-phylogeny-edge-ids {output.pei} 2> {log}"
 
 
 rule get_range:
@@ -88,11 +89,13 @@ rule run_ilp_warm:
 rule sol2adjacencies:
     input:
         sol=OUTPUT+"/sol/{sample}.sol",
-        ids=OUTPUT+"/ilp/{sample}_ids.txt"
+        ids=OUTPUT+"/ilp/{sample}_ids.txt",
+        pei = OUTPUT+'/ilp/{sample}_pei.txt'
     output:
-        OUTPUT+'/res_adj/{sample}.txt'
+        adj=OUTPUT+'/res_adj/{sample}.txt',
+        eds=OUTPUT+'/res_adj/{sample}_edists.txt'
     shell:
-        '%s/sol2adjacencies.py {input.sol} {input.ids} > {output}'%SCRIPT_DIR
+        '%s/sol2adjacencies.py --edge-distances {output.eds} --phylogeny-edge-ids {input.pei} {input.sol} {input.ids} > {output.adj}'%SCRIPT_DIR
 
 rule named_to_tab:
     input:

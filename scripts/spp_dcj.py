@@ -685,6 +685,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--separator', default = du.DEFAULT_GENE_FAM_SEP, \
             help='Separator of in gene names to split <family ID> and ' +
                     '<uniquifying identifier> in adjacencies file')
+    parser.add_argument("--write-phylogeny-edge-ids")
     ews= parser.add_argument_group("Warm start")
     ews.add_argument('-ws','--warm-start-sol',help='Write warm start to this file.')
     ews.add_argument('-ewa','--external-warm-adjacencies',help='Generate a warm start from provided adjacencies. Currently requires -ewm.')
@@ -733,7 +734,10 @@ if __name__ == '__main__':
             sep=args.separator)
 
     graphs = relationalDiagrams['graphs']
-
+    if args.write_phylogeny_edge_ids:
+        with open(args.write_phylogeny_edge_ids,"w") as peil:
+            for tree_edge,((a,b),_) in enumerate(sorted(graphs.items())):
+                print(a,b,tree_edge,file=peil)
 #    for gNames, G in graphs.items():
 #            genes_edg = list()
 #            for gName in gNames:

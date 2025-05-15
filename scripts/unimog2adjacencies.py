@@ -12,7 +12,6 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('unimog_file', type=open,
             help='genomes in UNIMOG format')
-
     args = parser.parse_args()
 
     out = stdout
