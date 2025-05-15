@@ -47,14 +47,14 @@ rule construct_ilp:
     output:
         ilp = OUTPUT+"/ilp/{sample}.ilp",
         idMap = OUTPUT+"/ilp/{sample}_ids.txt",
-        #start = OUTPUT+"/ilp/{sample}_init.sol"
+        start = OUTPUT+"/ilp/{sample}_init.sol"
     resources:
         mem_mb=lambda wildcards, attempt: 10000*attempt
     log:
         OUTPUT+"/ilp/{sample}.log",
     shell:
         "%s/spp_dcj.py -a 1 -m {output.idMap} {input.tree} -fmb {input.mrange} "%SCRIPT_DIR+
-        "{input.candAdj} --no_telomeres > {output.ilp} 2> {log}"
+        "{input.candAdj} -ws {output.start} --no_telomeres > {output.ilp} 2> {log}"
 
 
 rule get_range:
@@ -70,7 +70,7 @@ rule get_range:
 rule run_ilp_warm:
     input:
         ilp = OUTPUT+"/ilp/{sample}.ilp",
-        #start=OUTPUT+"/ilp/{sample}_init.sol"
+        start=OUTPUT+"/ilp/{sample}_init.sol"
     output:
         OUTPUT+"/sol/{sample}.sol",
     params:
@@ -82,7 +82,7 @@ rule run_ilp_warm:
     log:
         OUTPUT+"/sol/{sample}.log",
     shell:
-        "%s %s/gurobi_sequential.py {input.ilp} {output} --timelim {params.time_limit} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
+        "%s %s/gurobi_sequential.py {input.ilp} {output} --warm-start {input.start} --timelim {params.time_limit} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
 
 
 rule sol2adjacencies:
