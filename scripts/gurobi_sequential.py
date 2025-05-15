@@ -31,7 +31,7 @@ for alph in args.weightsolves:
     model.update()
     print("-------------------WEIGHTED PRE-OPTIMIZATION:Optimizing with objective: ",model.getObjective()," and time limit {} ----------------------".format(tl))
     model.optimize()
-    print("Intermediate solution with f-objective: {}".format(f.X))
+    #print("Intermediate solution with f-objective: {}".format(f.X))
 model.setObjective(f)
 model.Params.Timelimit = args.timelim
 model.Params.MIPFocus=0

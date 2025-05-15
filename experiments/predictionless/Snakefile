@@ -19,6 +19,10 @@ def get_ranges(sample):
         return OUTPUT+"/mranges/{sample}.txt"
 
 
+rule all_res_adj:
+    input:
+         expand(OUTPUT+'/res_adj/{sample}.txt',sample=SAMPLES)
+
 rule all_ilp_sol:
     input:
         expand(OUTPUT+"/sol/{sample}.sol",sample=SAMPLES)
@@ -80,6 +84,15 @@ rule run_ilp_warm:
     shell:
         "%s %s/gurobi_sequential.py {input.ilp} {output} --timelim {params.time_limit} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
 
+
+rule sol2adjacencies:
+    input:
+        sol=OUTPUT+"/sol/{sample}.sol",
+        ids=OUTPUT+"/ilp/{sample}_ids.txt"
+    output:
+        OUTPUT+'/res_adj/{sample}.txt'
+    shell:
+        '%s/sol2adjacencies.py {input.sol} {input.ids} > {output}'%SCRIPT_DIR
 
 rule named_to_tab:
     input:

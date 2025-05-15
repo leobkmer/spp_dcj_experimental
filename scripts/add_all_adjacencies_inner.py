@@ -13,7 +13,7 @@ parser.add_argument('family_bounds',help="Marker ranges per a")
 parser.add_argument('-s', '--separator', default = du.DEFAULT_GENE_FAM_SEP, \
             help='Separator of in gene names to split <family ID> and ' +
                     '<uniquifying identifier> in adjacencies file')
-
+parser.add_argument('--no-proof-filter',action='store_true')
 args = parser.parse_args()
 
 with open(args.family_bounds) as fmb:
@@ -95,7 +95,7 @@ freqs,kill_adjacencies = weighted_adj_freq_in_subtree(tree,candidateAdjacencies,
 
 
 
-def all_adj_from_bound(fbounds,kill_adjacencies,separator):
+def all_adj_from_bound(fbounds,kill_adjacencies,separator,prove_filter=True):
     poss_anc = dict()
     
     for genome, fams in fbounds.items():
@@ -115,7 +115,7 @@ def all_adj_from_bound(fbounds,kill_adjacencies,separator):
         all_extremities = set([(g,du.EXTR_HEAD) for g in all_genes])
         all_extremities.update([(g,du.EXTR_TAIL) for g in all_genes])
     
-        all_adjacencies = [(x,y) for x in all_extremities for y in all_extremities if x < y and (x not in kill_extremities) and (y not in kill_extremities)] 
+        all_adjacencies = [(x,y) for x in all_extremities for y in all_extremities if x < y and ((x not in kill_extremities) and (y not in kill_extremities) or not prove_filter)] 
         poss_anc[genome] = all_adjacencies+rem_adj
     return poss_anc
 
@@ -123,7 +123,7 @@ def all_adj_from_bound(fbounds,kill_adjacencies,separator):
 
 root,pc_tree = du.cp_to_pc(tree)
 
-possible_adjacencies = all_adj_from_bound(fam_bounds,kill_adjacencies,separator=args.separator)
+possible_adjacencies = all_adj_from_bound(fam_bounds,kill_adjacencies,separator=args.separator,prove_filter=not args.no_proof_filter)
 
 #add adjacencies for inner nodes
 for anc in pc_tree:
