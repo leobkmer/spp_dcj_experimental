@@ -59,6 +59,13 @@ def convert_time(time_ilp): #given in seconds
         return 35000
 >>>>>>> a8130f5 (add memlimit to gurobi)
 
+def convert_time(time): #given in seconds
+    hours = time_sec // 3600
+    minutes = (time_sec % 3600) // 60
+    seconds = time_sec % 60
+    time_str = f"{hours:02}:{minutes:02}:{seconds:02}"
+    return time_str
+
 
 rule all_res_adj:
     input:
