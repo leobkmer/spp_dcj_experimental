@@ -1,4 +1,5 @@
 import os
+import pandas
 
 # CONFIGURATION FILE ---------------------------------------------------------
 configfile: "config.yaml"
@@ -17,6 +18,14 @@ def get_ranges(sample):
         return INPUT+"/ranges/{sample}_range.tsv"
     else:
         return OUTPUT+"/mranges/{sample}.txt"
+
+def get_mem(sample):
+    rates = pd.DataFrame(INPUT + "avg_indel_rtt_rates.tsv")
+    rate = rates[rates["clade"]==sample]["rate"].values[0]
+    if rate>0.7:
+        return 65000
+    else:
+        return 35000
 
 
 rule all_res_adj:
@@ -50,7 +59,7 @@ rule construct_ilp:
         start = OUTPUT+"/ilp/{sample}_init.sol",
         pei = OUTPUT+'/ilp/{sample}_pei.txt'
     resources:
-        mem_mb=lambda wildcards, attempt: 10000*attempt
+        mem_mb=lambda wildcards, attempt: 30000*attempt
     log:
         OUTPUT+"/ilp/{sample}.log",
     shell:
@@ -79,11 +88,12 @@ rule run_ilp_warm:
     threads:
         ILP_THREADS
     resources:
-        mem_mb=lambda wildcards, attempt: 10000*attempt
+        mem_mb=lambda wildcards, attempt: get_mem(wildcards.sample)*attempt
+        runtime_min = ILP_TIMELIM
     log:
         OUTPUT+"/sol/{sample}.log",
     shell:
-        "%s %s/gurobi_sequential.py {input.ilp} {output} --warm-start {input.start} --timelim {params.time_limit} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
+        "%s %s/gurobi_sequential.py {input.ilp} {output} --warm-start {input.start} --timelim {params.time_limit} --memlim {resources.mem_mb} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
 
 
 rule sol2adjacencies:
