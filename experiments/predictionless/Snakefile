@@ -27,6 +27,13 @@ def get_mem(sample):
     else:
         return 35000
 
+def convert_time(time): #given in seconds
+    hours = time_sec // 3600
+    minutes = (time_sec % 3600) // 60
+    seconds = time_sec % 60
+    time_str = f"{hours:02}:{minutes:02}:{seconds:02}"
+    return time_str
+
 
 rule all_res_adj:
     input:
@@ -89,7 +96,7 @@ rule run_ilp_tree:
         ILP_THREADS
     resources:
         mem_mb=lambda wildcards, attempt: get_mem(wildcards.sample)*attempt,
-        runtime_min = ILP_TIMELIM
+        time = convert_time(ILP_TIMELIM)
     log:
         OUTPUT+"/sol/{sample}.log",
     shell:
