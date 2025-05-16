@@ -15,6 +15,7 @@ parser.add_argument("-t",default=1,type=int, help="Number of threads to use.")
 parser.add_argument("--weightsolves",nargs="*",type=float,default=[0.1,0.5,0.9],help="Solve a weighted version of the ILP first.")
 parser.add_argument("--weightsolve-proportion",type=float,default=0.2,help="Maximum proportion of time spent on the weighted versions.")
 parser.add_argument("--timelim",type=int,default=3600,help="Overall time limit in seconds.")
+parser.add_argument("--memlim",type=int,default=10000,help="Overall mem limit in MB.")
 parser.add_argument("--tree",help="File containing the tree")
 parser.add_argument("--warm-start")
 #parser.add_argument("--timelim",type=int, default=60*60*24, help="Timelimit in seconds.")
@@ -26,6 +27,7 @@ if args.tree:
 
 model = gp.read(args.lpfile)
 model.Params.Threads = args.t
+model.Params.SoftMemLimit = args.memlim/1000 - 5
 w=model.getVarByName("w")
 f=model.getVarByName("f")
 if args.warm_start:
