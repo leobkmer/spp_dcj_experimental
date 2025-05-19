@@ -12,6 +12,8 @@ OUTPUT = config.get("output", "output")
 GUROBI_PYTHON = config.get("gurobipy","python3")
 ILP_THREADS = config.get("ilp_threads",10)
 ILP_TIMELIM = config.get("ilp_timelim",3600)
+ILP_MEMLIM_HIGHER = config.get("ilp_memlim_higher", 60000)
+ILP_MEMLIM_LOWER = config.get("ilp_memlim_lower", 30000)
 
 def get_ranges(sample):
     if os.path.exists(INPUT+"/ranges"):
@@ -22,10 +24,10 @@ def get_ranges(sample):
 def get_mem(sample):
     rates = pd.read_csv(INPUT + "/avg_indel_rtt_rates.tsv", sep="\t")
     rate = rates[rates["clade"]==sample]["rate"].values[0]
-    if rate>0.7:
-        return 65000
+    if rate>0.7 or sample == "st73_cl613_community_0_subcommunity_501" or sample == "st95_cl389_community_0_subcommunity_502":
+        return ILP_MEMLIM_HIGHER + 5000
     else:
-        return 35000
+        return ILP_MEMLIM_LOWER + 5000
 
 def convert_time(time_ilp): #given in seconds
     time = time_ilp + 600
