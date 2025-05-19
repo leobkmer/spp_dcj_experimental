@@ -47,7 +47,7 @@ rule construct_ilp:
     output:
         ilp = OUTPUT+"/ilp/{sample}.ilp",
         idMap = OUTPUT+"/ilp/{sample}_ids.txt",
-        start = OUTPUT+"/ilp/{sample}_init.sol",
+        #start = OUTPUT+"/ilp/{sample}_init.sol",
         pei = OUTPUT+'/ilp/{sample}_pei.txt'
     resources:
         mem_mb=lambda wildcards, attempt: 10000*attempt
@@ -55,7 +55,7 @@ rule construct_ilp:
         OUTPUT+"/ilp/{sample}.log",
     shell:
         "%s/spp_dcj.py -a 1 -m {output.idMap} {input.tree} -fmb {input.mrange} "%SCRIPT_DIR+
-        "{input.candAdj} -ws {output.start} --no_telomeres > {output.ilp} --write-phylogeny-edge-ids {output.pei} 2> {log}"
+        "{input.candAdj} --no_telomeres > {output.ilp} --write-phylogeny-edge-ids {output.pei} 2> {log}"
 
 
 rule get_range:
@@ -68,10 +68,10 @@ rule get_range:
         "python3 %s/apply_full_range.py {input.tree} {input.candAdj} > {output}"%SCRIPT_DIR
 
 
-rule run_ilp_warm:
+rule run_ilp_tree:
     input:
         ilp = OUTPUT+"/ilp/{sample}.ilp",
-        start=OUTPUT+"/ilp/{sample}_init.sol"
+        tree=OUTPUT+"/ilp/{sample}_pei.txt"
     output:
         OUTPUT+"/sol/{sample}.sol",
     params:
@@ -83,7 +83,7 @@ rule run_ilp_warm:
     log:
         OUTPUT+"/sol/{sample}.log",
     shell:
-        "%s %s/gurobi_sequential.py {input.ilp} {output} --warm-start {input.start} --timelim {params.time_limit} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
+        "%s %s/gurobi_tree.py {input.ilp} {output} {input.tree} --timelim {params.time_limit} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
 
 
 rule sol2adjacencies:
