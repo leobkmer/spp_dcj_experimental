@@ -1,6 +1,11 @@
 import gurobipy as gp
 import sys
 from argparse import ArgumentParser
+import data_utils as du
+
+
+
+
 
 parser = ArgumentParser()
 
@@ -14,6 +19,11 @@ parser.add_argument("--tree",help="File containing the tree")
 parser.add_argument("--warm-start")
 #parser.add_argument("--timelim",type=int, default=60*60*24, help="Timelimit in seconds.")
 args = parser.parse_args()
+if args.tree:
+    tree_ids = du.read_tree_edge_name_map(args.tree)
+    root, pc_tree = du.cp_to_pc(du.cp_tree(tree_ids.keys()))
+    
+
 model = gp.read(args.lpfile)
 model.Params.Threads = args.t
 w=model.getVarByName("w")

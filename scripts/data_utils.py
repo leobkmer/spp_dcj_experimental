@@ -2258,3 +2258,60 @@ def cp_to_pc(tree):
     assert(len(root)==1)
     root = root.pop()
     return root,pc_tree
+
+def read_tree_edge_name_map(peif):
+    nm = {}
+    with open(peif) as pf:
+        for line in pf:
+            a,b, n = line.split()
+            nm[n]=(a,b)
+    return nm
+
+
+
+
+def get_subtree_sizes(root,pc_tree):
+    subtree_size = {}
+    stack = [root]
+    remain = [root]
+    while len(remain)>0:
+        curr = remain.pop()
+        for child in pc_tree[curr]:
+            stack.append(child)
+            if child in pc_tree:
+                remain.append(child)
+    while len(stack) > 0:
+        curr = stack.pop()
+        if curr not in pc_tree:
+            subtree_size[curr]=1
+        else:
+            subtree_size[curr]=0
+            for child in pc_tree[curr]:
+                assert(child in subtree_size)
+                subtree_size[curr]+=subtree_size[child]
+    return subtree_size
+
+def subdivide_tree(root,pc_tree,max_leaves=3):
+    subtree_sizes = get_subtree_sizes(root,pc_tree)
+    print(subtree_sizes)
+    stack = [root]
+    subtrees = []
+    while len(stack) > 0:
+        curr = stack.pop()
+        if subtree_sizes[curr] <= max_leaves:
+            subtrees.append(curr)
+        else:
+            for child in pc_tree[curr]:
+                stack.append(child)
+    return subtrees[::-1]
+
+def get_subtree_edges(subtree_root,pc_tree):
+    stack = [subtree_root]
+    edges = []
+    while len(stack) > 0:
+        curr = stack.pop()
+        if curr in pc_tree:
+            for child in pc_tree[curr]:
+                edges.append((child,curr))
+                stack.append(child)
+    return edges

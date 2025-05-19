@@ -23,13 +23,7 @@ def get_f_values(solfilen):
     return fvs  
 
 
-def get_name_map(peif):
-    nm = {}
-    with open(peif) as pf:
-        for line in pf:
-            a,b, n = line.split()
-            nm[n]=(a,b)
-    return nm
+
 
 if __name__ == '__main__':
 
@@ -59,7 +53,7 @@ if __name__ == '__main__':
     if args.edge_distances:
         with open(args.edge_distances,"w") as f:
                 if args.phylogeny_edge_ids:
-                        nm = get_name_map(args.phylogeny_edge_ids)
+                        nm = du.read_tree_edge_name_map(args.phylogeny_edge_ids)
                         to_id = lambda x: nm[x]
                 else:
                         to_id = lambda x : x

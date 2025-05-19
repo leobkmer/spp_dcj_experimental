@@ -90,7 +90,7 @@ def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_
         genomes = [child,parent]
         global_constraints(G,families,fam_bounds,out)
         loose_constraints(G,i,genomes,out)
-        slm_constraints(G,i,siblings,out)
+        slm_constraints(G,i,siblings[(child,parent)],out)
         regular_reporting(G,i,genomes,out)
         pcap_reporting(G,i,genomes,out)
         if (child,parent) in circ_singletons:
@@ -572,6 +572,8 @@ COUNTERS = ['f','n','c','s','pab','pAB','pAb','pAa','pBa','pBb','pABa','pABb']
 def domains(graphs, out):
     global_generals = set()
     out.write('bounds\n')
+    print("0 <= f <= inf",file=out)
+    print("0 <= w <= inf",file=out)
     for te, ((child, parent), G) in enumerate(sorted(graphs.items())):
         for rv in COUNTERS:
             print("0 <= {rv}{sep}{e} <= inf".format(rv=rv,sep=du.SEP,e=te),file=out)
@@ -596,6 +598,7 @@ def variables(graphs,circ_sings, out):
     #
     global_generals = set()
     out.write('generals\n')
+    print("f",file=out)
     for te, ((child, parent), G) in enumerate(sorted(graphs.items())):
         LOG.info(('writing general variables for relational diagram of {} ' + \
                 'and {}').format(child, parent))
