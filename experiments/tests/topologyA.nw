@@ -1,0 +1,1 @@
+(((--name A --wf --rops 0.3, --name B --wf --rops 0.5)--name F --wf --rops 0.2),((--name C --wf --rops 0.3,--name D --wf --rops 0.1)--name G --wf --rops 0.4))--name Root --wf;
