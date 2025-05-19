@@ -14,6 +14,7 @@ ILP_THREADS = config.get("ilp_threads",10)
 ILP_TIMELIM = config.get("ilp_timelim",3600)
 ILP_MEMLIM_HIGHER = config.get("ilp_memlim_higher", 60000)
 ILP_MEMLIM_LOWER = config.get("ilp_memlim_lower", 30000)
+WEIGHTSOLVE_PROPORTION = 0.2
 
 def get_ranges(sample):
     if os.path.exists(INPUT+"/ranges"):
@@ -30,7 +31,7 @@ def get_mem(sample):
         return ILP_MEMLIM_LOWER + 5000
 
 def convert_time(time_ilp): #given in seconds
-    time = time_ilp + 1800
+    time = time_ilp + WEIGHTSOLVE_PROPORTION*time_ilp + 1800
     hours = time // 3600
     minutes = (time % 3600) // 60
     seconds = time % 60
