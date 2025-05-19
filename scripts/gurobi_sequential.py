@@ -28,7 +28,6 @@ if args.tree:
 model = gp.read(args.lpfile)
 model.Params.Threads = args.t
 model.Params.SoftMemLimit = args.memlim/1000 - 5
-model.Params.Timelimit = args.timelim
 w=model.getVarByName("w")
 f=model.getVarByName("f")
 if args.warm_start:
@@ -45,6 +44,7 @@ for alph in args.weightsolves:
     print("-------------------WEIGHTED PRE-OPTIMIZATION:Optimizing with objective: ",model.getObjective()," and time limit {} ----------------------".format(tl))
     model.optimize()
     #print("Intermediate solution with f-objective: {}".format(f.X))
+model.Params.Timelimit = args.timelim
 model.setObjective(f)
 model.Params.MIPFocus=0
 model.Params.MIPGap=1e-4
