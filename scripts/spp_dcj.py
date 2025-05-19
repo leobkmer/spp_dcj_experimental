@@ -87,7 +87,7 @@ def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_
         genomes = [child,parent]
         global_constraints(G,families,fam_bounds,out)
         loose_constraints(G,i,genomes,out)
-        slm_constraints(G,i,siblings,out)
+        slm_constraints(G,i,siblings[(child,parent)],out)
         regular_reporting(G,i,genomes,out)
         pcap_reporting(G,i,genomes,out)
         if (child,parent) in circ_singletons:
