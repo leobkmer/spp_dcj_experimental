@@ -15,8 +15,8 @@ MARKERS = 100
 SAMPLES = list(range(1,6))
 
 FFS_DIR = '../../../ffs-dcj'
-DING = '../../../ding/ding-cf/ding_cf.py'
-OLD_SCRIPT_DIR = '~/Documents/spp_dcj/scripts'
+DING = '../../tools/ding-cf-main/ding_cf.py'
+OLD_SCRIPT_DIR = '/prj/gsp/urm/leonardsplayground/spp_dcj/scripts'
 TESTS = ['test%02d'%d for d in range(1,18)]
 
 rule all_test:
