@@ -14,9 +14,11 @@ parser.add_argument("solfile", help="File to write solution to.")
 parser.add_argument("tree",help="File containing the tree")
 parser.add_argument("-t",default=1,type=int, help="Number of threads to use.")
 parser.add_argument("--timelim",type=int,default=3600,help="Overall time limit in seconds.")
+parser.add_argument("--memlim",type=int,default=10000,help="Overall mem limit in MB.")
 args = parser.parse_args()
 model = gp.read(args.lpfile)
 model.Params.Threads = args.t
+model.Params.SoftMemLimit = args.memlim/1000 - 5
 w=model.getVarByName("w")
 f=model.getVarByName("f")
 #if args.warm_start:
@@ -45,7 +47,7 @@ for i,x in enumerate(subtrees):
 #remainder = set(du.get_subtree_edges(root,pc_tree))
 
 
-st_timelim=min(100,args.timelim/(len(subtrees)+1)*0.5)
+st_timelim=max(100,args.timelim/(len(subtrees))*0.5)
 print("Optimizing first over ",len(subtrees), "subtrees")
 remainder_model = model.copy()
 for i,subtree in enumerate(subtrees,start=1):
@@ -89,7 +91,6 @@ model.Params.Timelimit = args.timelim
 #model.Params.MIPFocus=0
 #model.Params.MIPGap=1e-4
 model.update()
-full_timelim=min(100,args.timelim-len(subtrees)*st_timelim)
 print("------------------FINAL OPTIMIZATION----------------")
 model.optimize()
 model.write(args.solfile)

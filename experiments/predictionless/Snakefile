@@ -1,17 +1,5 @@
 import os
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 import pandas as pd
-=======
-import pandas
->>>>>>> a8130f5 (add memlimit to gurobi)
-=======
-import pandas as pd
->>>>>>> cf7df22 (bug fixes)
-=======
-import pandas as pd
->>>>>>> bd089b0a4ac1d4a87bc89abf22ccce83f370b2a2
 
 # CONFIGURATION FILE ---------------------------------------------------------
 configfile: "config.yaml"
@@ -26,7 +14,6 @@ ILP_THREADS = config.get("ilp_threads",10)
 ILP_TIMELIM = config.get("ilp_timelim",3600)
 ILP_MEMLIM_HIGHER = config.get("ilp_memlim_higher", 60000)
 ILP_MEMLIM_LOWER = config.get("ilp_memlim_lower", 30000)
-WEIGHTSOLVE_PROPORTION = 0.2
 
 def get_ranges(sample):
     if os.path.exists(INPUT+"/ranges"):
@@ -43,7 +30,7 @@ def get_mem(sample):
         return ILP_MEMLIM_LOWER + 5000
 
 def convert_time(time_ilp): #given in seconds
-    time = time_ilp + WEIGHTSOLVE_PROPORTION*time_ilp + 1800
+    time = time_ilp*1.5 + 1800
     hours = time // 3600
     minutes = (time % 3600) // 60
     seconds = time % 60
@@ -115,11 +102,7 @@ rule run_ilp_tree:
     log:
         OUTPUT+"/sol/{sample}.log",
     shell:
-<<<<<<< HEAD
-        "%s %s/gurobi_tree.py {input.ilp} {output} {input.tree} --timelim {params.time_limit} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
-=======
-        "%s %s/gurobi_sequential.py {input.ilp} {output} --warm-start {input.start} --timelim {params.time_limit} --memlim {resources.mem_mb} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
->>>>>>> bd089b0a4ac1d4a87bc89abf22ccce83f370b2a2
+        "%s %s/gurobi_tree.py {input.ilp} {output} {input.tree} --timelim {params.time_limit} --memlim {resources.mem_mb} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
 
 
 rule sol2adjacencies:
