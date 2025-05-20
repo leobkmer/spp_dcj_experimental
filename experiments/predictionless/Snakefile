@@ -1,6 +1,7 @@
 import os
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import pandas as pd
 =======
 import pandas
@@ -8,6 +9,9 @@ import pandas
 =======
 import pandas as pd
 >>>>>>> cf7df22 (bug fixes)
+=======
+import pandas as pd
+>>>>>>> bd089b0a4ac1d4a87bc89abf22ccce83f370b2a2
 
 # CONFIGURATION FILE ---------------------------------------------------------
 configfile: "config.yaml"
@@ -111,7 +115,11 @@ rule run_ilp_tree:
     log:
         OUTPUT+"/sol/{sample}.log",
     shell:
+<<<<<<< HEAD
         "%s %s/gurobi_tree.py {input.ilp} {output} {input.tree} --timelim {params.time_limit} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
+=======
+        "%s %s/gurobi_sequential.py {input.ilp} {output} --warm-start {input.start} --timelim {params.time_limit} --memlim {resources.mem_mb} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
+>>>>>>> bd089b0a4ac1d4a87bc89abf22ccce83f370b2a2
 
 
 rule sol2adjacencies:
