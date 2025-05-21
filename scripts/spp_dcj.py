@@ -188,6 +188,7 @@ def c02(G,out):
 
 def global_constraints(G,families,fam_bounds,out):
     c01(G,families,fam_bounds,out)
+    c02_new(G,fam_bounds,out)
     c02(G,out)
 
 def c03(G,tree_edge,out):
