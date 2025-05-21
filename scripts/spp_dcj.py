@@ -185,7 +185,9 @@ def c02(G,out):
 
 def global_constraints(G,families,fam_bounds,out):
     c01(G,families,fam_bounds,out)
+    c02_new(G,fam_bounds,out)
     c02(G,out)
+    
 
 def c03(G,tree_edge,out):
     ws = [ '{w} x{sep}{te}{sep}{e}'.format(w=data['weight'],te=tree_edge,e=data['id'],sep=du.SEP) for u,v,data in G.edges(data=True) if data['type']==du.ETYPE_ADJ]
@@ -650,6 +652,8 @@ def variables(graphs,circ_sings, out):
                 if check_b_necessary(G,u):
                     f=du.nodeGetFamily(G,u)
                     bmvars.add("b{sep}{te}{sep}{f}".format(sep=du.SEP,te=tree_edge,f=f))
+            elif data['type']==du.ETYPE_ADJ:
+                global_binaries.add("a{sep}{anc}".format(sep=du.SEP,anc=data['anc']))
         for b in bmvars:
             print(b,file=out)
 

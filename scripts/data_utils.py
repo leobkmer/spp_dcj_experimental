@@ -2230,3 +2230,6 @@ def add_weight_tels(G,add_telweight):
         if data['type']==ETYPE_ADJ and VTYPE_CAP in [G.nodes[x]['type'] for x in [u,v]]:
             G[u][v][k]['weight']=G[u][v][k]['weight']+add_telweight
 
+
+def sol2annotatedgraphs(solfile):
+    pass
