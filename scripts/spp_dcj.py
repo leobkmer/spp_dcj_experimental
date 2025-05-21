@@ -9,6 +9,7 @@ from collections import defaultdict
 import logging
 import csv
 from math import exp
+import warm_start_parsing as wsp
 
 # import from third-party packages
 
@@ -31,10 +32,10 @@ LOG.setLevel(logging.DEBUG)
 
 def objective(graphs, alpha, out):
     out.write('minimize ')
-    terms = ["{ialph} w{sep}{te} + {alph} f{sep}{te}".format(
-        alph=alpha,ialph=alpha-1,sep=du.SEP,te=tree_edge)
-        for tree_edge, _ in enumerate(sorted(graphs.items()))]
-    print(" + ".join(terms),file=out)
+    #terms = ["{ialph} w{sep}{te} + {alph} f{sep}{te}".format(
+    #    alph=alpha,ialph=alpha-1,sep=du.SEP,te=tree_edge)
+    #    for tree_edge, _ in enumerate(sorted(graphs.items()))]
+    print("{ialph} w + {alph} f".format(alph=alpha,ialph=alpha-1),file=out)
         
 
 
@@ -80,6 +81,8 @@ def lca_treeedges_cp_tree(cp_tree,a,b):
 
 def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_bound_mat={}):
     out.write('subject to\n')
+    print(" + ".join(["w{sep}{te}".format(sep=du.SEP,te=tree_edge) for tree_edge, _ in enumerate(sorted(graphs.items()))])+" - w = 0",file=out)
+    print(" + ".join(["f{sep}{te}".format(sep=du.SEP,te=tree_edge) for tree_edge, _ in enumerate(sorted(graphs.items()))])+" - f = 0",file=out)
     for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
 
         LOG.info(('writing constraints for relational diagram of {} and ' + \
@@ -87,7 +90,7 @@ def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_
         genomes = [child,parent]
         global_constraints(G,families,fam_bounds,out)
         loose_constraints(G,i,genomes,out)
-        slm_constraints(G,i,siblings,out)
+        slm_constraints(G,i,siblings[(child,parent)],out)
         regular_reporting(G,i,genomes,out)
         pcap_reporting(G,i,genomes,out)
         if (child,parent) in circ_singletons:
@@ -185,6 +188,7 @@ def c02(G,out):
 
 def global_constraints(G,families,fam_bounds,out):
     c01(G,families,fam_bounds,out)
+    c02_new(G,fam_bounds,out)
     c02(G,out)
 
 def c03(G,tree_edge,out):
@@ -569,6 +573,8 @@ COUNTERS = ['f','n','c','s','pab','pAB','pAb','pAa','pBa','pBb','pABa','pABb']
 def domains(graphs, out):
     global_generals = set()
     out.write('bounds\n')
+    print("0 <= f <= inf",file=out)
+    print("0 <= w <= inf",file=out)
     for te, ((child, parent), G) in enumerate(sorted(graphs.items())):
         for rv in COUNTERS:
             print("0 <= {rv}{sep}{e} <= inf".format(rv=rv,sep=du.SEP,e=te),file=out)
@@ -593,6 +599,7 @@ def variables(graphs,circ_sings, out):
     #
     global_generals = set()
     out.write('generals\n')
+    print("f",file=out)
     for te, ((child, parent), G) in enumerate(sorted(graphs.items())):
         LOG.info(('writing general variables for relational diagram of {} ' + \
                 'and {}').format(child, parent))
@@ -682,9 +689,14 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--separator', default = du.DEFAULT_GENE_FAM_SEP, \
             help='Separator of in gene names to split <family ID> and ' +
                     '<uniquifying identifier> in adjacencies file')
-    parser.add_argument('-ws','--warm-start-sol')
+    parser.add_argument("--write-phylogeny-edge-ids")
+    ews= parser.add_argument_group("Warm start")
+    ews.add_argument('-ws','--warm-start-sol',help='Write warm start to this file.')
+    ews.add_argument('-ewa','--external-warm-adjacencies',help='Generate a warm start from provided adjacencies. Currently requires -ewm.')
+    ews.add_argument('-ewm','--external-warm-matching',help='Generate a warm start from provided matching. Currently requires -ewa.')
     parser.add_argument('-plb','--pairwise-lower-bnds')
     parser.add_argument('--family-bounds','-fmb',type=open)
+    
     args = parser.parse_args()
 
     # setup logging
@@ -726,7 +738,10 @@ if __name__ == '__main__':
             sep=args.separator)
 
     graphs = relationalDiagrams['graphs']
-
+    if args.write_phylogeny_edge_ids:
+        with open(args.write_phylogeny_edge_ids,"w") as peil:
+            for tree_edge,((a,b),_) in enumerate(sorted(graphs.items())):
+                print(a,b,tree_edge,file=peil)
 #    for gNames, G in graphs.items():
 #            genes_edg = list()
 #            for gName in gNames:
@@ -839,8 +854,17 @@ if __name__ == '__main__':
     LOG.info('DONE')
     out.write('end\n')
     if args.warm_start_sol:
-        LOG.info('run warm start')
-        du.warm_start_decomposition(graphs,fam_bounds,families,siblings)
+        
+        if args.external_warm_adjacencies and args.external_warm_matching:
+            LOG.info("reading warm start based on given adjacencies and matchings")
+            wsa = wsp.parse_adjacencies(args.external_warm_adjacencies)
+            wsm = wsp.parse_matchings(args.external_warm_matching)
+            wsp.annotate_external_warm_start(leaves,graphs,wsa,wsm)
+        else:
+            if args.external_warm_adjacencies or args.external_warm_matching:
+                LOG.warning("Warm start adjacencies and warm start matchings must be used together (-ewm and -ewa). Falling back on default algorithm.")
+            LOG.info('Running internal warm start')
+            du.warm_start_decomposition(graphs,fam_bounds,families,siblings)
         with open(args.warm_start_sol,'w') as f:
             du.sol_from_decomposition(graphs,circ_singletons,our_alpha,f)
         LOG.info('DONE')

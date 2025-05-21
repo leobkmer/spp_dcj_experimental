@@ -40,12 +40,7 @@ def pairs_for_mode(mode,n,leaves):
         return list(r.sample(pairs,max(n,len(pairs))))
     
 
-def cp_tree(edges):
-    tree = {}
-    for child, parent in edges:
-        assert(child not in tree)
-        tree[child]=parent
-    return tree
+
 
 def lca_trace_cp_tree(tree,a,b):
     a_trace_ = [a]
@@ -100,7 +95,7 @@ pairs = pairs_for_mode(args.mode,args.n,leaves)
 
 print("Number pairs",len(pairs))
 
-tree = cp_tree(speciesTree)
+tree = du.cp_tree(speciesTree)
 
 
 

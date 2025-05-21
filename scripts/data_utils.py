@@ -760,6 +760,7 @@ def checkGraph(G,cf=False,checkForAllTels=False):
     gnms = list(gnm_min.keys())
     assert(len(gnms)==2)
     assert(gnm_min[gnms[0]]>gnm_max[gnms[1]] or gnm_min[gnms[1]]>gnm_max[gnms[0]])
+    print("Checking graph for genomes {}".format(gnms),file=sys.stderr)
     for u, v, in G.edges():
         if u == v:
             raise Exception(f'node {v} is connected to itself')
@@ -1227,12 +1228,14 @@ def get_unimog(genome,genes,adjacencies,sep):
 def parseFamilyBounds(data):
     bounds = dict()
     delimiter = '\t'
-    for line in csv.reader(data, delimiter = delimiter):
+    reader = csv.reader(data, delimiter = delimiter)
+    next(reader)
+    for line in reader:
         genome,fam,low,high = line
         if genome not in bounds:
             bounds[genome]=dict()
         if fam in bounds[genome]:
-            print("Warning: bound for family {} set twice for genome {}, will be overwritten.".format(fam,genome))
+            print("Warning: bound for family {} set twice for genome {}, will be overwritten.".format(fam,genome),file=sys.stderr)
         bounds[genome][fam]=(int(low),int(high))
     return bounds
 
@@ -1868,7 +1871,7 @@ def sol_from_decomposition(graphs,circ_singletons,alpha,out):
             #        for x in nx.edge_dfs(list(comp)[0]):
             #            pass
 
-
+        
         for u,data in G.nodes(data=True):
             ancvar = "g{sep}{anc}".format(sep=SEP,anc=data['anc'])
             acands = [v for v in G[u] for k in G[u][v] if G[u][v][k]['type']==ETYPE_ADJ and G[u][v][k].get('is_set',False)]
@@ -2051,12 +2054,15 @@ def extract_local_graph(genome, G):
 def get_max_match(genome, G):
     medges = []
     local = extract_local_graph(genome, G)
+    for v,tp in local.nodes(data='type'):
+        print("Assert 1",file=sys.stderr)
+        assert(G.has_node(v))
     for u,v,tp in list(local.edges(data='type')):
         if tp!=ETYPE_ADJ:
             local.remove_edge(u,v)
-    for v in list(G.nodes()):
-        if not G.nodes[v].get('is_set',True):
-            G.remove_node(v)
+    #for v in list(G.nodes()):
+    #    if not G.nodes[v].get('is_set',True):
+    #        local.remove_node(v)
     telomeres = [u for u,data in G.nodes(data=True) if data['type']==VTYPE_CAP]
     telomeres = set(telomeres)
     #set every edge next to a regular vertex to more than weight 1
@@ -2082,11 +2088,11 @@ def get_max_match(genome, G):
     #check matching
     matched = set([v for v,_ in mwmtch]+[v for _,v in mwmtch])
     for v,tp in local.nodes(data='type'):
+        assert(G.has_node(v))
         if tp == VTYPE_CAP:
             continue
         assert(v in matched)
     #mwmtch=greedy_extend_max_match(local,mwmtch)
-    #print(mwmtch,file=stderr)
     return [(G.nodes[x]['anc'],G.nodes[y]['anc']) for x,y in mwmtch]
 
 
@@ -2230,3 +2236,82 @@ def add_weight_tels(G,add_telweight):
         if data['type']==ETYPE_ADJ and VTYPE_CAP in [G.nodes[x]['type'] for x in [u,v]]:
             G[u][v][k]['weight']=G[u][v][k]['weight']+add_telweight
 
+def cp_tree(edges):
+    tree = {}
+    for child, parent in edges:
+        assert(child not in tree)
+        tree[child]=parent
+    return tree
+
+def cp_to_pc(tree):
+    #convert to parent -> child tree
+    pc_tree = {}
+    root_candidates = set()
+    not_root = set()
+    for child, parent in tree.items():
+        if not parent in pc_tree:
+            pc_tree[parent] = []
+        pc_tree[parent].append(child)
+        root_candidates.add(parent)
+        not_root.add(child)
+    root = root_candidates.difference(not_root)
+    assert(len(root)==1)
+    root = root.pop()
+    return root,pc_tree
+
+def read_tree_edge_name_map(peif):
+    nm = {}
+    with open(peif) as pf:
+        for line in pf:
+            a,b, n = line.split()
+            nm[n]=(a,b)
+    return nm
+
+
+
+
+def get_subtree_sizes(root,pc_tree):
+    subtree_size = {}
+    stack = [root]
+    remain = [root]
+    while len(remain)>0:
+        curr = remain.pop()
+        for child in pc_tree[curr]:
+            stack.append(child)
+            if child in pc_tree:
+                remain.append(child)
+    while len(stack) > 0:
+        curr = stack.pop()
+        if curr not in pc_tree:
+            subtree_size[curr]=1
+        else:
+            subtree_size[curr]=0
+            for child in pc_tree[curr]:
+                assert(child in subtree_size)
+                subtree_size[curr]+=subtree_size[child]
+    return subtree_size
+
+def subdivide_tree(root,pc_tree,max_leaves=3):
+    subtree_sizes = get_subtree_sizes(root,pc_tree)
+    print(subtree_sizes)
+    stack = [root]
+    subtrees = []
+    while len(stack) > 0:
+        curr = stack.pop()
+        if subtree_sizes[curr] <= max_leaves:
+            subtrees.append(curr)
+        else:
+            for child in pc_tree[curr]:
+                stack.append(child)
+    return subtrees[::-1]
+
+def get_subtree_edges(subtree_root,pc_tree):
+    stack = [subtree_root]
+    edges = []
+    while len(stack) > 0:
+        curr = stack.pop()
+        if curr in pc_tree:
+            for child in pc_tree[curr]:
+                edges.append((child,curr))
+                stack.append(child)
+    return edges
