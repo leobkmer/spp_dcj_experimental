@@ -2268,7 +2268,9 @@ def read_tree_edge_name_map(peif):
     return nm
 
 
-
+def subtrees_ascending_size(root,pc_tree):
+    sub_sizes = get_subtree_sizes(root,pc_tree)
+    return(sorted(list(pc_tree.keys()),key=lambda x : sub_sizes[x]))
 
 def get_subtree_sizes(root,pc_tree):
     subtree_size = {}

@@ -102,7 +102,7 @@ rule run_ilp_tree:
     log:
         OUTPUT+"/sol/{sample}.log",
     shell:
-        "%s %s/gurobi_tree.py {input.ilp} {output} {input.tree} --timelim {params.time_limit} --memlim {resources.mem_mb} -t {threads} > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
+        "%s %s/gurobi_tree.py {input.ilp} {output} {input.tree} --timelim {params.time_limit} --memlim {resources.mem_mb} -t {threads} --subsample-subtrees 10 > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
 
 
 rule sol2adjacencies:

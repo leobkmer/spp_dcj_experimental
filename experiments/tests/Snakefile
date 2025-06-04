@@ -1,11 +1,49 @@
 
 SCRIPT_DIR = '../../scripts'
 
-TESTS = ['test%02d'%d for d in range(1,17)]
+
+
+
+OPS = [10,30,70]
+LINEARS = [1]
+DUPRATE=[0.4,0.7]
+DUPZIPF=[6]
+DELRATE=[0.2]
+INSRATE=[0.1]
+IDZIPF=[4]
+MARKERS = 100
+SAMPLES = list(range(1,11))
+
+FFS_DIR = '~/Documents/ffs-dcj'#'/prj/gsp/urm/leonardsplayground/ffs-dcj' 
+DING = '../../tools/ding-cf-main/ding_cf.py'
+OLD_SCRIPT_DIR = '~/Documents/spp_dcj/scripts'#'/prj/gsp/urm/leonardsplayground/spp_dcj/scripts'
+TESTS = ['test%02d'%d for d in range(1,18)]
 
 rule all_test:
     input:
-        expand('test/{test}.log',test=TESTS)
+        expand('test/manual/{test}.log',test=TESTS),
+        expand('test/simulated_pair/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.log',
+                ops=OPS,markers=MARKERS,linears=LINEARS,duprate=DUPRATE,dupzipf=DUPZIPF,delrate=DELRATE,insrate=INSRATE,idzipf=IDZIPF,n=SAMPLES),
+        expand('test/treecompare/simulated_treeA/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.log',
+                ops=OPS,markers=MARKERS,linears=LINEARS,duprate=DUPRATE,dupzipf=DUPZIPF,delrate=DELRATE,insrate=INSRATE,idzipf=IDZIPF,n=SAMPLES)
+
+rule all_ding_tree_tests:
+    input:
+        expand('test/treecompare/simulated_treeA/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.log',
+                ops=OPS,markers=MARKERS,linears=LINEARS,duprate=DUPRATE,dupzipf=DUPZIPF,delrate=DELRATE,insrate=INSRATE,idzipf=IDZIPF,n=SAMPLES)
+
+rule spp1_v_spp2_tests:
+    input:
+        #expand('test/cp_ilps/{test}.log',test=TESTS[1::]),
+        #expand('test/cp_ilps/simulated_pair/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.log',
+        #        ops=OPS,markers=MARKERS,linears=LINEARS,duprate=DUPRATE,dupzipf=DUPZIPF,delrate=DELRATE,insrate=INSRATE,idzipf=IDZIPF,n=SAMPLES),
+        expand('test/cp_ilps/simulated_treeA/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.log',
+                ops=OPS,markers=MARKERS,linears=LINEARS,duprate=DUPRATE,dupzipf=DUPZIPF,delrate=DELRATE,insrate=INSRATE,idzipf=IDZIPF,n=SAMPLES),
+
+rule all_simulate:
+    input:
+        expand('genomes/simulated_pair/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.txt',
+                ops=OPS,markers=MARKERS,linears=LINEARS,duprate=DUPRATE,dupzipf=DUPZIPF,delrate=DELRATE,insrate=INSRATE,idzipf=IDZIPF,n=SAMPLES)
 
 rule create_adjacencies:
     input:
@@ -15,14 +53,91 @@ rule create_adjacencies:
     shell:
         '%s/unimog2adjacencies.py {input} > {output}'%SCRIPT_DIR
 
-rule spp_ilp:
+rule spp2_ilp:
     input:
-        'adjacencies/{test}.txt'
+        adj='adjacencies/{test}.txt',
+        top='top/{test}.txt'
     output:
-        'ilp/{test}.ilp'
+        ilp='ilp/spp2/{test}.ilp',
+        idmap='ilp/spp2/{test}.idmap'
+    log:
+        'ilp/spp2/{test}.spp_dcj.log'
     shell:
-        '%s/spp_dcj.py -m ilp/{wildcards.test}.idmap -a 1 topology.txt \
-    {input} --no_telomeres -ws /dev/null  > {output} 2> ilp/{wildcards.test}.spp_dcj.log'%SCRIPT_DIR
+        '%s/spp_dcj.py -m {output.idmap} -a 1 {input.top} \
+    {input.adj} --no_telomeres -ws /dev/null  > {output.ilp} 2> {log} '%SCRIPT_DIR
+
+
+
+rule treetop:
+    output:
+        'top/simulated_treeA/{test}.txt'
+    shell:
+        'cp topologyA.txt {output}'
+
+rule top_for_manual_cases:
+    output:
+        'top/manual/{test}.txt'
+    shell:
+        "cp topology.txt {output}"
+
+rule top_for_sim_pair:
+    output:
+        'top/simulated_pair/{test}.txt'
+    shell:
+        "cp topology.txt {output}"
+
+rule spp1_ilp:
+    input:
+        adj='adjacencies/{test}.txt',
+        top='top/{test}.txt'
+    output:
+        ilp='ilp/spp1/{test}.ilp',
+        idmap='ilp/spp1/{test}.idmap'
+    log:
+        'ilp/spp1/{test}.spp_dcj.log'
+    shell:
+        '%s/spp_dcj.py -m {output.idmap} -a 1 -b 0 {input.top} \
+    {input.adj} --no_telomeres  > {output.ilp} 2> {log}'%OLD_SCRIPT_DIR
+
+rule parse_spp1_sol:
+    input:
+        sol='sol/spp1/{test}.sol',
+        idmap='ilp/spp1/{test}.idmap'
+    output:
+        'dist/spp1/{test}.dist'
+    shell:
+        "%s/sol2unimog.py {input.sol} {input.idmap} > /dev/null 2> {output}"%OLD_SCRIPT_DIR
+
+rule compare_spp_with_spp2:
+    input:
+        spp='dist/spp1/{test}.dist',
+        spp2='sol/spp2/{test}.sol'
+    log:
+        'test/cp_ilps/{test}.log'
+    shell:
+        "python3 %s/spp_v_spp2_compare.py {input.spp} {input.spp2} > {log}"%SCRIPT_DIR
+
+
+rule compare_spp2_with_ding:
+    input:
+        spp2='sol/spp2/{test}.sol',
+        ding='workdir_ding/{test}/result.txt'
+    log:
+        'test/treecompare/{test}.log'
+    shell:
+        "python3 %s/ding_tree_compare.py {input.ding} {input.spp2} > {log}"%SCRIPT_DIR
+
+rule run_ding_resolved:
+    input:
+        unimog='genomes/{test}.txt',
+        tree='top/{test}.txt'
+    output:
+        'workdir_ding/{test}/result.txt'
+    log:
+        std='workdir_ding/{test}/log1.txt',
+        err='workdir_ding/{test}/log2.txt'
+    shell:
+        'python3 %s/ding_resolved.py {input.unimog} {input.tree} workdir_ding/{wildcards.test}/ > {log.std} 2> {log.err}'%SCRIPT_DIR
 
 rule solve_ilp:
     input:
@@ -36,11 +151,46 @@ rule solve_ilp:
 
 rule check_sol:
     input:
-        sol='sol/{test}.sol',
-        arg='genomes/{test}.args'
+        sol='sol/spp2/manual/{test}.sol',
+        arg='genomes/manual/{test}.args'
     log:
-        'test/{test}.log'
+        'test/manual/{test}.log'
     shell:
         '%s/sol_tester.py {input.sol} $(cat {input.arg}) > {log}'%SCRIPT_DIR
 
-    
+
+rule check_pairwise_ding:
+    input:
+        ding='sol/ding/simulated_pair/{sample}.sol',
+        spp2='sol/spp2/simulated_pair/{sample}.sol'
+    log:
+        'test/simulated_pair/{sample}.log'
+    shell:
+        "python3 %s/sol_compare.py {input.ding} {input.spp2} 2> {log}"%SCRIPT_DIR
+
+
+rule ding_ilp:
+    input:
+        'genomes/simulated_pair/{sample}.txt'
+    output:
+        'ilp/ding/simulated_pair/{sample}.ilp'
+    log:
+        'ilp/ding/simulated_pair/{sample}.log'
+    shell:
+        'python3 %s  {input} --writeilp {output} > {log}'%DING
+
+rule simulate_pairwise:
+    output:
+        task='genomes/simulated_pair/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.txt',
+    log:
+        'genomes/simulated_pair/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.log'
+    shell:
+        '%s/simulate --genes {wildcards.markers} --nops {wildcards.ops} --nchrms {wildcards.linears} --dup-rate {wildcards.duprate} --dup-size-zipf {wildcards.dupzipf} --del-rate {wildcards.delrate} --ins-rate {wildcards.insrate} --indel-size-zipf {wildcards.idzipf} --nwk topology1.nw > {output.task} 2> {log}'%FFS_DIR
+
+rule simulate_tree:
+    output:
+        'genomes/simulated_tree{x}/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.txt'
+    log:
+        'genomes/simulated_tree{x}/ops{ops}_markers{markers}_linears{linears}_duprate{duprate}_dupzipf{dupzipf}_delrate{delrate}_insrate{insrate}_idzipf{idzipf}/sample{n}.log'
+    shell:
+        '%s/simulate --genes {wildcards.markers} --nops {wildcards.ops} --nchrms {wildcards.linears} --dup-rate {wildcards.duprate} --dup-size-zipf {wildcards.dupzipf} --del-rate {wildcards.delrate} --ins-rate {wildcards.insrate} --indel-size-zipf {wildcards.idzipf} --nwk topology{wildcards.x}.nw > {output} 2> {log}'%FFS_DIR

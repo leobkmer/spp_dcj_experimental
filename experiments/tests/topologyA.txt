@@ -1,0 +1,7 @@
+#Node	Parent
+F	Root
+A	F
+B	F
+G	Root
+C	G
+D	G
