@@ -562,44 +562,15 @@ def _constructRDAdjacencyEdges(G, gName, adjacencies, candidateWeights,
     for ext1, ext2 in adjacencies:
         id1 = extremityIdManager.getId((gName, ext1))
         id2 = extremityIdManager.getId((gName, ext2))
-
+        #print(f"Connecting {ext1} with {ext2}")
         # ensure that each edge has a unique identifier
         edge_id = '{}_{}_adj'.format(*sorted((G.nodes[id1]['anc'], G.nodes[id2]['anc'])))
         anc = '{}_{}_adj'.format(*sorted((G.nodes[id1]['anc'],G.nodes[id2]['anc'])))
+        assert(G.nodes[id1]['id']==(gName,ext1))
+        assert(G.nodes[id2]['id']==(gName,ext2))
         weight = candidateWeights.get((ext1, ext2), 0)
         G.add_edge(id1, id2, type=ETYPE_ADJ, id=edge_id, weight=weight,anc=anc)
 
-
-def _constructNaiveRDCapping(G, gName1, gName2, extremityIdManager):
-
-    caps = dict(((gName1, list()), (gName2, list())))
-
-    for v, vdata in G.nodes(data=True):
-        if vdata['type'] == VTYPE_CAP:
-            caps[vdata['id'][0]].append(v)
-
-    _addCartesianProductCaps(G, gName1, gName2, caps, extremityIdManager)
-
-
-def _addCartesianProductCaps(G, gName1, gName2, caps, extremityIdManager):
-
-    new_caps = {gName1: list(), gName2: list()}
-
-    # the number of caps that will be used *at most* is (i) even, and (ii) not
-    # more than there are caps in the other genome
-    if len(caps[gName1]) < len(caps[gName2]):
-        n = (len(caps[gName2])-len(caps[gName1]))//2 * 2
-        new_caps[gName1].extend(_fillUpCaps(G, gName1, n, extremityIdManager))
-        caps[gName1].extend(new_caps[gName1])
-    elif len(caps[gName2]) < len(caps[gName1]):
-        n = (len(caps[gName1])-len(caps[gName2]))//2 * 2
-        new_caps[gName2].extend(_fillUpCaps(G, gName2, n, extremityIdManager))
-        caps[gName2].extend(new_caps[gName2])
-
-    for u, v in product(caps[gName1], caps[gName2]):
-        if not G.has_edge(u, v):
-            G.add_edge(u, v, type=ETYPE_EXTR, id='{}_{}'.format(*sorted((u, v))))
-    return new_caps
 
 
 def _fillUpCaps(G, gName, ncaps, extremityIdManager):
@@ -618,75 +589,7 @@ def _fillUpCaps(G, gName, ncaps, extremityIdManager):
     return new_caps
 
 
-def _constructRDCapping(G, gName1, gName2, extremityIdManager):
 
-    tel_pairs = _find_end_pairs(G, gName1, gName2)
-    A_caps_with_runs, B_caps_with_runs = set(), set()
-
-    # fix paths that are not connected to run-enclosing paths
-    norun = {gName1: set(), gName2: set()}
-    for u, v, hasArun, hasBrun in tel_pairs:
-        if not hasArun and not hasBrun:
-            caps = {gName1: list(), gName2: list()}
-            caps[G.nodes[u]['id'][0]].append(u)
-            caps[G.nodes[v]['id'][0]].append(v)
-            _addCartesianProductCaps(G, gName1, gName2, caps,
-                    extremityIdManager)
-            if G.nodes[u]['id'][0] != G.nodes[v]['id'][0]:
-                norun[G.nodes[u]['id'][0]].add(u)
-                norun[G.nodes[v]['id'][0]].add(v)
-        else:
-            for w in (u, v):
-                if G.nodes[w]['id'][0] == gName1:
-                    A_caps_with_runs.add(w)
-                else:
-                    B_caps_with_runs.add(w)
-    # treat no-run nodes: if their numbers are not matching, add caps to match
-    if len(norun[gName1])//2 > len(norun[gName2])//2:
-        n = (len(norun[gName1])//2 - len(norun[gName2])//2) * 2
-        caps = _fillUpCaps(G, gName2, n, extremityIdManager)
-        _addCartesianProductCaps(G, gName1, gName2, \
-                {gName1: list(norun[gName1]), gName2: caps}, \
-                extremityIdManager)
-    elif len(norun[gName2])//2 > len(norun[gName1])//2:
-        n = (len(norun[gName2])//2 - len(norun[gName1])//2) * 2
-        caps = _fillUpCaps(G, gName1, n, extremityIdManager)
-        _addCartesianProductCaps(G, gName1, gName2, \
-                {gName1: caps, gName2: list(norun[gName2])}, \
-                extremityIdManager)
-
-    _addCartesianProductCaps(G, gName1, gName2, \
-            {gName1: list(A_caps_with_runs), gName2: list(B_caps_with_runs)}, \
-            extremityIdManager)
-
-#    pos = nx.spring_layout(G)
-#    pos = nx.spectral_layout(G)
-#
-#    genes_edg = list()
-#    for gName in {gName1, gName2}:
-#        genes = [(u, v) for u, v, data in G.edges(data=True) if data['type'] ==
-#                ETYPE_ADJ]
-#        genes_edg.extend(((extremityIdManager.getId((gName, (g, EXTR_HEAD))),
-#            extremityIdManager.getId((gName, (g, EXTR_TAIL))))for g in genes))
-#    Gp = nx.Graph()
-#    Gp.add_edges_from(genes_edg)
-#    Gp.add_edges_from((u, v) for u, v, data in G.edges(data=True) if
-#            data['type'] == ETYPE_ADJ)
-#    pos = nx.spring_layout(Gp)
-#
-#
-#    nx.draw_networkx_nodes(G, pos=pos, node_size=2)
-#    nx.draw_networkx_labels(G, pos=pos, font_size=8, labels = dict((v,
-#        '{0}:{1[0]}{1[1]}'.format(*G.nodes[v]['id'])) for v in G.nodes()))
-#
-##    nx.draw_networkx_edges(G, pos, [(u, v) for u, v, data in G.edges(data=True)
-##        if data['type'] == ETYPE_EXTR], edge_color='green')
-#    nx.draw_networkx_edges(G, pos, [(u, v) for u, v, data in G.edges(data=True)
-#        if data['type'] == ETYPE_ID], edge_color='gray')
-#    nx.draw_networkx_edges(G, pos, [(u, v) for u, v, data in G.edges(data=True)
-#        if data['type'] == ETYPE_ADJ], edge_color='red')
-#    import matplotlib.pylab as plt
-#    plt.savefig('myfig.pdf', format='pdf')
 
 def _find_end_pairs(G, gName1, gName2):
     """ finds all alternating paths between nodes of degree one, which are
@@ -761,10 +664,11 @@ def checkGraph(G,cf=False,checkForAllTels=False):
     assert(len(gnms)==2)
     assert(gnm_min[gnms[0]]>gnm_max[gnms[1]] or gnm_min[gnms[1]]>gnm_max[gnms[0]])
     print("Checking graph for genomes {}".format(gnms),file=sys.stderr)
-    for u, v, in G.edges():
+    for u, v, k,data in G.edges(keys=True,data=True):
         if u == v:
             raise Exception(f'node {v} is connected to itself')
-
+        if G.nodes[u]['type']==VTYPE_CAP or G.nodes[v]['type']==VTYPE_CAP:
+            assert(data['type']==ETYPE_ADJ)
         types = set()
         for data in G[u][v].values():
             if data['type'] not in types:
@@ -773,11 +677,18 @@ def checkGraph(G,cf=False,checkForAllTels=False):
                 raise Exception(f'nodes {u} {G.nodes[u]["id"]}, ' + \
                         f'{v} {G.nodes[v]["id"]} are connected by ' + \
                         f'multiple edges of the type {data["type"]}')
-
+    
+    max_tel_id=float('-inf')
+    min_xtr_id=float('inf')
     for v, vdata in G.nodes(data = True):
         hasAdj = False
         hasExtrOrId = False
-
+        if vdata['type']==VTYPE_CAP:
+            max_tel_id=max(v,max_tel_id)
+        elif vdata['type']==VTYPE_EXTR:
+            min_xtr_id=min(v,min_xtr_id)
+        else:
+            raise Exception(f"Node {v} has type other than cap or extremity.")
         if vdata['id'][1][1] not in {EXTR_HEAD, EXTR_TAIL, EXTR_CAP}:
             raise Exception(f'node {v} {G.nodes[v]["id"]} has malformed ' + \
                     'extremity')
@@ -797,6 +708,7 @@ def checkGraph(G,cf=False,checkForAllTels=False):
         if not hasExtrOrId and (not vdata['type']==VTYPE_CAP or not cf):
             raise Exception(f'node {v} {G.nodes[v]["id"]} is not incident ' + \
                     'to an extremity or indel edge')
+    assert(max_tel_id<min_xtr_id)
 
 
 class TooManyCSException(Exception):
@@ -937,12 +849,12 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
     return siblings
 
 TELOMERE_GENE='t'
-def _constructRDNodes(G, gName, genes, globalIdManager,localIdManager):
+def _constructRDNodes(G, gName, genes, globalIdManager,localIdManager,candidateTelomeres):
     ''' create gene extremity nodes for the genome named <gName> '''
     
     for extr in (EXTR_HEAD, EXTR_TAIL):
         G.add_nodes_from(((localIdManager.getId((gName, (g, extr))),
-            dict(id=((gName, (g, extr))), type=VTYPE_EXTR,anc=globalIdManager.getId((gName, (g, extr))))) for g in genes)) #if g!=TELOMERE_GENE))
+            dict(id=((gName, (g, extr))), type=VTYPE_EXTR,anc=globalIdManager.getId((gName, (g, extr))))) for g in genes ))#if g not in candidateTelomeres))
 
 
 def _constructRDTelomeres(G, gName, telomeres, extremityIdManager,localIdManager):
@@ -985,7 +897,7 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
         else:
             localIdManager = IdManager(max_tels)
         for gName in (child, parent):
-            _constructRDNodes(G, gName, genes[gName], extremityIdManager,localIdManager)
+            _constructRDNodes(G, gName, genes[gName], extremityIdManager,localIdManager,candidateTelomeres[gName])
                 
             _constructRDTelomeres(G, gName, candidateTelomeres[gName],
                                   extremityIdManager,localIdManager)
@@ -994,6 +906,8 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
 
         fam2genes1 = mapFamiliesToGenes(genes[child], sep=sep)
         fam2genes2 = mapFamiliesToGenes(genes[parent], sep=sep)
+        #print("FAM2GENES:")
+        #print(fam2genes1,fam2genes2)
         siblings   = _constructRDExtremityEdges(G, child, parent, genes,
                 fam2genes1, fam2genes2, localIdManager,fam_bounds)
         
@@ -1076,6 +990,7 @@ class IdManager(object):
                 self.__table[obj] = self.__count_ext
                 self.__reverse[self.__count_ext] = obj
                 self.__count_ext += 1
+        #self.sanity_check()
         return self.__table[obj]
 
     def getObj(self, id_):
@@ -1083,6 +998,16 @@ class IdManager(object):
 
     def getMap(self):
         return dict(self.__table.items())
+    def sanity_check(self):
+        yvals = set()
+        for _,y in self.__table.items():
+            assert(y not in yvals)
+            yvals.add(y)
+        xvals = set()
+        for _,x in self.__reverse.items():
+            assert(y not in xvals)
+            xvals.add(x)
+
 
 
 if __name__ == '__main__':
@@ -2259,12 +2184,40 @@ def cp_to_pc(tree):
     root = root.pop()
     return root,pc_tree
 
+def lca_trace_cp_tree(tree,a,b):
+    a_trace_ = [a]
+    curr = a
+    while curr in tree:
+        curr = tree[curr]
+        a_trace_.append(curr)
+    
+    b_trace = [b]
+    curr = b
+    a_seen = set(a_trace_)
+    while curr not in a_seen:
+        curr=tree[curr]
+        b_trace.append(curr)
+    a_trace = a_trace_[:a_trace_.index(curr)]
+    #print(a_trace,b_trace,curr)
+    return b_trace+a_trace
+
 def read_tree_edge_name_map(peif):
-    nm = {}
-    with open(peif) as pf:
-        for line in pf:
-            a,b, n = line.split()
-            nm[n]=(a,b)
+    try:
+        nm = {}
+        with open(peif) as pf:
+            for line in pf:
+                a,b, n = line.strip().split()
+                nm[n]=(a,b)
+    except ValueError:
+        print("Warning: tree table does not have complete edge ids. Continue by using order as assignment.",file=sys.stderr)
+        with open(peif) as pf:
+            nms = []
+            for line in pf:
+                if line.startswith("#"):
+                    continue
+                a,b= line.strip().split()
+                nms.append((a,b))
+            nm = dict(enumerate(sorted(nms)))
     return nm
 
 
@@ -2317,3 +2270,119 @@ def get_subtree_edges(subtree_root,pc_tree):
                 edges.append((child,curr))
                 stack.append(child)
     return edges
+
+
+
+
+def str_marker(m):
+    orient,gne = m
+    prefix = "" if orient==ORIENT_POSITIVE else "-"
+    return prefix+gne
+
+
+def transform_list_toadj_dicts(adjacency_list):
+    weights_dict =dict()
+    species_adj = dict()
+    for (agnm,xta),(bgnm,xtb) in adjacency_list:
+        assert(agnm==bgnm)
+        if agnm not in species_adj:
+            species_adj[agnm]=[]
+            weights_dict[agnm]=dict()
+        species_adj[agnm].append(((xta),(xtb)))
+        weights_dict[agnm][((xta),(xtb))]=1
+    return species_adj,weights_dict
+
+def write_unimog(genomes,fl):
+    for name,chromosomes in genomes:
+        print(">{}".format(name),file=fl)
+        for chrtype,chromosome in chromosomes:
+            print(" ".join([str_marker(m) for m in chromosome]),end="",file=fl)
+            chrend = " |" if chrtype == CHR_LINEAR else " )"
+            print(chrend,file=fl)
+
+
+def invert_chromosome(chromosome):
+    newchromosome = []
+    for orient,g in chromosome[::-1]:
+        newchromosome.append((ORIENT_NEGATIVE if orient==ORIENT_POSITIVE else ORIENT_POSITIVE, g))
+    return newchromosome
+
+def canonicize_linear(chromosome):
+    inverted = invert_chromosome(chromosome)
+    if  inverted < chromosome:
+        return inverted
+    else:
+        return chromosome.copy()
+
+def rotate_to_pos(chromosome,i,invert_to_pos=False):
+    newchr = chromosome[i::]+chromosome[0:i]
+    if invert_to_pos:
+        if newchr[0][0]== ORIENT_NEGATIVE:
+            newchr=invert_chromosome(newchr[1::]+newchr[0:1])
+    return newchr
+
+def canonicize_circular(chromosome,strict=False):
+    x = min(chromosome,key=lambda x: x[1])[1]
+    minpos = [i for i,y in enumerate(chromosome) if y[1]==x]
+    if not strict:
+        minpos = [minpos[0]]
+    rots = [rotate_to_pos(chromosome,i,invert_to_pos=True) for i in minpos]
+    #print(rots)
+    return min(rots)
+
+def canonicize_unimog(genomes):
+    #sort by name
+    genomes = sorted(genomes,key=lambda x : x[0])
+    new_genomes = []
+    for gname,chromosomes in genomes:
+        new_chromosomes=[]
+        for chrtype,chromosome in sorted(chromosomes,key=lambda x: -len(x[1])):
+            if chrtype==CHR_LINEAR:
+                new_chromosome= canonicize_linear(chromosome)
+            else:
+                new_chromosome=canonicize_circular(chromosome)
+            new_chromosomes.append((chrtype,new_chromosome))
+        new_genomes.append((gname,new_chromosomes))
+    return new_genomes
+
+def write_res_families(new_ids, fl):
+    print("#genome\tgene\tgroup",file=fl)
+    for (gnm,gne),grp in new_ids.items():
+        print("{}\t{}\t{}".format(gnm,gne,grp),file=fl)
+
+
+def matched_adjacencies_to_unimog(adjs):
+    species_adj,_= transform_list_toadj_dicts(adjs)
+    genomes = []
+    for taxon,tadj in species_adj.items():
+        G = nx.MultiGraph(nx.from_edgelist(tadj))
+        for (gne,xtr) in G.nodes():
+            if xtr == EXTR_CAP or xtr == EXTR_HEAD:
+                continue
+            G.add_edge((gne,EXTR_TAIL),(gne,EXTR_HEAD),type="self")
+        chromosomes = []
+        for C in nx.connected_components(G):
+            d1vs = [x for x in C if G.degree[x] ==1]
+            assert(len(d1vs) in [0,2])
+            if len(d1vs)==2:
+                start_vertex = d1vs[0]
+            else:
+                start_vertex = list(C)[0]
+            chromosome = []
+            last = start_vertex
+            for u,v,k in nx.eulerian_path(G.subgraph(C),source=start_vertex,keys=True):
+                    #make sure the edges are in the right orientation 
+                    u,v = (u,v) if u==last else (v,u)
+                    assert(last==u)
+                    last = v
+                    (a,x) = u
+                    (b,y) = v
+                    if "type" in G[u][v][k]:
+                        assert(G[u][v][k]["type"]=="self")
+                        assert(a==b)
+                        orient = ORIENT_POSITIVE if x==EXTR_TAIL else ORIENT_NEGATIVE
+                        chromosome.append((orient,a))
+            chrtype = CHR_CIRCULAR if len(d1vs)==0 else CHR_LINEAR
+            chromosomes.append((chrtype,chromosome))
+        genomes.append((taxon,chromosomes))
+    return genomes

@@ -42,22 +42,7 @@ def pairs_for_mode(mode,n,leaves):
 
 
 
-def lca_trace_cp_tree(tree,a,b):
-    a_trace_ = [a]
-    curr = a
-    while curr in tree:
-        curr = tree[curr]
-        a_trace_.append(curr)
-    
-    b_trace = [b]
-    curr = b
-    a_seen = set(a_trace_)
-    while curr not in a_seen:
-        curr=tree[curr]
-        b_trace.append(curr)
-    a_trace = a_trace_[:a_trace_.index(curr)]
-    print(a_trace,b_trace,curr)
-    return b_trace+a_trace
+
 
 MODES = ['all','linear','random']
 
@@ -119,7 +104,7 @@ for a,b in pairs:
     fam_max = dict()
     fam_min = dict()
     file_prefix = "{a}_{b}".format(a=a,b=b)
-    genomes = lca_trace_cp_tree(tree,a,b)
+    genomes = du.lca_trace_cp_tree(tree,a,b)
     for g in genomes:
         for f in fam_bounds[g]:
             if f not in fam_max:
