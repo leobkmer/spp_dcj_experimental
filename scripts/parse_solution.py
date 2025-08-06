@@ -266,7 +266,8 @@ def main():
     weights = candidateAdjacencies['weights']
     fam_bounds = dict()
     if args.family_bounds:
-        fam_bounds=du.parseFamilyBounds(args.family_bounds)
+        with open(args.family_bounds) as fbf:
+            fam_bounds=du.parseFamilyBounds(fbf)
     families = candidateAdjacencies['families']
     du.fillFamilyBounds(families,fam_bounds)
     relationalDiagrams = du.constructRelationalDiagrams(tree_edges,
