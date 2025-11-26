@@ -1,0 +1,247 @@
+from os.path import abspath
+
+# GENERAL VARIABLES ----------------------------------------------------------
+
+SCRIPT_DIR          = config.get('script_dir', '../../scripts')
+OLD_SCRIPTS         = config.get('old_scripts', '../../oldscripts')
+
+BENCHMARK_DIR       = config.get('benchmark_dir', 'benchmarks')
+P_BENCHMARK_DIR     = config.get('p_benchmark_dir', 'preprocessing_benchmarks')
+DECO_DIR            = config.get('deco_dir', 'deco')
+GUROBI_BIN          = config.get('gurobi_bin', 'gurobi_cl')
+ILP_DIR             = config.get('ilp_dir', 'ilp')
+LOG_DIR             = config.get('log_dir', 'logs')
+PLOT_DIR            = config.get('plot_dir', 'plots')
+RECPHYLOXML_PATH    = config.get('recphyloxml_dir')
+RESULT_DIR          = config.get('result_dir', 'results')
+SIMULATION_DIR      = config.get('simulated_evolution_dir', 'simulated_evolution')
+TREE_DIR            = config.get('tree_dir', 'trees')
+BOUND_DIR           = config.get('bound_dir','bounds')
+
+N_REPS = config.get('n_reps',10)
+REPLICATES = list(range(1,N_REPS+1))
+
+# ZOMBI TREE EVOLUTION PARAMETERS -------------------------------------------
+
+TREE                = config.get('tree')
+TREE_SCALES         = config.get('tree_scales', [1])
+
+# ZOMBI GENOME EVOLUTION PARAMETERS -----------------------------------------
+
+ZOMBI_BIN           = config.get('zombi_bin')
+ZOMBI_DUPLS         = config.get('zombi_dupl_rates', ['f:1'])
+ZOMBI_DUPL_EXTS     = config.get('zombi_dupl_exts', ['g:1'])
+ZOMBI_GENOME_SIZES  = config.get('zombi_genome_sizes', [100])
+ZOMBI_LOSSES        = config.get('zombi_loss_rates', ['f:3'])
+ZOMBI_LOSS_EXTS     = config.get('zombi_loss_exts', ['g:1'])
+ZOMBI_ORIGINS       = config.get('zombi_origin_rates', ['f:2'])
+ZOMBI_REARRS        = config.get('zombi_rearr_rates', ['f:2'])
+ZOMBI_REARR_EXTS    = config.get('zombi_rearr_exts', ['g:0.05'])
+
+rule all:
+    input:
+        expand('{}/dr{{dupl}}_de{{dupl_ext}}'.format(RESULT_DIR) +
+                '_gs{genome_size}_lr{loss}_le{loss_ext}_or{origin}_rr{rearr}' +
+                '_re{rearr_ext}_s{tree_scale}/PrecisionRecall.txt',
+                dupl = ZOMBI_DUPLS, dupl_ext = ZOMBI_DUPL_EXTS, genome_size =
+                ZOMBI_GENOME_SIZES, loss = ZOMBI_LOSSES, loss_ext =
+                ZOMBI_LOSS_EXTS, origin = ZOMBI_ORIGINS, rearr = ZOMBI_REARRS,
+                rearr_ext = ZOMBI_REARR_EXTS, tree_scale = TREE_SCALES)
+#simulate truth data
+
+rule rescale_tree:
+    input:
+        TREE
+    output:
+        TREE_DIR+"/s{scale}.nwk"
+    params:
+        scale = lambda wildcards: wildcards.scale
+    shell:
+        SCRIPT_DIR + "/rescale.py -s{params.scale} {input} > {output}"
+
+rule zombi_generate_tree_events:
+    input:
+        tree = f'{TREE_DIR}/s{{scale}}.nwk',
+        gp = f'{SIMULATION_DIR}/rep{{rep}}_{{experiment}}_s{{scale}}/GenomeParameters.tsv'
+    output:
+        events = f'{SIMULATION_DIR}/rep{{rep}}_{{experiment,[^/]+}}' +
+                '_s{scale,[0-9.]+}/T/Events.tsv',
+        tree = f'{SIMULATION_DIR}/rep{{rep}}_{{experiment,[^/]+}}' +
+                '_s{scale,[0-9.]+}/T/CompleteTree.nwk',
+    log:
+        f'{LOG_DIR}/zombi_tree_events_rep{{rep}}_{{experiment}}_s{{scale}}.log'
+    shell:
+        f'{ZOMBI_BIN} Ti {{input.tree}} ' +
+        '$(dirname {input.gp}) > {log}'
+
+
+rule zombi_generate_genome_params:
+    output:
+        f'{SIMULATION_DIR}/rep{{rep}}_dr{{dupl,[efglnu]:[0-9.]+}}' +
+        '_de{dupl_ext,[efglnu]:[0-9.]+}_gs{genome_size,\\d+}'
+        '_lr{loss,[efglnu]:[0-9.]+}_le{loss_ext,[efglnu]:[0-9.]+}'
+        '_or{origin,[efglnu]:[0-9.]+}_rr{rearr,[efglnu]:[0-9.]+}'
+        '_re{rearr_ext,[efglnu]:[0-9.]+}_s{scale,[0-9.]+}/GenomeParameters.tsv'
+    run:
+        zombi_config = """### PARAMETERS GENOME LEVEL ###
+DUPLICATION {dupl}
+DUPLICATION_EXTENSION {dupl_ext}
+EVENTS_PER_BRANCH 1
+GENE_LENGTH 0
+GENE_TREES 1
+INITIAL_GENOME_SIZE {genome_size}
+INVERSION {rearr}
+INVERSION_EXTENSION {rearr_ext}
+MIN_GENOME_SIZE 10
+LOSS {loss}
+LOSS_EXTENSION {loss_ext}
+ORIGINATION {origin}
+PROFILES 0
+RATE_FILE False
+RECONCILED_TREES 1
+SCALE_TREE 0
+SEED 0
+TRANSFER f:0
+TRANSPOSITION {rearr}
+TRANSPOSITION_EXTENSION {rearr_ext}
+VERBOSE 1""".format(**wildcards)
+        with open(output[0], 'w') as out:
+            out.write(zombi_config)
+
+
+rule zombi_simulate_genomes:
+    input:
+        gp = f'{SIMULATION_DIR}/{{experiment}}/GenomeParameters.tsv',
+        events = f'{SIMULATION_DIR}/{{experiment}}/T/Events.tsv',
+    output:
+        gp = f'{SIMULATION_DIR}/{{experiment,[^/]+}}/G/GenomeParameters.tsv',
+    log:
+         f'{LOG_DIR}/zombi_simulate_genomes_{{experiment,[^/]+}}.log',
+    shell:
+        f'{ZOMBI_BIN} G {{input.gp}} $(dirname {{input.gp}})' +
+        ' > {log}'
+
+rule display_events:
+    input:
+        events = f'{SIMULATION_DIR}/{{experiment}}/T/Events.tsv',
+        gp = f'{SIMULATION_DIR}/{{experiment}}/G/GenomeParameters.tsv',
+    output:
+        f'{SIMULATION_DIR}/{{experiment,[^/]+}}/EventCounts.txt',
+    shell:
+        f'{SCRIPT_DIR}/displayEventCounts.py {{input.events}} ' +
+        '$(dirname {input.gp})/Events_per_branch > {output}'
+
+rule nwk_to_tabular:
+    input:
+        tree = f'{SIMULATION_DIR}/{{experiment}}/T/CompleteTree.nwk',
+    output:
+        f'{SIMULATION_DIR}/{{experiment,[^/]+}}/SpTree.txt',
+    shell:
+        f'{SCRIPT_DIR}/nwk2tabular.py {{input}} > {{output}}'
+
+
+rule genomes_to_gene_order:
+    input:
+        f'{SIMULATION_DIR}/{{experiment}}/G/GenomeParameters.tsv',
+    output:
+        f'{SIMULATION_DIR}/{{experiment,[^/]+}}/GeneOrders.txt',
+    shell:
+        f'{SCRIPT_DIR}/genomes2geneorders.py ' +
+        '$(dirname {input})/Genomes/* > {output}'
+
+
+rule gene_order_to_true_adjacencies:
+    input:
+        f'{SIMULATION_DIR}/{{experiment}}/GeneOrders.txt',
+    output:
+        f'{SIMULATION_DIR}/{{experiment,[^/]+}}/AdjacenciesTrue.txt',
+    shell:
+        f'{SCRIPT_DIR}/data_utils.py {{input}} {{output}}'
+
+#fitch ancestral recon (marker ranges): TO DO update to use inputs formatted like here
+
+rule fitch:
+    input:
+        tree = TREE,
+        pangraph = f"{SIMULATION_DIR}/{{experiment}}/G"
+    output:
+        ranges = f"{SIMULATION_DIR}/{{experiment}}/{{experiment}}_range.tsv",
+    params:
+        mode = "zombi",
+        cluster = lambda wildcards: wildcards.experiment
+    conda:
+        "fitch"
+    script:
+        "/home/daria/Documents/projects/ABC/pangraph_workflow/fitch.py"
+
+#run solver
+
+rule construct_ilp:
+    input:
+        tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
+        candAdj = OUTPUT+"/full_adj/{sample}.txt",
+        mrange= f"{SIMULATION_DIR}/{{experiment}}/{{experiment}}_range.tsv"
+    output:
+        ilp = OUTPUT+"/ilp/{sample}.ilp",
+        idMap = OUTPUT+"/ilp/{sample}_ids.txt",
+        #start = OUTPUT+"/ilp/{sample}_init.sol",
+        pei = OUTPUT+'/ilp/{sample}_pei.txt'
+    resources:
+        mem_mb=lambda wildcards, attempt: 10000*attempt
+    log:
+        OUTPUT+"/ilp/{sample}.log",
+    shell:
+        "%s/spp_dcj.py -a 1 -m {output.idMap} {input.tree} -fmb {input.mrange} "%SCRIPT_DIR+
+        "{input.candAdj} --no_telomeres > {output.ilp} --write-phylogeny-edge-ids {output.pei} 2> {log}"
+
+rule run_ilp_tree:
+    input:
+        ilp = OUTPUT+"/ilp/{sample}.ilp",
+        tree=OUTPUT+"/ilp/{sample}_pei.txt"
+    output:
+        OUTPUT+"/sol/{sample}.sol",
+    params:
+        time_limit = ILP_TIMELIM
+    threads:
+        ILP_THREADS
+    resources:
+        mem_mb=lambda wildcards, attempt: 10000*attempt
+    log:
+        OUTPUT+"/sol/{sample}.log",
+    shell:
+        "%s %s/gurobi_tree.py {input.ilp} {output} {input.tree} --timelim {params.time_limit} -t {threads} --subsample-subtrees 10 > {log}"%(GUROBI_PYTHON,SCRIPT_DIR)
+
+
+rule sol2adjacencies:
+    input:
+        sol=OUTPUT+"/sol/{sample}.sol",
+        ids=OUTPUT+"/ilp/{sample}_ids.txt",
+        pei = OUTPUT+'/ilp/{sample}_pei.txt'
+    output:
+        adj=OUTPUT+'/res_adj/{sample}.txt',
+        eds=OUTPUT+'/res_adj/{sample}_edists.txt'
+    shell:
+        '%s/sol2adjacencies.py --edge-distances {output.eds} --phylogeny-edge-ids {input.pei} {input.sol} {input.ids} > {output.adj}'%SCRIPT_DIR
+
+rule add_all_adj:
+    input:
+        adj=f'{SIMULATION_DIR}/{{experiment,[^/]+}}/AdjacenciesTrue.txt',
+        tree=f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
+        mranges=f"{SIMULATION_DIR}/{{experiment}}/{{experiment}}_range.tsv"
+    output:
+        f'{RESULT_DIR}/{{experiment}}/AdjacenciesPredicted.txt'
+    log:
+        OUTPUT+"/full_adj/{sample}.log"
+    shell:
+        "%s/add_all_adjacencies_inner.py {input.tree} {input.adj} {input.mranges} > {output} 2> {log}"%SCRIPT_DIR
+
+rule evaluate_predicted_adjacencies:
+    input:
+        tree = f'{SIMULATION_DIR}/{{experiment}}/SpTree.txt',
+        trueAdj= f'{SIMULATION_DIR}/{{experiment}}/AdjacenciesTrue.txt',
+        predAdj= f'{RESULT_DIR}/{{experiment}}/AdjacenciesPredicted.txt',
+    output:
+        f'{RESULT_DIR}/{{experiment,[^/]+}}/PrecisionRecall.txt',
+    shell:
+        f'{SCRIPT_DIR}/spp_utils.py {{input.tree}} {{input.predAdj}} ' +
+        '{input.trueAdj} > {output}'
