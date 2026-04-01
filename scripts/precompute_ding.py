@@ -100,20 +100,14 @@ for l in leaves:
 
 best_bounds = {}
 timelim = int(args.total_timelimit/len(pairs))
+
+
 for a,b in pairs:
-    fam_max = dict()
-    fam_min = dict()
+    
     file_prefix = "{a}_{b}".format(a=a,b=b)
     genomes = du.lca_trace_cp_tree(tree,a,b)
-    for g in genomes:
-        for f in fam_bounds[g]:
-            if f not in fam_max:
-                fam_max[f]=fam_bounds[g][f][1]
-                fam_min[f]=fam_bounds[g][f][0]
-            fam_min[f]=min(fam_min[f],fam_bounds[g][f][0])
-            #use minimum here because we will have to sort via a genome with
-            #this number of markers
-            fam_max[f]=min(fam_max[f],fam_bounds[g][f][1])
+    fam_max, fam_min = du.get_matching_max_and_min(fam_bounds, genomes)
+            
     modelfilename = os.path.join(args.workdir,file_prefix+".mmodel")
     unimogfilename = os.path.join(args.workdir,file_prefix+'.unimog')
     #write dict to model file
