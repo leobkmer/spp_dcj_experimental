@@ -575,10 +575,11 @@ def domains(graphs, out):
     global_generals = set()
     out.write('bounds\n')
     print("0 <= f <= inf",file=out)
-    print("0 <= w <= inf",file=out)
+    print("-inf <= w <= inf",file=out)
     for te, ((child, parent), G) in enumerate(sorted(graphs.items())):
         for rv in COUNTERS:
             print("0 <= {rv}{sep}{e} <= inf".format(rv=rv,sep=du.SEP,e=te),file=out)
+        print("-inf <= w{sep}{e} <= inf".format(sep=du.SEP,e=te))
         print("-inf <= q{sep}{e} <= inf".format(sep=du.SEP,e=te))
         for v,data in G.nodes(data=True):
             if data['type']==du.VTYPE_CAP:
