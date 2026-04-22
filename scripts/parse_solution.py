@@ -67,6 +67,7 @@ def sanity_check_decomposition(relationalDiagram,var_val,tree_ids,fam_bounds,fam
             if abs(1-G.nodes[u]["g"])<=EPSILON:
                 assert(len(acands)==1)
                 if G.nodes[u]['type']!=du.VTYPE_CAP:
+                    print(u,G.nodes[u]['type'],G[u])
                     assert(len(ecands)==1)
             else:
                 assert(len(acands)==0)
