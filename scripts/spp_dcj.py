@@ -10,6 +10,7 @@ import logging
 import csv
 from math import exp
 import warm_start_parsing as wsp
+import sys
 
 # import from third-party packages
 
@@ -79,10 +80,11 @@ def lca_treeedges_cp_tree(cp_tree,a,b):
 # ILP CONSTRAINTS
 #
 
-def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_bound_mat={},afextarget=None):
+def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_bound_mat={},afextarget=None,affine_mode=False):
     out.write('subject to\n')
     print(" + ".join(["w{sep}{te}".format(sep=du.SEP,te=tree_edge) for tree_edge, _ in enumerate(sorted(graphs.items()))])+" - w = 0",file=out)
     print(" + ".join(["f{sep}{te}".format(sep=du.SEP,te=tree_edge) for tree_edge, _ in enumerate(sorted(graphs.items()))])+" - f = 0",file=out)
+    print("affmode",affine_mode,file=sys.stderr)
     affine_extension_costs = []
     for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
 
@@ -90,7 +92,7 @@ def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_
                 '{}').format(child, parent))
         genomes = [child,parent]
         global_constraints(G,families,fam_bounds,out)
-        loose_constraints(G,i,genomes,out)
+        loose_constraints(G,i,genomes,out,affine_mode=affine_mode)
         slm_constraints(G,i,siblings[(child,parent)],out)
         regular_reporting(G,i,genomes,out)
         pcap_reporting(G,i,genomes,out)
@@ -261,12 +263,13 @@ def c21(G,tree_edge,out):
         print("z{sep}{te}{sep}{v} - g{sep}{anc} <= 0".format(sep=du.SEP,te=tree_edge,v=v,anc=data['anc']),file=out)
 
 
-def loose_constraints(G,tree_edge,genomes,out):
+def loose_constraints(G,tree_edge,genomes,out,affine_mode=False):
     for c in [c03,c04,c05,c07,c13toc16,c19,c20,c21]:
         c(G,tree_edge,out)
     for c in [c06,c08,c09,c10,c11,c12,c17]:
         c(G,tree_edge,genomes,out)
-    c23_new(G,genomes,tree_edge,out)
+    if not affine_mode:
+        c23_new(G,genomes,tree_edge,out)
 
 def cslm25(sibs,tree_edge,out):
     for eid,did in sibs:
@@ -718,7 +721,7 @@ if __name__ == '__main__':
                     '<uniquifying identifier> in adjacencies file')
     parser.add_argument("--write-phylogeny-edge-ids")
     parser.add_argument("--affine-extension-target",type=int)
-    parser.add_argument("--affine-extension-cost",type=float,default=0.0)
+    parser.add_argument("--affine-extension-cost",type=float,default=0)
     ews= parser.add_argument_group("Warm start")
     ews.add_argument('-ws','--warm-start-sol',help='Write warm start to this file.')
     ews.add_argument('-ewa','--external-warm-adjacencies',help='Generate a warm start from provided adjacencies. Currently requires -ewm.')
@@ -764,7 +767,7 @@ if __name__ == '__main__':
             'the tree').format(len(speciesTree)))
     relationalDiagrams = du.constructRelationalDiagrams(speciesTree,
             adjacencies, telomeres, weights, genes, global_ext2id,fam_bounds=fam_bounds,
-            sep=args.separator)
+            sep=args.separator,affine_mode=args.affine_extension_cost > 0.0 or args.affine_extension_target is not None)
 
     graphs = relationalDiagrams['graphs']
     if args.write_phylogeny_edge_ids:
@@ -858,7 +861,7 @@ if __name__ == '__main__':
     objective(graphs, our_alpha, out,affine_scale=args.affine_extension_cost)
 
     LOG.info('writing constraints...')
-    constraints(graphs, families,fam_bounds,siblings,circ_singletons, out,lower_bound_mat=lbounds,afextarget=args.affine_extension_target)
+    constraints(graphs, families,fam_bounds,siblings,circ_singletons, out,lower_bound_mat=lbounds,afextarget=args.affine_extension_target,affine_mode=args.affine_extension_target is not None or args.affine_extension_cost > 0)
 
     LOG.info('writing domains...')
     domains(graphs, out)

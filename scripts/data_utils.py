@@ -793,7 +793,7 @@ def canonicizePath(path):
 
 
 def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
-        fam2genes2, extremityIdManager,fam_bounds):
+        fam2genes2, extremityIdManager,fam_bounds, affine_mode = False):
 
     genes1 = genes[gName1]
     genes2 = genes[gName2]
@@ -833,7 +833,7 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
         # create indel edges between genes of smaller? (leobkmer says: do you mean larger?) family
         for i, gName in enumerate((gName1, gName2)):
             oName = [oName for oName in (gName1,gName2) if oName!=gName].pop()
-            if fam_bounds[gName].get(fam,(0,0))[1] > fam_bounds[oName].get(fam,(0,0))[0]:
+            if affine_mode or fam_bounds[gName].get(fam,(0,0))[1] > fam_bounds[oName].get(fam,(0,0))[0]:
                 #print("Fam {} in genome {} overrepresented. Adding indel edges...".format(fam,gName),file=sys.stderr)
                 for gene in fam2genes[i][fam]:
                     idh = extremityIdManager.getId((gName, (gene, EXTR_HEAD)))
@@ -884,7 +884,7 @@ def getIncidentAdjacencyEdges(G, v):
 
 def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
         candidateWeights, genes, extremityIdManager,fam_bounds=dict(),
-        sep=DEFAULT_GENE_FAM_SEP,loc_manager_tables=dict()):
+        sep=DEFAULT_GENE_FAM_SEP,loc_manager_tables=dict(),affine_mode=False):
     ''' constructs for each edge of the tree a relational diagram of the
     adjacent genomes'''
 
@@ -909,7 +909,7 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
         #print("FAM2GENES:")
         #print(fam2genes1,fam2genes2)
         siblings   = _constructRDExtremityEdges(G, child, parent, genes,
-                fam2genes1, fam2genes2, localIdManager,fam_bounds)
+                fam2genes1, fam2genes2, localIdManager,fam_bounds,affine_mode=affine_mode)
         
         res['graphs'][(child, parent)] = G
         res['siblings'][(child, parent)] = siblings
