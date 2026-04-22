@@ -1,21 +1,46 @@
 from ete3 import Tree
-#import pypangraph as pp
 import pandas as pd
+import argparse
+from collections import Counter
+import os
 
-def read_block_intervals(pangraph_path, tree, min_len):
-    graph = pp.Pangraph.from_json(pangraph_path)
-    stats_df = graph.to_blockstats_df()
-    bl_count = graph.to_blockcount_df()
-    bl_count = bl_count.loc[bl_count.index.isin(stats_df[(stats_df["len"]>min_len) & (stats_df["core"]==False)].index)]
-    chr_to_plasmid = {chr.name:plasmid for chr in tree.iter_leaves() for plasmid in bl_count.columns if chr.name in plasmid}
-    all_trees = {block:tree.copy() for block in bl_count.index}
-    for block in all_trees.keys(): 
-        for leaf in all_trees[block].iter_leaves():
-            #states = {1 if bl_count.loc[block, chr_to_plasmid[leaf.name]]>0 else 0}
-            count = bl_count.loc[block, chr_to_plasmid[leaf.name]]
+def initialise_gene_trees(tree, marker_set, counts):
+    multi_count = lambda gene: True if sum([(counts[entry][gene]==1) for entry in counts.keys()]) != len(counts.keys()) else False
+    accessory = [gene for gene in list(marker_set) if multi_count(gene)]
+    all_trees = {gene:tree.copy() for gene in accessory}
+    for gene in all_trees.keys(): 
+        for leaf in all_trees[gene].iter_leaves():
+            count = counts[leaf.name][gene]
             states = (count, count)
             leaf.add_feature("states", states)
-    return list(stats_df[stats_df["core"]==True].index), all_trees
+    return [gene for gene in list(marker_set) if not gene in accessory], all_trees
+
+def read_unimog(unimog_path, tree):
+    genomes = {}
+    marker_set = set()
+    strip_orient = lambda x: x.replace("-", "").replace("+", "")
+    with open(unimog_path, "r") as unimog:
+        for line in unimog:
+            if line.startswith('>'):
+                entry = line[1:].strip()
+            else:
+                genome = line.strip(" |)\n").split(" ")   
+                if entry in genomes.keys():   
+                    genomes[entry].extend(list(map(strip_orient, genome)))
+                else:
+                    genomes[entry] = list(map(strip_orient, genome))
+                marker_set.update(genomes[entry]) 
+    counts = {entry:Counter(genomes[entry]) for entry in genomes.keys()}
+    return initialise_gene_trees(tree, marker_set, counts)
+
+def read_zombi(zombi_path, tree):
+    marker_set = set()
+    counts = {}
+    for leaf in tree.iter_leaves():
+        genome_df = pd.read_csv(f"{zombi_path}/Genomes/{leaf.name}_GENOME.tsv", sep="\t")
+        counts[leaf.name] = genome_df["GENE_FAMILY"].value_counts()
+        marker_set.update(counts.index)
+    return initialise_gene_trees(tree, marker_set, counts)
 
 def read_tree(filepath): #read in Newick tree with unlabelled internal nodes, and label the internal nodes
     t = Tree(filepath, format=1)
@@ -105,75 +130,40 @@ def intervals_to_tsv(t, recon_trees, core, tsv):
                 for block in core:
                     f.write(f"{node.name}\t{block}\t1\t1\n")
 
-def print_tree(node, level=0):
-    """Utility function to print the tree with assigned states."""
-    print("  " * level + f"{node.name}: {node.final_states}, {node.possible_states}")
-    for child in node.children:
-        print_tree(child, level + 1)
-
-def read_zombi(zombi_path, tree):
-    marker_set = {}
-    counts = {}
-    for leaf in tree.iter_leaves():
-        genome_df = pd.read_csv(f"{zombi_path}/Genomes/{leaf.name}_GENOME.tsv", sep="\t")
-        counts[leaf.name] = genome_df["GENE_FAMILY"].value_counts()
-        marker_set.add(set(counts.index))
-    multi_count = lambda gene: True if sum([(counts[leaf.name][gene]!=1) for leaf in tree.iter_leaves()]) != len(tree.iter_leave()) else False
-    accessory = [gene for gene in list(marker_set) if multi_count(gene)]
-    all_trees = {gene:tree.copy() for gene in accessory}
-    for gene in all_trees.keys(): 
-        for leaf in all_trees[gene].iter_leaves():
-            count = counts[leaf.name][gene]
-            states = (count, count)
-            leaf.add_feature("states", states)
-    return [gene for gene in list(marker_set) if not gene in accessory], all_trees
-
 def output_scores(scores, tsv):
     with open(tsv, "w") as f:
         f.write("block\tscore\n")
         for block in scores.keys():
             f.write(f"{block}\t{scores[block][0]}\n")
 
-newick = "(((A:1,B:1):1,(D:1,C:1):1):1,(E:1,F:1):1)Root;" 
-tree = Tree(newick, format=1)
+def print_tree(node, level=0):
+    """Utility function to print the tree with assigned states."""
+    print("  " * level + f"{node.name}: {node.final_states}, {node.possible_states}")
+    for child in node.children:
+        print_tree(child, level + 1)
 
-node = tree&"A"
-node.add_feature("states", (0,0))
-node = tree&"B"
-node.add_feature("states", (2,2))
-node = tree&"C"
-node.add_feature("states", (4,4))
-node = tree&"D"
-node.add_feature("states", (7,7))
-node = tree&"E"
-node.add_feature("states", (6,6))
-node = tree&"F"
-node.add_feature("states", (8,8))
+parser = argparse.ArgumentParser()
+parser.add_argument('genomes', help="path to unimog file of genomes or zombi output directory")
+parser.add_argument('tree', help="tree in newick format")
+parser.add_argument('--input_format', choices=['zombi', 'unimog'], default='unimog')
+parser.add_argument('--output_dir', help="directory to write output to", default=os.getcwd())
 
+args = parser.parse_args()
 
-score = reconstruction(tree)
+tree = Tree(args.tree, format=1)
 
-print(score)
-print_tree(tree)
+if args.input_format=="unimog":
+    core, all_trees = read_unimog(args.genomes,tree)
+else:
+    core, all_trees = read_zombi(args.genomes,tree)
 
 scores = {}
-filepath = "blub" #path to tree
-tree = Tree(filepath, format=1)
-zombi = "zombi" #path to zombi output
-
-
-core, all_trees = read_zombi(zombi, tree)
-
-
-
 for block in all_trees.keys():
-    k = reconstruction(all_trees[block])
-    scores[block] = k
+    scores[block] = reconstruction(all_trees[block])
+    #print_tree(all_trees[block])
+    #print(scores[block])
 
-intervals_to_tsv(tree, all_trees,core,"range.tsv")
-output_scores(scores, "scores.tsv")
-
-new_root = Tree()
-new_root.name = "Root"
-new_root.add_child(tree)
-tree.write(format=8, outfile="relabelled_trees.nw")
+output_dir = args.output_dir
+os.makedirs(output_dir, exist_ok=True)
+intervals_to_tsv(tree, all_trees,core,f"{output_dir}/ranges.tsv")
+output_scores(scores, f"{output_dir}/scores.tsv")
