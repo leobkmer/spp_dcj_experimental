@@ -30,12 +30,12 @@ LOG.setLevel(logging.DEBUG)
 # ILP OBJECTIVE
 #
 
-def objective(graphs, alpha, out):
+def objective(graphs, alpha, out, affine_scale=0.0):
     out.write('minimize ')
     #terms = ["{ialph} w{sep}{te} + {alph} f{sep}{te}".format(
     #    alph=alpha,ialph=alpha-1,sep=du.SEP,te=tree_edge)
     #    for tree_edge, _ in enumerate(sorted(graphs.items()))]
-    print("{ialph} w + {alph} f".format(alph=alpha,ialph=alpha-1),file=out)
+    print("{ialph} w + {alph} f + {aes} ae".format(alph=alpha,ialph=alpha-1,aes=alpha*affine_scale),file=out)
         
 
 
@@ -79,10 +79,11 @@ def lca_treeedges_cp_tree(cp_tree,a,b):
 # ILP CONSTRAINTS
 #
 
-def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_bound_mat={}):
+def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_bound_mat={},afextarget=None):
     out.write('subject to\n')
     print(" + ".join(["w{sep}{te}".format(sep=du.SEP,te=tree_edge) for tree_edge, _ in enumerate(sorted(graphs.items()))])+" - w = 0",file=out)
     print(" + ".join(["f{sep}{te}".format(sep=du.SEP,te=tree_edge) for tree_edge, _ in enumerate(sorted(graphs.items()))])+" - f = 0",file=out)
+    affine_extension_costs = []
     for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
 
         LOG.info(('writing constraints for relational diagram of {} and ' + \
@@ -99,6 +100,9 @@ def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_
         else:
             c18(G,i,out)
             cs_constraints(G,i,out,max_circ_len=len(G.nodes())/2)
+        c_affine_cost(G,i,out)
+        affine_extension_costs.append("aext{sep}{te}",format(sep=du.SEP,te=i))
+    print("{sum} - ae = 0".format(sum=" + ".join(affine_extension_costs)))
     LOG.info("Writing lower bound constraints.")
     cp_tree=child_parent_tree(graphs)
     for a in lower_bound_mat:
@@ -110,7 +114,8 @@ def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_
             fvars = ['f{sep}{te}'.format(sep=du.SEP,te=te) for te in tree_edges]
             fsum = ' + '.join(fvars)
             print("{fsum} >= {lb}".format(fsum=fsum,lb=lb))
-
+    if  afextarget is not None:
+        c_alpha_target(afextarget,out)
 
     out.write('\n')
 
@@ -548,6 +553,21 @@ def cs_constraints(G,tree_edge,out,max_circ_len):
     csc23(G,tree_edge,out)
     csc24(G,tree_edge,out,max_circ_len)
 
+def c_affine_cost(G,tree_edge,out):
+    id_edges = []
+    for u_,v_,data in G.edges(data=True):
+        if data['type']!=du.ETYPE_ID:
+            continue
+        id_edges.append("x{sep}{te}{sep}{e}".format(sep=du.SEP, te=tree_edge,e=data["id"]))
+    if len(id_edges)==0:
+        print("aext{sep}{te} = 0".format(sep=du.SEP,te=tree_edge),file=out)
+    else:
+        print("{sum} - aext{sep}{te} = 0".format(sum=" + ".join(id_edges),sep=du.SEP,te=tree_edge),file=out)
+
+
+
+def c_alpha_target(target,out):
+    print("ae = {target}".format(target=target),file=out)
 
 
 def manual_cs_constraints(circ_singletons,te,out):
@@ -602,6 +622,8 @@ def variables(graphs,circ_sings, out):
     global_generals = set()
     out.write('generals\n')
     print("f",file=out)
+    #global affine extension cost
+    print("ae",file=out)
     for te, ((child, parent), G) in enumerate(sorted(graphs.items())):
         LOG.info(('writing general variables for relational diagram of {} ' + \
                 'and {}').format(child, parent))
@@ -614,7 +636,8 @@ def variables(graphs,circ_sings, out):
                 continue
             if (child, parent) not in circ_sings:
                 print("w{sep}{te}{sep}{v}".format(sep=du.SEP,te=te,v=v),file=out)
-            
+        ## Affine cost EXTENSION variable
+        global_generals.add("aext{sep}{te}".format(sep=du.SEP,te=te))
 
     for gg in global_generals:
         print(gg,file=out)
@@ -694,6 +717,8 @@ if __name__ == '__main__':
             help='Separator of in gene names to split <family ID> and ' +
                     '<uniquifying identifier> in adjacencies file')
     parser.add_argument("--write-phylogeny-edge-ids")
+    parser.add_argument("--affine-extension-target",type=int)
+    parser.add_argument("--afine-extension-cost",type=float,default=0.0)
     ews= parser.add_argument_group("Warm start")
     ews.add_argument('-ws','--warm-start-sol',help='Write warm start to this file.')
     ews.add_argument('-ewa','--external-warm-adjacencies',help='Generate a warm start from provided adjacencies. Currently requires -ewm.')
@@ -830,10 +855,10 @@ if __name__ == '__main__':
 
 
     LOG.info('writing objective over all graphs')
-    objective(graphs, our_alpha, out)
+    objective(graphs, our_alpha, out,affine_scale=args.affine_extension_cost)
 
     LOG.info('writing constraints...')
-    constraints(graphs, families,fam_bounds,siblings,circ_singletons, out,lower_bound_mat=lbounds)
+    constraints(graphs, families,fam_bounds,siblings,circ_singletons, out,lower_bound_mat=lbounds,afextarget=args.affine_extension_target)
 
     LOG.info('writing domains...')
     domains(graphs, out)
