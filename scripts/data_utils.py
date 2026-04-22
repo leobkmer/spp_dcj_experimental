@@ -2190,7 +2190,6 @@ def lca_trace_cp_tree(tree,a,b):
     while curr in tree:
         curr = tree[curr]
         a_trace_.append(curr)
-    
     b_trace = [b]
     curr = b
     a_seen = set(a_trace_)
@@ -2198,8 +2197,9 @@ def lca_trace_cp_tree(tree,a,b):
         curr=tree[curr]
         b_trace.append(curr)
     a_trace = a_trace_[:a_trace_.index(curr)]
+    b_trace.reverse()
     #print(a_trace,b_trace,curr)
-    return b_trace+a_trace
+    return a_trace+b_trace
 
 def read_tree_edge_name_map(peif):
     try:
@@ -2386,3 +2386,26 @@ def matched_adjacencies_to_unimog(adjs):
             chromosomes.append((chrtype,chromosome))
         genomes.append((taxon,chromosomes))
     return genomes
+
+
+def get_matching_max_and_min(fam_bounds, tree_path):
+    prev_max = dict()
+    fam_max = dict()
+    fam_min = dict()
+    families = set([f for g in tree_path for f in fam_bounds[g]])
+    for f in families:
+        fam_max[f]=fam_bounds[tree_path[0]][f][1]
+        fam_min[f]=fam_bounds[tree_path[0]][f][0]
+        prev_max = fam_bounds[tree_path[0]][f][1]
+        for g in tree_path:
+            curr_min = fam_bounds[g][f][0]
+            curr_max = fam_bounds[g][f][1]
+            if prev_max <= curr_min:
+                fam_min[f]=min(fam_min[f],curr_min)
+            else:
+                fam_min[f]=max(0,curr_min+fam_min[f]-prev_max)
+            #use minimum here because we will have to sort via a genome with
+            #this number of markers
+            fam_max[f]=min(fam_max[f],fam_bounds[g][f][1])
+            prev_max=curr_max
+    return fam_max,fam_min
