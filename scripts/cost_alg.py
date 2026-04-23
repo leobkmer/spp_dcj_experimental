@@ -62,10 +62,10 @@ def recon_bottom_up(node, cost):
         node.add_feature("possible_states", dict())
 
         if left_states[0]<=right_states[0]:
-            node.possible_states = (min(left_states[1], right_states[0]), max(left_states[1], right_states[0]))
+            node.possible_states = (min(min(right_states[1], left_states[1]), right_states[0]), max(min(right_states[1], left_states[1]), right_states[0]))
             cost[0] += max(0,right_states[0]-left_states[1])
         else:
-            node.possible_states = (min(left_states[0], right_states[1]), max(left_states[0], right_states[1]))
+            node.possible_states = (min(left_states[0], min(right_states[1], left_states[1])), max(left_states[0], min(right_states[1], left_states[1])))
             cost[0] += max(0,left_states[0]-right_states[1])
 
     return node.possible_states
@@ -88,17 +88,10 @@ def recon_top_down(node, parent=None):
             right_states = node.children[1].possible_states
             
             # Step IV: add parental states shared with at least one child
-            if parent.final_states[1]<=node.possible_states[0]: #to the left
-                if left_states[0]<=right_states[0]: 
-                    final_set = (max(left_states[0], parent.final_states[0]), node.possible_states[1])
-                else:
-                    final_set = (max(right_states[0], parent.final_states[0]), node.possible_states[1])
+            if left_states[0]<=right_states[0]: #determine which child is to the left or right of node interval
+                final_set = (min(max(left_states[0], parent.final_states[0]), node.possible_states[0]), max(min(right_states[1], parent.final_states[1]),node.possible_states[0]))
             else:
-                if left_states[0]<=right_states[0]:
-                    final_set = (node.possible_states[0], min(right_states[1], parent.final_states[1]))
-                else:
-                    final_set = (node.possible_states[0], min(left_states[1], parent.final_states[1]))
-
+                final_set = (min(max(right_states[0], parent.final_states[0]), node.possible_states[0]), max(min(left_states[1], parent.final_states[1]),node.possible_states[1]))
             node.final_states = final_set
 
     # Recursively process child nodes
