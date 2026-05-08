@@ -793,7 +793,7 @@ def canonicizePath(path):
 
 
 def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
-        fam2genes2, extremityIdManager,fam_bounds, affine_mode = False):
+        fam2genes2, extremityIdManager,fam_bounds, affine_mode = False,fixable_families=set()):
 
     genes1 = genes[gName1]
     genes2 = genes[gName2]
@@ -810,9 +810,14 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
     #
     siblings = list()
     for fam in fams:
+        if not fam in fixable_families:
+            all_pairs = product(fam2genes1.get(fam, ()), fam2genes2.get(fam, ()))
+        else:
+            #No need to build the entire product, only match first to first etc
+            all_pairs = zip(fam2genes1.get(fam, ()), fam2genes2.get(fam, ()))
+
         # create extremity edges
-        for gene1, gene2 in product(fam2genes1.get(fam, ()), \
-                fam2genes2.get(fam, ())):
+        for gene1, gene2 in all_pairs:
             id1h = extremityIdManager.getId((gName1, (gene1, EXTR_HEAD)))
             id1t = extremityIdManager.getId((gName1, (gene1, EXTR_TAIL)))
             id2h = extremityIdManager.getId((gName2, (gene2, EXTR_HEAD)))
@@ -835,7 +840,7 @@ def _constructRDExtremityEdges(G, gName1, gName2, genes, fam2genes1,
             oName = [oName for oName in (gName1,gName2) if oName!=gName].pop()
             if affine_mode or fam_bounds[gName].get(fam,(0,0))[1] > fam_bounds[oName].get(fam,(0,0))[0]:
                 #print("Fam {} in genome {} overrepresented. Adding indel edges...".format(fam,gName),file=sys.stderr)
-                for gene in fam2genes[i][fam]:
+                for gene in fam2genes[i].get(fam,[]):
                     idh = extremityIdManager.getId((gName, (gene, EXTR_HEAD)))
                     idt = extremityIdManager.getId((gName, (gene, EXTR_TAIL)))
 
@@ -882,9 +887,88 @@ def getIncidentAdjacencyEdges(G, v):
     return res
 
 
+def adjacencies_per_extremity(adjacencies):
+    per_extremity = dict()
+    for genome,adj in adjacencies.items():
+        per_extremity[genome]=dict()
+        for a,b in adj:
+            if not a in per_extremity[genome]:
+                per_extremity[genome][a]=set()
+            if not b in per_extremity[genome]:
+                per_extremity[genome][b]=set()
+            per_extremity[genome][a].add(b)
+            per_extremity[genome][b].add(a)
+    return per_extremity
+
+def identify_families_with_same_environment_and_multiple_occs(genes,adjacencies):
+    familymap = getFamiliesFromGenes(genes,list(genes.keys()))
+    adj_per_ext=adjacencies_per_extremity(adjacencies)
+    #clean up, i.e. remove telomeres and translate own family
+    for gnm, xts in adj_per_ext.items():
+        for (a,x) in list(xts.keys()):
+            fam_a = getFamily(a)
+            xts[(a,x)]=set([(b if getFamily(b)!=fam_a else getFamily(b),y) for (b,y) in xts[(a,x)] if y!=EXTR_CAP])
+
+    same_env_families = dict()
+    for gnm, fammap in familymap.items():
+        same_env_families[gnm]=set()
+        for famname, occurrences in fammap.items():
+            if len(occurrences)<=1:
+                #always have the same environment
+                continue
+            occ1=occurrences[0]
+            heads = adj_per_ext[gnm][(occ1,EXTR_HEAD)]
+            tails = adj_per_ext[gnm][(occ1,EXTR_TAIL)]
+            is_same=True
+            for occ in occurrences:
+                if not heads==adj_per_ext[gnm][(occ,EXTR_HEAD)]:
+                    is_same=False
+                    break
+                if not tails==adj_per_ext[gnm][(occ,EXTR_TAIL)]:
+                    is_same=False
+            if is_same:
+                same_env_families[gnm].add(famname)
+    return same_env_families
+
+
+def get_tree_neighbors(tree):
+    neighbors = dict()
+    for parent,child in tree:
+        if not child in neighbors:
+            neighbors[child]=set()
+        if not parent in neighbors:
+            neighbors[parent]=set()
+        neighbors[child].add(parent)
+        neighbors[parent].add(child)
+    return neighbors
+
+def identify_fixable_pairing(tree,genes,adjacencies):
+    familymap = getFamiliesFromGenes(genes,list(genes.keys()))
+    sameenv = identify_families_with_same_environment_and_multiple_occs(genes,adjacencies)
+    neighbors = get_tree_neighbors(tree)
+    fixable = set()
+    for genome, families in sameenv.items():
+        for fam in families:
+            mycount = len(familymap[genome][fam])
+            neighbors_with_counts = [(neighbor,len(familymap[neighbor].get(fam,[]))) for neighbor in neighbors[genome]]
+            neighbor_candidates=[(neighbor,count) for neighbor,count in neighbors_with_counts if count!=0 and count <= mycount and (fam,neighbor,genome) not in fixable]
+            if len(neighbor_candidates) > 0:
+                orient_neighbor,count = max(neighbor_candidates,key=lambda nbwcount: nbwcount[1])
+                fixable.add((fam,genome,orient_neighbor))
+    ret = dict()
+    for fam,gnma,gnmb in fixable:
+        if not (gnma,gnmb) in ret:
+            ret[(gnma,gnmb)]=set()
+            ret[(gnmb,gnma)]=set()
+        ret[(gnma,gnmb)].add(fam)
+        ret[(gnmb,gnma)].add(fam)
+    return ret
+
+
 def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
         candidateWeights, genes, extremityIdManager,fam_bounds=dict(),
-        sep=DEFAULT_GENE_FAM_SEP,loc_manager_tables=dict(),affine_mode=False):
+        sep=DEFAULT_GENE_FAM_SEP,loc_manager_tables=dict(),affine_mode=False,
+        fixable_families=dict()):
     ''' constructs for each edge of the tree a relational diagram of the
     adjacent genomes'''
 
@@ -909,7 +993,7 @@ def constructRelationalDiagrams(tree, candidateAdjacencies, candidateTelomeres,
         #print("FAM2GENES:")
         #print(fam2genes1,fam2genes2)
         siblings   = _constructRDExtremityEdges(G, child, parent, genes,
-                fam2genes1, fam2genes2, localIdManager,fam_bounds,affine_mode=affine_mode)
+                fam2genes1, fam2genes2, localIdManager,fam_bounds,affine_mode=affine_mode,fixable_families=fixable_families.get((child,parent),set()))
         
         res['graphs'][(child, parent)] = G
         res['siblings'][(child, parent)] = siblings

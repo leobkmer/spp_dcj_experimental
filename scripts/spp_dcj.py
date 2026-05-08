@@ -80,12 +80,12 @@ def lca_treeedges_cp_tree(cp_tree,a,b):
 # ILP CONSTRAINTS
 #
 
-def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_bound_mat={},afextarget=None,affine_mode=False):
+def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_bound_mat={},afextarget=dict(),affine_mode=False):
     out.write('subject to\n')
     print(" + ".join(["w{sep}{te}".format(sep=du.SEP,te=tree_edge) for tree_edge, _ in enumerate(sorted(graphs.items()))])+" - w = 0",file=out)
     print(" + ".join(["f{sep}{te}".format(sep=du.SEP,te=tree_edge) for tree_edge, _ in enumerate(sorted(graphs.items()))])+" - f = 0",file=out)
     print("affmode",affine_mode,file=sys.stderr)
-    affine_extension_costs = []
+    all_fam_vars = dict()
     for i, ((child, parent), G) in enumerate(sorted(graphs.items())):
 
         LOG.info(('writing constraints for relational diagram of {} and ' + \
@@ -102,9 +102,20 @@ def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_
         else:
             c18(G,i,out)
             cs_constraints(G,i,out,max_circ_len=len(G.nodes())/2)
-        c_affine_cost(G,i,out)
-        affine_extension_costs.append("aext{sep}{te}".format(sep=du.SEP,te=i))
-    print("{sum} - ae = 0".format(sum=" + ".join(affine_extension_costs)))
+        famvars = c_affine_cost(G,i,out)
+        for fam,var in famvars.items():
+            if not fam in all_fam_vars:
+                all_fam_vars[fam]=[]
+            all_fam_vars[fam].append(var)
+    fam_sum_vars = []
+    for fam, vars in all_fam_vars.items():
+        fsumvar = "ae{sep}{fam}".format(sep=du.SEP,fam=fam)
+        print("{sum} - {fsumvar} = 0".format(sum=" + ".join(vars),fsumvar=fsumvar),file=out)
+        fam_sum_vars.append(fsumvar)
+        if fam in afextarget:
+            target = afextarget[fam]
+            print("{fsumvar} - {target} = 0".format(fsumvar=fsumvar,target=target))
+    print("{sum} - ae = 0".format(sum=" + ".join(fam_sum_vars)))
     LOG.info("Writing lower bound constraints.")
     cp_tree=child_parent_tree(graphs)
     for a in lower_bound_mat:
@@ -116,8 +127,6 @@ def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_
             fvars = ['f{sep}{te}'.format(sep=du.SEP,te=te) for te in tree_edges]
             fsum = ' + '.join(fvars)
             print("{fsum} >= {lb}".format(fsum=fsum,lb=lb))
-    if  afextarget is not None:
-        c_alpha_target(afextarget,out)
 
     out.write('\n')
 
@@ -557,20 +566,28 @@ def cs_constraints(G,tree_edge,out,max_circ_len):
     csc24(G,tree_edge,out,max_circ_len)
 
 def c_affine_cost(G,tree_edge,out):
-    id_edges = []
+    id_edges_per_fam = dict()
+    famvars = dict()
     for u_,v_,data in G.edges(data=True):
         if data['type']!=du.ETYPE_ID:
             continue
-        id_edges.append("x{sep}{te}{sep}{e}".format(sep=du.SEP, te=tree_edge,e=data["id"]))
-    if len(id_edges)==0:
-        print("aext{sep}{te} = 0".format(sep=du.SEP,te=tree_edge),file=out)
-    else:
-        print("{sum} - aext{sep}{te} = 0".format(sum=" + ".join(id_edges),sep=du.SEP,te=tree_edge),file=out)
+        fam=du.getFamily(G.nodes[u_]["id"][1])
+        assert(fam==du.getFamily(G.nodes[v_]["id"][1]))
+        if not fam in id_edges_per_fam:
+            id_edges_per_fam[fam]=[]
+        id_edges_per_fam[fam].append("x{sep}{te}{sep}{e}".format(sep=du.SEP, te=tree_edge,e=data["id"]))
+    for fam, id_edges in id_edges_per_fam.items():
+        famvar = "aext{sep}{te}{sep}{fam}".format(sep=du.SEP,te=tree_edge,fam=fam)
+        print("{sum} - {famvar} = 0".format(sum=" + ".join(id_edges),sep=du.SEP,famvar=famvar),file=out)
+        assert(fam not in famvars)
+        famvars[fam]=famvar
+    return famvars
+
+
+    
 
 
 
-def c_alpha_target(target,out):
-    print("ae = {target}".format(target=target),file=out)
 
 
 def manual_cs_constraints(circ_singletons,te,out):
@@ -640,7 +657,7 @@ def variables(graphs,circ_sings, out):
             if (child, parent) not in circ_sings:
                 print("w{sep}{te}{sep}{v}".format(sep=du.SEP,te=te,v=v),file=out)
         ## Affine cost EXTENSION variable
-        global_generals.add("aext{sep}{te}".format(sep=du.SEP,te=te))
+        #global_generals.add("aext{sep}{te}".format(sep=du.SEP,te=te))
 
     for gg in global_generals:
         print(gg,file=out)
@@ -720,7 +737,7 @@ if __name__ == '__main__':
             help='Separator of in gene names to split <family ID> and ' +
                     '<uniquifying identifier> in adjacencies file')
     parser.add_argument("--write-phylogeny-edge-ids")
-    parser.add_argument("--affine-extension-target",type=int)
+    parser.add_argument("--affine-extension-target")
     parser.add_argument("--affine-extension-cost",type=float,default=0)
     ews= parser.add_argument_group("Warm start")
     ews.add_argument('-ws','--warm-start-sol',help='Write warm start to this file.')
@@ -728,7 +745,7 @@ if __name__ == '__main__':
     ews.add_argument('-ewm','--external-warm-matching',help='Generate a warm start from provided matching. Currently requires -ewa.')
     parser.add_argument('-plb','--pairwise-lower-bnds')
     parser.add_argument('--family-bounds','-fmb',type=open)
-    
+    parser.add_argument("--fix-extremity-edges",action="store_true")
     args = parser.parse_args()
 
     # setup logging
@@ -755,6 +772,10 @@ if __name__ == '__main__':
     # construct adjacency graphs
     genes = candidateAdjacencies['genes']
     adjacencies = candidateAdjacencies['adjacencies']
+    if args.fix_extremity_edges:
+        fix_dict= du.identify_fixable_pairing(speciesTree,genes,adjacencies)
+    else:
+        fix_dict=dict()
     weights = candidateAdjacencies['weights']
     fam_bounds = dict()
     if args.family_bounds:
@@ -767,13 +788,21 @@ if __name__ == '__main__':
             'the tree').format(len(speciesTree)))
     relationalDiagrams = du.constructRelationalDiagrams(speciesTree,
             adjacencies, telomeres, weights, genes, global_ext2id,fam_bounds=fam_bounds,
-            sep=args.separator,affine_mode=args.affine_extension_cost > 0.0 or args.affine_extension_target is not None)
+            sep=args.separator,affine_mode=args.affine_extension_cost > 0.0,fixable_families=fix_dict)
 
     graphs = relationalDiagrams['graphs']
     if args.write_phylogeny_edge_ids:
         with open(args.write_phylogeny_edge_ids,"w") as peil:
             for tree_edge,((a,b),_) in enumerate(sorted(graphs.items())):
                 print(a,b,tree_edge,file=peil)
+    afextargets = dict()
+    if args.affine_extension_target:
+        with open(args.affine_extension_target) as af:
+            for line in af:
+                block, score = line.strip().split()
+                if (block,score)==("block","score"):
+                    continue
+                afextargets[block]=int(score)
 #    for gNames, G in graphs.items():
 #            genes_edg = list()
 #            for gName in gNames:
@@ -833,7 +862,7 @@ if __name__ == '__main__':
             except du.TooManyCSException:
                 pass
         
-
+    
     #caps = getAllCaps(graphs)
     # construct & output ILP
     out = stdout
@@ -861,7 +890,8 @@ if __name__ == '__main__':
     objective(graphs, our_alpha, out,affine_scale=args.affine_extension_cost)
 
     LOG.info('writing constraints...')
-    constraints(graphs, families,fam_bounds,siblings,circ_singletons, out,lower_bound_mat=lbounds,afextarget=args.affine_extension_target,affine_mode=args.affine_extension_target is not None or args.affine_extension_cost > 0)
+    
+    constraints(graphs, families,fam_bounds,siblings,circ_singletons, out,lower_bound_mat=lbounds,afextarget=afextargets,affine_mode=args.affine_extension_target is not None or args.affine_extension_cost > 0)
 
     LOG.info('writing domains...')
     domains(graphs, out)
