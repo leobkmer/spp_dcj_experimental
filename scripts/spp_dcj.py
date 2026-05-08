@@ -114,7 +114,7 @@ def constraints(graphs,families,fam_bounds, siblings,circ_singletons, out,lower_
         fam_sum_vars.append(fsumvar)
         if fam in afextarget:
             target = afextarget[fam]
-            print("{fsumvar} - {target} = 0".format(fsumvar=fsumvar,target=target))
+            print("{fsumvar} = {target}".format(fsumvar=fsumvar,target=target))
     print("{sum} - ae = 0".format(sum=" + ".join(fam_sum_vars)))
     LOG.info("Writing lower bound constraints.")
     cp_tree=child_parent_tree(graphs)
