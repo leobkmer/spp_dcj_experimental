@@ -18,7 +18,7 @@ TIME_LIMIT=3600
 
 rule all_benchmark:
     input:
-        expand('bench/gur/trim_{trimlevel}_z_{params}.ilp',trimlevel=["full","trim"])
+        expand('bench/gur/trim_{trimlevel}_z_treescale{scl}_sample{s}.txt',trimlevel=["full","trim"],scl=TREE_SCALES,s=range(1,N_SAMPLES+1))
 
 
 rule gurobi:
@@ -28,8 +28,10 @@ rule gurobi:
         'sol/{params}.sol'
     benchmark:
         'bench/gur/{params}.txt'
+    log:
+        'sol/{params}.log'
     shell:
-        'gurobi_cl ResultFile={output} TimeLimit=%d {input}'%TIME_LIMIT
+        'gurobi_cl ResultFile={output} TimeLimit=%d Threads=1 {input} 2>&1 > {log}'%TIME_LIMIT
 
 rule ilp:
     input:
@@ -49,7 +51,7 @@ rule ilp:
 rule adjacencies:
     input:
         ranges='ranges/z_{params}/ranges.tsv',
-        unimog='pangenome/z_{params}/unimog.txt'
+        unimog='pangenome/z_{params}/unimog.txt',
         tree='top/z_{params}/untrimmed.txt'
     output:
         tree='adj_{trimlevel}/z_{params}/tree.txt',
@@ -123,6 +125,6 @@ rule zombi_to_pangenome:
     output:
         'pangenome/z_{params}/unimog.txt'
     shell:
-        'python3 ../../scripts/zombi2unimog.py {input.tree} zombi/z_{wildcards.params}/G/Genomes/ > {output}'
+        'python3 ./zombi2unimog.py {input.tree} zombi/z_{wildcards.params}/G/Genomes/ > {output}'
 
 
