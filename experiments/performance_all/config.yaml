@@ -1,0 +1,3 @@
+zombi_home : '/prj/gsp/urm/spp_dcj_v2/tools/ZOMBI_01042020/'
+n_samples : 10
+tree_scales : [0.02,0.04,0.06,0.08,0.1,0.12,0.14,0.16,0.18,0.20]
