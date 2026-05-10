@@ -359,6 +359,9 @@ with open(args.tree) as trf:
 
 
 tree = du.cp_tree(speciesTree)
+root,cptr = du.cp_to_pc(tree)
+rootchild = cptr[root][0]
+
 leaves=set([x for x, v in du.getLeaves(speciesTree).items() if v])
 
 
@@ -368,15 +371,20 @@ if not args.no_tree_trimming:
     print("Able to filter {} nodes from the tree.".format(len(fltn)),file=sys.stderr)
 
     for f in fltn:
+        if f==rootchild:
+            continue
         del tree[f]
         del fam_bounds[f]
-
+    
+    if len(tree)>1 and rootchild in fltn:
+        del tree[rootchild]
+        del fam_bounds[rootchild]
     leaves=set([x for x, v in du.getLeaves(list(tree.items())).items() if v])
 
     print("New leaves",leaves,file=sys.stderr)
     adjacencies = dict()
     for gname, listofadjsets in lins.items():
-        if gname in fltn:
+        if gname not in tree:
             continue
         if listofadjsets==UNIVERSE:
             continue

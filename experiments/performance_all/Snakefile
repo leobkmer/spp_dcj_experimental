@@ -24,8 +24,8 @@ rule all_benchmark:
 rule gurobi:
     input:
         'ilp/{params}.ilp'
-    output:
-        'sol/{params}.sol'
+    #output:
+    #    'sol/{params}.sol'
     benchmark:
         'bench/gur/{params}.txt'
     log:
@@ -45,7 +45,7 @@ rule ilp:
         add_params=""
         if not wildcards.trimlevel=="full":
             add_params+=" --fix-extremity-edges"
-        'python3 ../../scripts/spp_dcj.py {input.tree} {input.adj} -l -a 1 -fmb {input.ranges} --affine-extension-target {input.scores} --set-circ-sing-handling barbershop '+add_params + ' > {output}'
+        shell('python3 ../../scripts/spp_dcj.py {input.tree} {input.adj} -l -a 1 -fmb {input.ranges} --affine-extension-target {input.scores} --set-circ-sing-handling barbershop '+add_params + ' > {output}')
 
 
 rule adjacencies:
