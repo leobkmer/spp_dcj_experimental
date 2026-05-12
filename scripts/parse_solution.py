@@ -18,18 +18,26 @@ def read_solfile(solfile):
                 
                 
 def annotate_diagram(relationalDiagram,var_val,tree_ids):
+    fixed_families = set()
     for te,G in relationalDiagram["graphs"].items():
         tei = tree_ids[te]
         for u,v,k,data in G.edges(keys=True,data=True):
             xvar = "x{sep}{tei}{sep}{eid}".format(sep=du.SEP,tei=tei,eid=data['id'])
             if xvar not in var_val:
-                print(G.nodes[u]['type'],G.nodes[v]['type'])
-                assert(G.nodes[u]['type']==du.VTYPE_CAP or G.nodes[v]['type']==du.VTYPE_CAP)
-                assert(data['type']==du.ETYPE_ADJ)
-                print("Warning: Telomere edge {} does not appear in solution. Defaulting to 0.".format(xvar),file=sys.stderr)
-                G[u][v][k]["x"]=0
-                if data['type']==du.ETYPE_ADJ:
-                    G[u][v][k]["a"]=0
+                if data["type"]==du.ETYPE_EXTR:
+                    fam = du.getFamily(G.nodes[u]['id'][1])
+                    fixed_families.add((fam,te))
+                    print(f"Warning: encountered fixed edge {u} {v} {k} {data}. Defaulting to 0.",file=sys.stderr)
+                    G[u][v][k]["x"]=0
+                    
+                else:
+                    print(G.nodes[u],G.nodes[v],data)
+                    assert(G.nodes[u]['type']==du.VTYPE_CAP or G.nodes[v]['type']==du.VTYPE_CAP)
+                    assert(data['type']==du.ETYPE_ADJ)
+                    print("Warning: Telomere edge {} does not appear in solution. Defaulting to 0.".format(xvar),file=sys.stderr)
+                    G[u][v][k]["x"]=0
+                    if data['type']==du.ETYPE_ADJ:
+                        G[u][v][k]["a"]=0
 
             else:
                 G[u][v][k]["x"]=var_val[xvar]
@@ -45,11 +53,12 @@ def annotate_diagram(relationalDiagram,var_val,tree_ids):
                 G.nodes[u]["g"]=0
             else:
                 G.nodes[u]["g"]=var_val[gvar]
-
+    return fixed_families
 
                 
 def sanity_check_decomposition(relationalDiagram,var_val,tree_ids,fam_bounds,famsep='_',check_fam_bounds=True):
-    annotate_diagram(relationalDiagram,var_val,tree_ids)
+    fixed_families = annotate_diagram(relationalDiagram,var_val,tree_ids)
+    #TODO: Write a sanity check for the fixed families
     for te,G in relationalDiagram["graphs"].items():
         for u,v,k,data in G.edges(keys=True,data=True):
             assert(data["x"] - G.nodes[u]["g"] <= EPSILON)
@@ -89,7 +98,12 @@ def sanity_check_decomposition(relationalDiagram,var_val,tree_ids,fam_bounds,fam
             tei = tree_ids[te]
             ex = "x{sep}{te}{sep}{eid}".format(eid=eid,sep=du.SEP,te=tei)
             dx = "x{sep}{te}{sep}{did}".format(did=did,sep=du.SEP,te=tei)
-            assert(abs(var_val[ex]-var_val[dx])<=EPSILON)
+            if ex not in var_val or dx not in var_val:
+                assert(dx not in var_val)
+                assert(ex not in var_val)
+                print("Warning. Filtered extremity edge could not be sanitychecked.",file=sys.stderr)
+            else:
+                assert(abs(var_val[ex]-var_val[dx])<=EPSILON)
     
 
     
@@ -237,6 +251,7 @@ def main():
     parser.add_argument('--write-unimog')
     parser.add_argument('--write-resolved-families')
     parser.add_argument('--no-relabel-adjacencies',action='store_true')
+    parser.add_argument('--fix-extremity-edges',action='store_true')
     args = parser.parse_args()
     
     tree_ids_r = du.read_tree_edge_name_map(args.phylogeny_edge_ids)
@@ -261,6 +276,7 @@ def main():
         t_dont_add,t_add_all = guess_telomere_adding(glob_table)
 
     telomeres = du.identifyCandidateTelomeres(candidateAdjacencies,0,leaves,dont_add=t_dont_add,addToAll=t_add_all)
+    
     # construct adjacency graphs
     genes = candidateAdjacencies['genes']
     adjacencies = candidateAdjacencies['adjacencies']
@@ -271,6 +287,7 @@ def main():
             fam_bounds=du.parseFamilyBounds(fbf)
     families = candidateAdjacencies['families']
     du.fillFamilyBounds(families,fam_bounds)
+
     relationalDiagrams = du.constructRelationalDiagrams(tree_edges,
             adjacencies, telomeres, weights, genes, global_ext2id,fam_bounds=fam_bounds,
             sep=args.separator,loc_manager_tables=loc_tables)
