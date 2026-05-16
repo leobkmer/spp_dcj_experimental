@@ -129,7 +129,7 @@ def weighted_adj_freq(tree,adjacencies,fbounds,leaves,sep):
                 if not xtr in fam_adj_freqs[v]:
                     fam_adj_freqs[v][xtr]=0
                 fam_adj_freqs[v][xtr]+=frq/len(pc_tree[v])
-    return fam_adj_freqs,kill_adjacencies,semi_kill_adjacencies
+    return fam_adj_freqs,kill_adjacencies#,semi_kill_adjacencies
 
 def bottom_up_traversal(root, pc_tree):
     traversal = [root]
@@ -156,7 +156,7 @@ def bottom_up_traversal(root, pc_tree):
 
 
 
-def all_adj_from_bound(fbounds,kill_adjacencies,semi_kill_adjacencies,separator,prove_filter=True):
+def all_adj_from_bound(fbounds,kill_adjacencies,separator,prove_filter=True):
     poss_anc = dict()
     
     for genome, fams in fbounds.items():
@@ -170,13 +170,13 @@ def all_adj_from_bound(fbounds,kill_adjacencies,semi_kill_adjacencies,separator,
             rem_adj.append((e1,e2))
             kill_extremities.add(e1)
             kill_extremities.add(e2)
-        for ((a,x),(b,y)) in semi_kill_adjacencies[genome]:
-            e1=("{}{}1".format(a,separator),x)
-            e2=("{}{}1".format(b,separator),y)
-            e1,e2 = (e1,e2) if e1 < e2 else (e2,e1)
-            rem_adj.append((e1,e2))
-            kill_extremities.add(e1)
-            kill_extremities.add(e2)
+        #for ((a,x),(b,y)) in semi_kill_adjacencies[genome]:
+        #    e1=("{}{}1".format(a,separator),x)
+        #    e2=("{}{}1".format(b,separator),y)
+        #    e1,e2 = (e1,e2) if e1 < e2 else (e2,e1)
+        #    rem_adj.append((e1,e2))
+        #    kill_extremities.add(e1)
+        #    kill_extremities.add(e2)
         #print("Kill adjacencies for  {}: {}".format(genome,kill_adjacencies[genome]),file=sys.stderr)
         for fname,(_,high) in fams.items():
             all_genes.update(["{fname}{sep}{i}".format(fname=fname,i=i,sep=separator) for i in range(1,high+1)])
@@ -402,7 +402,7 @@ else:
 print("Propagating adjacency weights through tree..",file=sys.stderr)
 
 
-freqs, kills, semikills = weighted_adj_freq(tree,adjacencies,fam_bounds,leaves,sep=args.separator)
+freqs, kills = weighted_adj_freq(tree,adjacencies,fam_bounds,leaves,sep=args.separator)
 
 #print(semikills,file=sys.stderr)
 
@@ -419,13 +419,13 @@ if len(pct[root])==2:
     c1,c2 = tuple(pct[root])
     del inner_bounds[root]
     del kills[root]
-    del semikills[root]
+    #del semikills[root]
     tree[c2]=c1
     del tree[c1]
     print("Removed unneccesary root",root,"new tree: ",tree,file=sys.stderr)
 
 
-adjs = all_adj_from_bound(inner_bounds,kills,semikills,args.separator,prove_filter=not args.no_proof_filter)
+adjs = all_adj_from_bound(inner_bounds,kills,args.separator,prove_filter=not args.no_proof_filter)
 
 for gnm, adj in adjs.items():
     assert(gnm not in adjacencies)
