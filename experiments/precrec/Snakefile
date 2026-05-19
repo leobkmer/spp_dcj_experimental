@@ -1,0 +1,158 @@
+
+import os
+configfile: 'config.yaml'
+
+
+ZOMBI_HOME = config['zombi_home']
+ZOMBI_BIN = os.path.join(ZOMBI_HOME,'Zombi.py')
+ZOMBI_TREE_PARAMS = os.path.join(ZOMBI_HOME,'Parameters','SpeciesTreeParameters.tsv')
+ZOMBI_GNM_PARAMS = os.path.join(ZOMBI_HOME, 'Parameters','GenomeParameters.tsv')
+
+TS_SCALES   = config.get("ts_scales",   [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+TS_LINEAGES = config.get("ts_lineages", 10)
+TS_MARKERS  = config.get("ts_markers",  100)
+
+M_SCALE     = config.get("m_scale",     0.2)
+M_MARKERS   = config.get("m_markers",   [100, 200, 300, 400, 500])
+M_LINEAGES  = config.get("m_lineages",  10)
+
+L_SCALE     = config.get("l_scale",     0.2)
+L_LINEAGES  = config.get("l_lineages",  [10, 15, 20, 25])
+L_MARKERS   = config.get("l_markers",   100)
+
+N_SAMPLES = config['n_samples'] 
+
+SAMPLES=list(range(1,N_SAMPLES+1))
+
+
+TIME_LIMIT=3600
+
+
+
+rule all_scale_adjacencies:
+    input:
+        expand("adj_trim_{trimlevel}_z_treescale{scl}_markers{m}_lineages{l}_sample{s}.adj",trimlevel=["notree"],scl=TS_SCALES,m=[TS_MARKERS],l=[TS_LINEAGES],s=SAMPLES)
+    
+
+rule parse_solution:
+    input:
+        tree='ilp/trim_{trimlevel}_z_{params}.top',
+        adj='adj_{trimlevel}/z_{params}/adj.txt',
+        idmap='ilp/trim_{trimlevel}_z_{params}.ids',
+        sol='sol/trim_{trimlevel}_z_{params}.sol'
+    output:
+        "res/adj/trim_{trimlevel}_z_{params}.adj"
+    shell:
+        "python3 ../../scripts/parse_solution.py {input.tree} {input.adj} {input.idmap} {input.sol} -l --write-adjacencies {output}"
+
+rule gurobi:
+    input:
+        ilp='ilp/{params}.ilp'
+    output:
+        'sol/{params}.sol'
+    log:
+         'sol/{params}.log'
+    benchmark:
+        'bench/gur/{params}.txt'
+    shell:
+        'gurobi_cl TimeLimit=%d Threads=1 ResultFile={output} {input}'%TIME_LIMIT
+
+rule ilp:
+    input:
+        tree='adj_{trimlevel}/z_{params}/tree.txt',
+        adj='adj_{trimlevel}/z_{params}/adj.txt',
+        ranges='ranges/z_{params}/ranges.tsv',
+        scores='ranges/z_{params}/scores.tsv'
+    output:
+        ilp='ilp/trim_{trimlevel}_z_{params}.ilp',
+        tree='ilp/trim_{trimlevel}_z_{params}.top',
+        idmap='ilp/trim_{trimlevel}_z_{params}.ids'
+    run:
+        add_params=""
+        if not wildcards.trimlevel=="full":
+            add_params+=" --fix-extremity-edges"
+        shell('python3 ../../scripts/spp_dcj.py {input.tree} {input.adj} -l -a 1 -fmb {input.ranges} --affine-extension-target {input.scores} -m {output.idmap} --set-circ-sing-handling barbershop --write-phylogeny-edge-ids {output.tree} '+add_params + ' > {output.ilp}')
+
+
+rule adjacencies:
+    input:
+        ranges='ranges/z_{params}/ranges.tsv',
+        unimog='pangenome/z_{params}/unimog.txt'
+        tree='top/z_{params}/untrimmed.txt'
+    output:
+        tree='adj_{trimlevel}/z_{params}/tree.txt',
+        adj='adj_{trimlevel}/z_{params}/adj.txt'
+    run:
+        add_params = ""
+        if wildcards.trimlevel=="full":
+            add_params+=" --no-proof-filter --no-tree-trimming"
+        elif wildcards.trimlevel=="notree":
+            add_params+="--no-tree-trimming"
+        
+        
+        shell('python3 ../../scripts/add_all_adjacencies_inner.py {input.tree} {input.unimog} {input.ranges} --write-adjacencies {output.adj} --write-tree {output.tree} '+add_params)
+
+rule tree2tsv:
+    input:
+        'zombi/z_{params}/T/ExtantTree.nwk'
+    output:
+        'top/z_{params}/untrimmed.txt'
+    shell:
+        'python3 ../../scripts/nwk2tabular.py {input} > {output} '
+
+
+
+rule run_cost_alg:
+    input:
+        tree='zombi/z_{params}/T/ExtantTree.nwk',
+        unimog='pangenome/z_{params}/unimog.txt'
+    output:
+        scores='ranges/z_{params}/scores.tsv',
+        ranges='ranges/z_{params}/ranges.tsv'
+    shell:
+        'python3 ../../scripts/cost_alg.py {input.unimog} {input.tree} --input_format unimog --output_dir ranges/z_{wildcards.params}/'
+
+
+rule setup_treescale_zombi:
+    output:
+        tp='zombi/z_treescale{scl}_markers{m}_lineages{l}_sample{s}/tree_params.tsv',
+        gp='zombi/z_treescale{scl}_markers{m}_lineages{l}_sample{s}/genome_params.tsv'
+    shell:
+        'python3 ./Zombi_params.py --nmarkers {wildcards.m} --nlineages {wildcards.l} {output.tp} {output.gp} {wildcards.scl}'
+
+
+        
+        
+rule zombi_tree:
+    input:
+        params='zombi/z_{params}/tree_params.tsv',
+    output:
+        'zombi/z_{params}/T/ExtantTree.nwk'
+    log:
+        'zombi/z_{params}/T/log.txt'
+    shell:
+        'python3 %s T {input.params} zombi/z_{wildcards.params}/ > {log} 2>&1 '%ZOMBI_BIN
+
+
+rule zombi_genomes:
+    input:
+        params='zombi/z_{params}/genome_params.tsv',
+        zombitree='zombi/z_{params}/T/ExtantTree.nwk'
+    output:
+        root='zombi/z_{params}/G/Genomes/Root_GENOME.tsv'
+    log:
+        'zombi/z_{params}/G/log.txt'
+    shell:
+        'python3 %s G {input.params} zombi/z_{wildcards.params}/ > {log} 2>&1 '%ZOMBI_BIN
+
+
+rule zombi_to_pangenome:
+    input:
+        rgnm='zombi/z_{params}/G/Genomes/Root_GENOME.tsv',
+        tree='zombi/z_{params}/T/ExtantTree.nwk'
+    output:
+        'pangenome/z_{params}/unimog.txt'
+    shell:
+        'python3 ../../scripts/zombi2unimog.py {input.tree} zombi/z_{wildcards.params}/G/Genomes/ > {output}'
+
+

@@ -1,0 +1,14 @@
+zombi_home : '/prj/gsp/urm/spp_dcj_v2/tools/ZOMBI_01042020/'
+n_samples : 10
+ts_scales : [0.2,0.3,0.4,0.5]
+ts_lineages : 10
+ts_markers : 100
+
+m_scale : 0.2
+m_markers : [100,200,300,400,500]
+m_lineages : 10
+
+l_scale : 0.2
+l_lineages : [10,11,12,13,14,15,16,17,18,19,20]
+l_markers : 100
+

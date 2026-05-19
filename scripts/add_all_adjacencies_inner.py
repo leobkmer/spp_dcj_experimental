@@ -129,6 +129,7 @@ def weighted_adj_freq(tree,adjacencies,fbounds,leaves,sep):
                 if not xtr in fam_adj_freqs[v]:
                     fam_adj_freqs[v][xtr]=0
                 fam_adj_freqs[v][xtr]+=frq/len(pc_tree[v])
+    print(semi_kill_adjacencies)
     return fam_adj_freqs,kill_adjacencies#,semi_kill_adjacencies
 
 def bottom_up_traversal(root, pc_tree):
