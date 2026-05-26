@@ -105,4 +105,4 @@ for froot in find_filtered_subtrees(cptr,root,fltn):
         if name==froot or name==rootchild:
             continue
         for (a,x),(b,y) in adjs:
-            print(f"{name}\t{a}\t{x}\t{b}\t{y}\t1")
+            print(f"{name}\t{a}\t{x}\t{name}\t{b}\t{y}\t1")

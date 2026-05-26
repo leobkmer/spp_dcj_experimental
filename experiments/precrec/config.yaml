@@ -1,5 +1,5 @@
 zombi_home : '/prj/gsp/urm/spp_dcj_v2/tools/ZOMBI_01042020/'
-n_samples : 10
+n_samples : 20
 ts_scales : [0.2,0.3,0.4,0.5]
 ts_lineages : 10
 ts_markers : 100

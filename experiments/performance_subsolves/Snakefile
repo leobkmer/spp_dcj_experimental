@@ -25,7 +25,11 @@ N_SAMPLES = config['n_samples']
 
 SOLVE_COMBINATIONS = [(0,0),(0.3,0),(0.3,0.3)]
 
+
+WTS = ["w{w}t{t}".format(w=w,t=t) for w,t in SOLVE_COMBINATIONS]
 TIME_LIMIT=3600
+
+SAMPLES = list(range(1,N_SAMPLES+1))
 
 
 
@@ -35,49 +39,49 @@ rule all_benchmark:
 
 rule all_scale:
     input:
-        expand('sol/tltrim_w{w}t{t}/z_treescale{scl}_markers{m}_lineages{l}_sample{s}.log',scl=TS_SCALES,m=TS_MARKERS,l=TS_LINEAGES)
+        expand('sol/tltrim_{wt}/z_treescale{scl}_markers{m}_lineages{l}_sample{s}.log',scl=TS_SCALES,m=TS_MARKERS,l=TS_LINEAGES,wt=WTS,s=SAMPLES)
     output:
         'summary/scale.txt'
     run:
-        with open(output,"w") as out:
+        with open(output[0],"w") as out:
             for x in input:
-                with open(input) as f:
+                with open(x) as f:
                     last = f.readlines()[-1]
                     print(x,last.strip(),file=out)
                 
 rule all_marker:
     input:
-        expand('sol/tltrim_w{w}t{t}/z_treescale{scl}_markers{m}_lineages{l}_sample{s}.log',scl=M_SCALE,m=M_MARKERS,l=M_LINEAGES)
+        expand('sol/tltrim_{wt}/z_treescale{scl}_markers{m}_lineages{l}_sample{s}.log',scl=M_SCALE,m=M_MARKERS,l=M_LINEAGES,wt=WTS,s=SAMPLES)
     output:
         'summary/marker.txt'
     run:
-        with open(output,"w") as out:
+        with open(output[0],"w") as out:
             for x in input:
-                with open(input) as f:
+                with open(x) as f:
                     last = f.readlines()[-1]
                     print(x,last.strip(),file=out)        
 
 
-rule all_scale:
+rule all_lin:
     input:
-        expand('sol/tltrim_w{w}t{t}/z_treescale{scl}_markers{m}_lineages{l}_sample{s}.log',scl=L_SCALE,m=L_MARKERS,l=L_LINEAGES)
+        expand('sol/tltrim_{wt}/z_treescale{scl}_markers{m}_lineages{l}_sample{s}.log',scl=L_SCALE,m=L_MARKERS,l=L_LINEAGES,wt=WTS,s=SAMPLES)
     output:
         'summary/lineage.txt'
     run:
-        with open(output,"w") as out:
+        with open(output[0],"w") as out:
             for x in input:
-                with open(input) as f:
+                with open(x) as f:
                     last = f.readlines()[-1]
                     print(x,last.strip(),file=out)
 
 rule treesolve:
     input:
-        ilp='ilp/{params}.ilp',
-        tree='ilp/trim_{trimlevel}_z_{params}.top'
+        ilp='ilp/trim_trim_{params}.ilp',
+        tree='ilp/trim_trim_{params}.top'
     log:
-         'sol/tl{trimlevel}_w{w}t{t}/{params}.log'
+         'sol/tltrim_w{w}t{t}/{params}.log'
     benchmark:
-        'bench/gur/{params}.txt'
+        'bench/tltrim_w{w}t{t}/{params}.txt'
     shell:
         'python3 ../../scripts/gurobi_tree_performance.py  {input.ilp} {input.tree} --timelim %d --weightsolve-proportion {wildcards.w} --treesolve-proportion {wildcards.t} 2>&1 > {log}'%TIME_LIMIT
 
@@ -100,7 +104,7 @@ rule ilp:
 rule adjacencies:
     input:
         ranges='ranges/z_{params}/ranges.tsv',
-        unimog='pangenome/z_{params}/unimog.txt'
+        unimog='pangenome/z_{params}/unimog.txt',
         tree='top/z_{params}/untrimmed.txt'
     output:
         tree='adj_{trimlevel}/z_{params}/tree.txt',
@@ -139,7 +143,7 @@ rule setup_treescale_zombi:
         tp='zombi/z_treescale{scl}_markers{m}_lineages{l}_sample{s}/tree_params.tsv',
         gp='zombi/z_treescale{scl}_markers{m}_lineages{l}_sample{s}/genome_params.tsv'
     shell:
-        'python3 ./Zombi_params.py --nmarkers {wildcards.m} --nlineages {wildcards.l} {output.tp} {output.gp} {wildcards.scl}'
+        'python3 ./zombi_params.py --nmarkers {wildcards.m} --nlineages {wildcards.l} {output.tp} {output.gp} {wildcards.scl}'
 
 
         
@@ -174,6 +178,6 @@ rule zombi_to_pangenome:
     output:
         'pangenome/z_{params}/unimog.txt'
     shell:
-        'python3 ../../scripts/zombi2unimog.py {input.tree} zombi/z_{wildcards.params}/G/Genomes/ > {output}'
+        'python3 ../performance_all/zombi2unimog.py {input.tree} zombi/z_{wildcards.params}/G/Genomes/ > {output}'
 
 

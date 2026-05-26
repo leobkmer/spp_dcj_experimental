@@ -29,33 +29,102 @@ TIME_LIMIT=3600
 
 
 
+rule all_evaluation:
+    input:
+        expand("eva/trim_{trimlevel}_z_treescale{scl}_markers{m}_lineages{l}_sample{s}.{fl}",trimlevel=["trim"],scl=TS_SCALES,m=[TS_MARKERS],l=[TS_LINEAGES],s=SAMPLES,fl=["gap","txt"])
+
+
+
 rule all_scale_adjacencies:
     input:
-        expand("adj_trim_{trimlevel}_z_treescale{scl}_markers{m}_lineages{l}_sample{s}.adj",trimlevel=["notree"],scl=TS_SCALES,m=[TS_MARKERS],l=[TS_LINEAGES],s=SAMPLES)
+        expand("res/adj/trim_{trimlevel}_z_treescale{scl}_markers{m}_lineages{l}_sample{s}.adj",trimlevel=["trim"],scl=TS_SCALES,m=[TS_MARKERS],l=[TS_LINEAGES],s=SAMPLES)
     
+
+
+rule get_gap_and_runtime:
+    input:
+        "sol/trim_{params}.log"
+    output:
+        "eva/trim_{params}.gap"
+    shell:
+        "tail -n 1 {input} > {output}"
+
+rule evaluate_solution:
+    input:
+        truth='true/z_{params}/adj.txt',
+        pred="res/adj/trim_{trimlevel}_z_{params}.adj",
+        tree='top/z_{params}/untrimmed.txt'
+    output:
+        "eva/trim_{trimlevel}_z_{params}.txt"
+    shell:
+        "python3 eval_adjacencies.py {input.truth} {input.pred} {input.tree} > {output}"
+
+rule get_true_adjacencies:
+    input:
+        root='zombi/z_{params}/G/Genomes/Root_GENOME.tsv'
+    output:
+        'true/z_{params}/adj.txt'
+    shell:
+        "python3 all_zombi_adj.py zombi/z_{wildcards.params}/G/Genomes/ {output}"
+
+
+rule final_adjacencies:
+    input:
+        soladj="res/adj_ilp/trim_{trimlevel}_z_{params}.adj",
+        fltadj='res/adj_flt/trim_{trimlevel}_z_{params}.adj'
+    output:
+        "res/adj/trim_{trimlevel}_z_{params}.adj"
+    shell:
+        "cat {input.soladj} {input.fltadj} > {output}"
+
+
+rule infer_filtered_adjacencies:
+    input:
+        ogtree='top/z_{params}/untrimmed.txt',
+        unimog='pangenome/z_{params}/unimog.txt',
+        soladj= "res/adj_ilp/trim_{trimlevel}_z_{params}.adj"
+    output:
+        'res/adj_flt/trim_{trimlevel}_z_{params}.adj'
+    shell:
+        "python3 ../../scripts/infer_filtered_adjacencies.py {input.ogtree} {input.unimog} {input.soladj} > {output}"
 
 rule parse_solution:
     input:
         tree='ilp/trim_{trimlevel}_z_{params}.top',
         adj='adj_{trimlevel}/z_{params}/adj.txt',
         idmap='ilp/trim_{trimlevel}_z_{params}.ids',
-        sol='sol/trim_{trimlevel}_z_{params}.sol'
+        sol='sol/trim_{trimlevel}_z_{params}.sol',
+        ranges='ranges/z_{params}/ranges.tsv'
     output:
-        "res/adj/trim_{trimlevel}_z_{params}.adj"
+        "res/adj_ilp/trim_{trimlevel}_z_{params}.adj"
+    log:
+        "res/adj_ilp/trim_{trimlevel}_z_{params}.log"
     shell:
-        "python3 ../../scripts/parse_solution.py {input.tree} {input.adj} {input.idmap} {input.sol} -l --write-adjacencies {output}"
+        "python3 ../../scripts/parse_solution.py {input.tree} {input.adj} {input.idmap} {input.sol} -l  -fmb {input.ranges} --write-adjacencies {output} 2>&1 > {log}"
 
-rule gurobi:
+#rule gurobi:
+#    input:
+#        ilp='ilp/{params}.ilp'
+#    output:
+#        'sol/{params}.sol'
+#    log:
+#         'sol/{params}.log'
+#    benchmark:
+#        'bench/gur/{params}.txt'
+#    shell:
+#        'gurobi_cl TimeLimit=%d Threads=1 ResultFile={output} {input} 2>&1 > {log}'%TIME_LIMIT
+
+rule treesolve:
     input:
-        ilp='ilp/{params}.ilp'
-    output:
-        'sol/{params}.sol'
+        ilp='ilp/{params}.ilp',
+        tree='ilp/{params}.top'
     log:
          'sol/{params}.log'
-    benchmark:
-        'bench/gur/{params}.txt'
+    output:
+        'sol/{params}.sol'
     shell:
-        'gurobi_cl TimeLimit=%d Threads=1 ResultFile={output} {input}'%TIME_LIMIT
+        'python3 ../../scripts/gurobi_tree_performance.py  {input.ilp} {input.tree} --timelim %d --weightsolve-proportion 0.3 --treesolve-proportion 0 --write-sol {output} 2>&1 > {log}'%TIME_LIMIT
+
 
 rule ilp:
     input:
@@ -77,7 +146,7 @@ rule ilp:
 rule adjacencies:
     input:
         ranges='ranges/z_{params}/ranges.tsv',
-        unimog='pangenome/z_{params}/unimog.txt'
+        unimog='pangenome/z_{params}/unimog.txt',
         tree='top/z_{params}/untrimmed.txt'
     output:
         tree='adj_{trimlevel}/z_{params}/tree.txt',
@@ -90,7 +159,7 @@ rule adjacencies:
             add_params+="--no-tree-trimming"
         
         
-        shell('python3 ../../scripts/add_all_adjacencies_inner.py {input.tree} {input.unimog} {input.ranges} --write-adjacencies {output.adj} --write-tree {output.tree} '+add_params)
+        shell('python3 ../../scripts/add_all_adjacencies_inner.py {input.tree} {input.unimog} {input.ranges} --write-adjacencies {output.adj} --write-tree {output.tree} '+add_params )
 
 rule tree2tsv:
     input:
@@ -118,7 +187,7 @@ rule setup_treescale_zombi:
         tp='zombi/z_treescale{scl}_markers{m}_lineages{l}_sample{s}/tree_params.tsv',
         gp='zombi/z_treescale{scl}_markers{m}_lineages{l}_sample{s}/genome_params.tsv'
     shell:
-        'python3 ./Zombi_params.py --nmarkers {wildcards.m} --nlineages {wildcards.l} {output.tp} {output.gp} {wildcards.scl}'
+        'python3 ../performance_subsolves/zombi_params.py --nmarkers {wildcards.m} --nlineages {wildcards.l} {output.tp} {output.gp} {wildcards.scl}'
 
 
         
@@ -153,6 +222,6 @@ rule zombi_to_pangenome:
     output:
         'pangenome/z_{params}/unimog.txt'
     shell:
-        'python3 ../../scripts/zombi2unimog.py {input.tree} zombi/z_{wildcards.params}/G/Genomes/ > {output}'
+        'python3 ../performance_all/zombi2unimog.py {input.tree} zombi/z_{wildcards.params}/G/Genomes/ > {output}'
 
 

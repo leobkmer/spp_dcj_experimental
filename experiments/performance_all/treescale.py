@@ -89,7 +89,7 @@ TOTAL_TIME	1
 #
 ## TOTAL_LINEAGES says when to stop if STOPPING_RULE = 1
 #
-TOTAL_LINEAGES	10
+TOTAL_LINEAGES	5
 #
 ## The simulation fails (and tries again) if the number of lineages in the EST goes below MIN_LINEAGES (when using the stopping rule = 0)
 #

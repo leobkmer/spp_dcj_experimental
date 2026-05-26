@@ -3,7 +3,7 @@ import sys
 from argparse import ArgumentParser
 import data_utils as du
 import random as r
-from math import floor
+from math import floor,isinf
 import time
 
 
@@ -21,6 +21,7 @@ parser.add_argument("--min-subtree-size",type=int,default=3)
 parser.add_argument("--max-subtree-size",type=int,default=25)
 parser.add_argument("--subsample-subtrees",help="Subsample subtrees to this number",type=int)
 parser.add_argument("--warm-start")
+parser.add_argument("--write-sol")
 args = parser.parse_args()
 
 starttime = time.time()
@@ -72,12 +73,13 @@ model.setObjective(f)
 
 
 
+final_opt_time=(1-args.treesolve_proportion-args.weightsolve_proportion)*args.timelim
 print("Optimizing lower bound by solving ",len(subtrees), "subtrees")
 model.Params.MIPFocus=2
 model.update()
 for i,subtree in enumerate(subtrees,start=1):
     remaining_time=args.timelim -(time.time()-starttime)
-    remaining_subtree_time = remaining_time - (1-args.weightsolve_proportion-args.treesolve_proportion)*args.timelim
+    remaining_subtree_time = min(args.treesolve_proportion*args.timelim,remaining_time-final_opt_time)
     if remaining_subtree_time < 100:
         print("Less than 100 seconds remaining for subtree solving. Skipping remaining runs.")
         break
@@ -85,22 +87,24 @@ for i,subtree in enumerate(subtrees,start=1):
     fvars = [model.getVarByName("f_{}".format(i)) for i in tree_edge_ids]
     wvar = model.getVarByName("w")
     model.setObjective(sum(fvars))#-1/(max_effect_of_weights+1)*wvar)
-    model.Params.Timelimit = max(remaining_subtree_time/(len(subtrees)-i+1),100)
+    st_time_limit = remaining_subtree_time
+    model.Params.Timelimit = st_time_limit
     model.update()
-    print("---------------------------TREE PRE-OPTIMIZATION for subtree {}/{} ({}) ".format(i,len(subtrees),subtree),"with objective: ",model.getObjective()," and time limit {} ----------------------".format(st_timelim))
+    print("---------------------------TREE PRE-OPTIMIZATION for subtree {}/{} ({}) ".format(i,len(subtrees),subtree),"with objective: ",model.getObjective()," and time limit {} ----------------------".format(st_time_limit))
     model.optimize()
-    model.addConstr(sum([model.getVarByName("f_{}".format(i)) for i in tree_edge_ids])>=floor(model.ObjBound))
-    for x in model.getVars():
-        if not "_" in x.VarName:
-            continue
-        v_id_split = x.VarName.split("_")
-        if  v_id_split[0].startswith("r") or  v_id_split[0].startswith("p") or v_id_split[0] in ["x","f","w","l","z","y","p","d","w","b","n","c","s"]:
-            if v_id_split[1] in tree_edge_ids:
-                try:
-                    model.getVarByName(x.VarName).setAttr("VarHintVal",x.X)
-                except AttributeError:
-                    break
-    model.update()
+    if not isinf(model.ObjBound):
+        model.addConstr(sum([model.getVarByName("f_{}".format(i)) for i in tree_edge_ids])>=floor(model.ObjBound))
+        for x in model.getVars():
+            if not "_" in x.VarName:
+                continue
+            v_id_split = x.VarName.split("_")
+            if  v_id_split[0].startswith("r") or  v_id_split[0].startswith("p") or v_id_split[0] in ["x","f","w","l","z","y","p","d","w","b","n","c","s"]:
+                if v_id_split[1] in tree_edge_ids:
+                    try:
+                        model.getVarByName(x.VarName).setAttr("VarHintVal",x.X)
+                    except AttributeError:
+                        break
+        model.update()
 
 
 
@@ -116,3 +120,5 @@ print("------------------FINAL OPTIMIZATION----------------")
 model.optimize()
 print("Gap","Time")
 print(model.MIPGap,time.time()-starttime)
+if args.write_sol:
+    model.write(args.write_sol)

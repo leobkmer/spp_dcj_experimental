@@ -5,7 +5,7 @@ ts_lineages : 10
 ts_markers : 100
 
 m_scale : 0.2
-m_markers : [100,200,300,400,500]
+m_markers : [100,200,300,400,500,600,700,800,900,1000]
 m_lineages : 10
 
 l_scale : 0.2

@@ -5,9 +5,11 @@ from argparse import ArgumentParser
 def read_genomes(gnmdir):
     genomes = []
     for fl in os.listdir(gnmdir):
+        print(fl)
         if not fl.endswith("_GENOME.tsv"):
             continue
-        name = fl.split("_GENOME.tsv")
+        print("reading file",fl)
+        name = fl.split("_GENOME.tsv")[0]
         filename = os.path.join(gnmdir,fl)
         with open(filename) as f:
             genes_raw = [line.split() for line in f.readlines()[1::]]
@@ -32,9 +34,10 @@ def genomes2adjacencies(genomes):
         for (o,fam,subid) in genes:
             thise = "t" if o=="+" else "h"
             this = fam+"_"+subid
-            adj.append((name,this,thise,name,last,laste,"0"))
+            adj.append((name,last,laste,name,this,thise,"0"))
             last = this
             laste = "h" if o=="+" else "t"
+    print(adj)
     return adj
 
 

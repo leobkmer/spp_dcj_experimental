@@ -29,7 +29,6 @@ def annotate_diagram(relationalDiagram,var_val,tree_ids):
                     fixed_families.add((fam,te))
                     print(f"Warning: encountered fixed edge {u} {v} {k} {data}. Defaulting to 0.",file=sys.stderr)
                     G[u][v][k]["x"]=0
-                    
                 else:
                     print(G.nodes[u],G.nodes[v],data)
                     assert(G.nodes[u]['type']==du.VTYPE_CAP or G.nodes[v]['type']==du.VTYPE_CAP)
@@ -76,7 +75,7 @@ def sanity_check_decomposition(relationalDiagram,var_val,tree_ids,fam_bounds,fam
             if abs(1-G.nodes[u]["g"])<=EPSILON:
                 assert(len(acands)==1)
                 if G.nodes[u]['type']!=du.VTYPE_CAP:
-                    print(u,G.nodes[u]['type'],G[u])
+                    print(te,u,G.nodes[u],G[u])
                     assert(len(ecands)==1)
             else:
                 assert(len(acands)==0)
